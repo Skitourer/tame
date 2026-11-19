@@ -28,6 +28,26 @@ tk [filter]                # = tk [filter] list
 
 If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`.
 
+## Modifications (`add`, `modify`)
+
+| Token | Effect |
+|---|---|
+| `project:home` `pri:H` | set the attribute |
+| `project:` `pri:` | clear it (`modify` only) |
+| `+tag` | add the tag |
+| `-tag` | remove the tag (`modify` only; for `add` it is a plain word) |
+| other words | the description (`modify`: replaces it) |
+
+After `--`, everything is description. `modify` without any modification is an error.
+
+## Confirmation
+
+`done`, `delete` and `modify` need a filter (`tk done` alone is an error). They ask
+*y/N* before changing more than 3 tasks; `delete` always asks. `--yes` (anywhere before
+`--`) skips the question. Any answer but `y`/`yes`, or no input at all (scripts), means no.
+
+After `done` and `delete`, pending tasks are renumbered 1..n by creation time.
+
 ## Filter tokens
 
 All criteria are AND-combined. Without `status:`, only pending tasks match.

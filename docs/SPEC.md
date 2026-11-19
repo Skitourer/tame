@@ -94,6 +94,8 @@ Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove t
 
 Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` always prompts unless `--yes`.
 
+`modify/done/delete` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 3 cmds. Answer other than `y`/`yes`, or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
+
 ## 5. Commands
 
 | Cmd | Example | Behavior |

@@ -7,9 +7,10 @@ from tame.cli.parser import (
     parse_add,
     parse_command,
     parse_filter,
+    parse_modify,
 )
-from tame.core.filters import NONE, Filter
-from tame.core.models import Priority, Status
+from tame.core.filters import Filter
+from tame.core.models import NONE, Changes, Priority, Status
 from tame.errors import UsageError, ValidationError
 
 
@@ -259,3 +260,79 @@ def test_parse_add_unknown_attr() -> None:
 @pytest.mark.parametrize("word", ["+", "10:30", "Re:", "-x"])
 def test_parse_add_plain_words(word: str) -> None:
     assert parse_add(["a", word]) == AddArgs(f"a {word}")
+
+
+# --- --yes --------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("4 delete --yes", ParsedCommand("delete", filter=("4",), yes=True)),
+        ("--yes 4 delete", ParsedCommand("delete", filter=("4",), yes=True)),
+        ("delete --yes 4", ParsedCommand("delete", filter=("4",), yes=True)),
+        ("modify 1-5 --yes +x", ParsedCommand("modify", ("1-5",), ("+x",), yes=True)),
+        ("3 modify -- --yes", ParsedCommand("modify", ("3",), ("--", "--yes"))),
+        ("add -- --yes", ParsedCommand("add", args=("--", "--yes"))),
+    ],
+)
+def test_yes_flag(line: str, expected: ParsedCommand) -> None:
+    assert cmd(line) == expected
+
+
+@pytest.mark.parametrize("line", ["list --yes", "version --yes", "3 info --yes"])
+def test_yes_flag_rejected_for_commands_without_confirmation(line: str) -> None:
+    with pytest.raises(UsageError) as exc:
+        cmd(line)
+    assert (exc.value.key, exc.value.params) == ("error.unexpected_argument", {"arg": "--yes"})
+
+
+# --- Mods (modify) --------------------------------------------------------------
+
+
+def test_parse_modify_spec_example() -> None:
+    # SPEC section 5 `tk 12 modify due:mon -phone`, without due (step 5).
+    assert parse_modify(["pri:L", "-phone"]) == Changes(
+        priority=Priority.L, tags_remove=frozenset({"phone"})
+    )
+
+
+def test_parse_modify_all_mods() -> None:
+    tokens = ["Call", "the", "bank", "+urgent", "project:work.q4", "-x", "priority:h"]
+    assert parse_modify(tokens) == Changes(
+        description="Call the bank",
+        project="work.q4",
+        priority=Priority.H,
+        tags_add=frozenset({"urgent"}),
+        tags_remove=frozenset({"x"}),
+    )
+
+
+def test_parse_modify_empty_attr_clears() -> None:
+    assert parse_modify(["project:", "pri:"]) == Changes(project=NONE, priority=NONE)
+
+
+def test_parse_modify_double_dash() -> None:
+    assert parse_modify(["+a", "--", "-b", "pri:H"]) == Changes(
+        description="-b pri:H", tags_add=frozenset({"a"})
+    )
+
+
+def test_parse_modify_nothing() -> None:
+    assert parse_modify([]) == Changes()
+
+
+@pytest.mark.parametrize(
+    ("token", "key"),
+    [
+        ("due:mon", "error.unknown_attribute"),
+        ("status:completed", "error.unknown_attribute"),
+        ("pri:Z", "error.invalid_priority"),
+        ("project:a..b", "error.invalid_project"),
+        ("+-x", "error.invalid_tag"),
+    ],
+)
+def test_parse_modify_errors(token: str, key: str) -> None:
+    with pytest.raises(UsageError) as exc:
+        parse_modify([token])
+    assert exc.value.key == key

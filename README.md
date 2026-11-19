@@ -3,7 +3,8 @@
 **TAME Arranges My Errands** — a lightweight, Taskwarrior-inspired command-line task manager,
 Windows 11 first.
 
-> Status: pre-alpha. Only `add`, `list` (with filters) and `version` work for now; see the
+> Status: pre-alpha. `add`, `list` (with filters), `done`, `delete`, `modify`, `info` and
+> `version` work for now; see the
 > roadmap in [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
 
 TAME is an independent project. It shares no code, name or logo with Taskwarrior; it only aims
@@ -28,6 +29,10 @@ tk list                                      # or just: tk
 tk project:home list                         # filter first (or: tk list project:home)
 tk +phone -work bank                         # tags and description words
 tk 2-6 pri:H                                 # ids and priority
+tk 3,5 done                                  # complete tasks 3 and 5
+tk 4 delete                                  # asks first; --yes skips the question
+tk 1 modify pri:L -phone Call the bank       # set, untag, new description
+tk 7 info                                    # every field
 tk version
 ```
 

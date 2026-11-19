@@ -3,6 +3,16 @@
 [cmd.add]
 created = "Created task {id}."
 
+[cmd.done]
+task = "Completed task {task} '{description}'."
+
+[cmd.delete]
+task = "Deleted task {task} '{description}'."
+
+[cmd.modify]
+task = "Modified task {task} '{description}'."
+unchanged = "No task changed."
+
 [cmd.version]
 output = "tame {version} (schema {schema})"
 
@@ -14,6 +24,39 @@ tags = "Tags"
 priority = "Pri"
 due = "Due"
 description = "Description"
+
+[info]
+id = "ID"
+uuid = "UUID"
+description = "Description"
+status = "Status"
+project = "Project"
+tags = "Tags"
+priority = "Priority"
+due = "Due"
+entry = "Entered"
+modified = "Modified"
+end = "Ended"
+
+[info.col]
+name = "Name"
+value = "Value"
+
+[confirm]
+choices = "(y/N)"
+cancelled = "Cancelled: no task changed."
+
+[confirm.done]
+one = "Complete task {task} '{description}'?"
+many = "Complete {count} tasks?"
+
+[confirm.delete]
+one = "Delete task {task} '{description}'?"
+many = "Delete {count} tasks?"
+
+[confirm.modify]
+one = "Modify task {task} '{description}'?"
+many = "Modify {count} tasks?"
 
 [age]
 seconds = "{n}s"
@@ -32,6 +75,9 @@ filter_not_allowed = "Command '{command}' does not accept a filter."
 invalid_id_range = "Invalid id range: '{token}'"
 invalid_status = "Invalid status: '{value}' (expected pending, completed or deleted)"
 unexpected_argument = "Unexpected argument: {arg}"
+filter_required = "Command '{command}' needs a filter, e.g. 'tk 3 {command}'."
+no_modifications = "Nothing to modify: give attr:value, attr:, +tag, -tag or a new description."
+task_not_found = "Task {uuid} not found."
 unknown_attribute = "Unknown attribute: {name}"
 empty_description = "A task needs a description."
 invalid_tag = "Invalid tag: '{tag}'"

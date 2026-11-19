@@ -1,3 +1,4 @@
+import io
 import subprocess
 import sys
 from pathlib import Path
@@ -37,7 +38,7 @@ def test_ambiguous_command(capsys: Capture) -> None:
     assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
 
 
-@pytest.mark.parametrize("command", ["done", "delete", "modify", "info", "undo", "export"])
+@pytest.mark.parametrize("command", ["undo", "export", "import", "alias"])
 def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
     code, _, err = run(capsys, command)
     assert code == 1
@@ -194,3 +195,193 @@ def test_cold_start_does_not_import_rich() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert result.stdout.splitlines()[-1] == "False"
+
+
+# --- done / delete / modify / info (roadmap step 4) ---------------------------
+
+
+def answer(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
+    """Feed ``text`` to the confirmation prompt."""
+    monkeypatch.setattr("sys.stdin", io.StringIO(text))
+
+
+def descriptions(capsys: Capture, *argv: str) -> list[str]:
+    """Return ``(id, description)`` cells of ``tk <argv>`` as "id description" strings."""
+    code, out, _ = run(capsys, *argv, "list")
+    if code:
+        return []
+    return [" ".join((line.split()[0], line.split()[-1])) for line in out.splitlines()[2:] if line]
+
+
+@pytest.fixture
+def five_tasks(capsys: Capture) -> None:
+    for name in ("one", "two", "three", "four", "five"):
+        run(capsys, "add", name, "+t")
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_done_spec_example_renumbers(capsys: Capture) -> None:
+    assert run(capsys, "3,5", "done") == (
+        0,
+        "Completed task 3 'three'.\nCompleted task 5 'five'.\n",
+        "",
+    )
+    assert descriptions(capsys) == ["1 one", "2 two", "3 four"]
+    code, out, _ = run(capsys, "status:completed", "list")
+    assert code == 0
+    assert out.splitlines()[0].split()[:2] == ["Age", "Tags"]  # no id once completed
+    assert "three" in out
+    assert "five" in out
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_done_classic_order(capsys: Capture) -> None:
+    assert run(capsys, "done", "2")[1] == "Completed task 2 'two'.\n"
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_done_over_threshold_asks(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    answer(monkeypatch, "n\n")
+    code, out, _ = run(capsys, "+t", "done")
+    assert code == 0
+    assert out == "Complete 5 tasks? (y/N) Cancelled: no task changed.\n"
+    assert len(descriptions(capsys)) == 5
+
+    answer(monkeypatch, "Y\n")
+    code, out, _ = run(capsys, "+t", "done")
+    assert out.startswith("Complete 5 tasks? (y/N) Completed task 1 'one'.")
+    assert run(capsys, "list") == (2, "", "No matches.\n")
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_done_at_threshold_does_not_ask(capsys: Capture) -> None:
+    code, out, _ = run(capsys, "1-3", "done")
+    assert (code, out.count("Completed")) == (0, 3)
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_end_of_input_means_no(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    answer(monkeypatch, "")
+    code, out, _ = run(capsys, "+t", "done")
+    assert code == 0
+    assert out.endswith("Cancelled: no task changed.\n")
+    assert len(descriptions(capsys)) == 5
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_yes_skips_prompt(capsys: Capture) -> None:
+    code, out, _ = run(capsys, "+t", "done", "--yes")
+    assert (code, out.count("Completed"), "?" in out) == (0, 5, False)
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_delete_spec_example_always_asks(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    answer(monkeypatch, "y\n")
+    assert run(capsys, "4", "delete") == (
+        0,
+        "Delete task 4 'four'? (y/N) Deleted task 4 'four'.\n",
+        "",
+    )
+    assert descriptions(capsys) == ["1 one", "2 two", "3 three", "4 five"]
+    code, out, _ = run(capsys, "status:deleted", "list")
+    assert code == 0
+    assert "four" in out
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_delete_with_yes(capsys: Capture) -> None:
+    assert run(capsys, "delete", "--yes", "1") == (0, "Deleted task 1 'one'.\n", "")
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_done_by_uuid_of_completed_task_names_it_by_uuid(capsys: Capture) -> None:
+    run(capsys, "1", "done")
+    out = run(capsys, "status:completed", "info")[1]
+    uuid = next(line.split()[1] for line in out.splitlines() if line.startswith("UUID"))
+    assert run(capsys, uuid[:8], "status:completed", "delete", "--yes")[1] == (
+        f"Deleted task {uuid[:8]} 'one'.\n"
+    )
+
+
+@pytest.mark.parametrize("command", ["done", "delete", "modify"])
+def test_write_commands_need_a_filter(capsys: Capture, command: str) -> None:
+    code, _, err = run(capsys, command)
+    assert code == 1
+    assert err == f"Command '{command}' needs a filter, e.g. 'tk 3 {command}'.\n"
+
+
+@pytest.mark.parametrize("command", ["done", "delete --yes", "modify +x", "info"])
+def test_write_commands_no_match(capsys: Capture, command: str) -> None:
+    name, *args = command.split()
+    assert run(capsys, "9", name, *args) == (2, "", "No matches.\n")
+
+
+def test_modify_spec_example(capsys: Capture) -> None:
+    # SPEC section 5 `tk 12 modify due:mon -phone`, without due (step 5).
+    run(capsys, "add", "Call", "bank", "+phone", "pri:H")
+    assert run(capsys, "1", "modify", "pri:L", "-phone") == (
+        0,
+        "Modified task 1 'Call bank'.\n",
+        "",
+    )
+    code, out, _ = run(capsys, "1", "info")
+    assert code == 0
+    assert "Priority" in out
+    assert " L" in out
+    assert "phone" not in out
+
+
+def test_modify_replaces_description(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank")
+    assert run(capsys, "modify", "1", "Call", "the", "bank", "+urgent") == (
+        0,
+        "Modified task 1 'Call bank'.\n",
+        "",
+    )
+    assert descriptions(capsys, "+urgent") == ["1 bank"]
+    assert "Call the bank" in run(capsys, "1", "info")[1]
+
+
+def test_modify_unchanged(capsys: Capture) -> None:
+    run(capsys, "add", "x", "+a")
+    assert run(capsys, "1", "modify", "+a") == (0, "No task changed.\n", "")
+
+
+def test_modify_without_mods_is_usage_error(capsys: Capture) -> None:
+    run(capsys, "add", "x")
+    code, _, err = run(capsys, "1", "modify")
+    assert code == 1
+    assert err.startswith("Nothing to modify")
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_modify_bulk_asks(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    answer(monkeypatch, "yes\n")
+    out = run(capsys, "+t", "modify", "pri:H")[1]
+    assert out.startswith("Modify 5 tasks? (y/N) Modified task 1 'one'.")
+    assert descriptions(capsys, "pri:H") == ["1 one", "2 two", "3 three", "4 four", "5 five"]
+
+
+def test_info_spec_example(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank", "project:home", "+phone", "pri:H")
+    code, out, err = run(capsys, "1", "info")
+    assert (code, err) == (0, "")
+    labels = [line.split()[0] for line in out.splitlines()[2:] if line.strip()]
+    assert labels == [
+        "ID",
+        "UUID",
+        "Description",
+        "Status",
+        "Project",
+        "Tags",
+        "Priority",
+        "Entered",
+        "Modified",
+    ]
+
+
+def test_info_without_filter_shows_all_pending(capsys: Capture) -> None:
+    run(capsys, "add", "one")
+    run(capsys, "add", "two")
+    out = run(capsys, "info")[1]
+    assert out.count("UUID") == 2

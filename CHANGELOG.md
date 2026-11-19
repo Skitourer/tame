@@ -23,3 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`tk list project:home`); unique command prefixes (`tk mod`); no command means `list`.
 - Filters: ids (`3`, `3,5`, `2-6`), uuid prefixes, `+tag`/`-tag`, `project:`, `pri:`,
   `status:` and description words. See `docs/grammar.md`.
+- `done`, `delete` (soft) and `modify` commands. They require a filter and ask for
+  confirmation above 3 tasks (`delete`: always); `--yes` skips it. Pending tasks are
+  renumbered after `done`/`delete`.
+- `info` command: every field of the matching tasks, in local time.
+
+### Fixed
+
+- `list status:completed` no longer shows `None` in the ID column.

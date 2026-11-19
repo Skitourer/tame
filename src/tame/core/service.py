@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 
 from tame.core.filters import Filter
 from tame.core.models import (
+    Changes,
+    Status,
     Task,
     check_description,
     check_project,
@@ -71,6 +73,54 @@ class TaskService:
             task = replace(task, id=self._repo.max_pending_id() + 1)
             self._repo.insert(task)
         return task
+
+    def complete(self, tasks: Iterable[Task]) -> list[Task]:
+        """Mark ``tasks`` completed (``end`` = now), then renumber pending tasks.
+
+        Tasks already completed are skipped.
+
+        Returns:
+            The changed tasks, as stored.
+        """
+        return self._close(tasks, Status.COMPLETED)
+
+    def delete(self, tasks: Iterable[Task]) -> list[Task]:
+        """Soft-delete ``tasks`` (``end`` = now), then renumber pending tasks.
+
+        Tasks already deleted are skipped.
+
+        Returns:
+            The changed tasks, as stored.
+        """
+        return self._close(tasks, Status.DELETED)
+
+    def _close(self, tasks: Iterable[Task], status: Status) -> list[Task]:
+        now = self._clock()
+        changed = [
+            replace(task, status=status, id=None, end=now, modified=now)
+            for task in tasks
+            if task.status is not status
+        ]
+        with self._repo.transaction():
+            for task in changed:
+                self._repo.update(task)
+            self._repo.renumber()
+        return changed
+
+    def modify(self, tasks: Iterable[Task], changes: Changes) -> list[Task]:
+        """Apply ``changes`` to ``tasks``; ``modified`` = now on the tasks that change.
+
+        Returns:
+            The changed tasks, as stored. Tasks the changes leave as they were are skipped.
+        """
+        now = self._clock()
+        changed = [
+            replace(new, modified=now) for task in tasks if (new := changes.apply(task)) != task
+        ]
+        with self._repo.transaction():
+            for task in changed:
+                self._repo.update(task)
+        return changed
 
     def query(self, where: Filter | None = None) -> list[Task]:
         """Return the tasks matching ``where`` (default: all pending), ordered by short id.

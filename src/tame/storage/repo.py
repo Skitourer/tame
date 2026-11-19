@@ -80,20 +80,38 @@ class TaskRepo:
         """Insert a new task with its tags."""
         self._conn.execute(
             f"INSERT INTO tasks({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                task.uuid,
-                task.id,
-                task.description,
-                task.status.value,
-                task.project,
-                task.priority.value if task.priority else None,
-                to_db(task.due) if task.due else None,
-                to_db(task.entry),
-                to_db(task.modified),
-                to_db(task.end) if task.end else None,
-                json.dumps(task.extra, sort_keys=True) if task.extra else None,
-            ),
+            _to_row(task),
         )
+        self._insert_tags(task)
+
+    def update(self, task: Task) -> None:
+        """Overwrite the stored task having ``task.uuid``, tags included.
+
+        Raises:
+            StorageError: If no task has this uuid.
+        """
+        uuid, *values = _to_row(task)
+        assignments = ", ".join(f"{column} = ?" for column in _COLUMNS.split(", ")[1:])
+        cursor = self._conn.execute(
+            f"UPDATE tasks SET {assignments} WHERE uuid = ?", (*values, uuid)
+        )
+        if cursor.rowcount != 1:
+            raise StorageError("error.task_not_found", uuid=uuid)
+        self._conn.execute("DELETE FROM task_tags WHERE uuid = ?", (uuid,))
+        self._insert_tags(task)
+
+    def renumber(self) -> None:
+        """Give pending tasks the short ids 1..n by entry time; clear the others' ids."""
+        self._conn.execute("UPDATE tasks SET id = NULL WHERE status != 'pending'")
+        rows = self._conn.execute(
+            "SELECT uuid FROM tasks WHERE status = 'pending' ORDER BY entry, id, uuid"
+        ).fetchall()
+        self._conn.executemany(
+            "UPDATE tasks SET id = ? WHERE uuid = ?",
+            [(number, row["uuid"]) for number, row in enumerate(rows, start=1)],
+        )
+
+    def _insert_tags(self, task: Task) -> None:
         self._conn.executemany(
             "INSERT INTO task_tags(uuid, tag) VALUES (?, ?)",
             [(task.uuid, tag) for tag in sorted(task.tags)],
@@ -127,6 +145,23 @@ class TaskRepo:
             "SELECT COALESCE(MAX(id), 0) FROM tasks WHERE status = 'pending'"
         ).fetchone()
         return int(row[0])
+
+
+def _to_row(task: Task) -> tuple[str | int | None, ...]:
+    """Return the column values of ``task``, in ``_COLUMNS`` order."""
+    return (
+        task.uuid,
+        task.id,
+        task.description,
+        task.status.value,
+        task.project,
+        task.priority.value if task.priority else None,
+        to_db(task.due) if task.due else None,
+        to_db(task.entry),
+        to_db(task.modified),
+        to_db(task.end) if task.end else None,
+        json.dumps(task.extra, sort_keys=True) if task.extra else None,
+    )
 
 
 def _to_task(row: sqlite3.Row, tags: frozenset[str]) -> Task:

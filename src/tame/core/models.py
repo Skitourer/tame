@@ -1,11 +1,14 @@
 """Task domain model (SPEC §3). Field names follow Taskwarrior."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from tame.errors import ValidationError
+
+NONE: Literal[""] = ""
+"""Value of ``project``/``priority`` in filters and changes meaning "attribute not set"."""
 
 
 class Status(StrEnum):
@@ -55,6 +58,47 @@ class Task:
     due: datetime | None = None
     end: datetime | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class Changes:
+    """Modifications to apply to tasks (``modify``), independent of any command-line syntax.
+
+    Attributes:
+        description: New description; None keeps it.
+        project: New project; ``NONE`` clears it; None keeps it.
+        priority: New priority; ``NONE`` clears it; None keeps it.
+        tags_add: Tags to add.
+        tags_remove: Tags to remove.
+    """
+
+    description: str | None = None
+    project: str | None = None
+    priority: Priority | Literal[""] | None = None
+    tags_add: frozenset[str] = frozenset()
+    tags_remove: frozenset[str] = frozenset()
+
+    def __bool__(self) -> bool:
+        """Return True if at least one change is requested."""
+        return any(
+            (
+                self.description is not None,
+                self.project is not None,
+                self.priority is not None,
+                self.tags_add,
+                self.tags_remove,
+            )
+        )
+
+    def apply(self, task: Task) -> Task:
+        """Return ``task`` with the changes applied; ``modified`` is left untouched."""
+        return replace(
+            task,
+            description=task.description if self.description is None else self.description,
+            project=task.project if self.project is None else self.project or None,
+            priority=task.priority if self.priority is None else self.priority or None,
+            tags=(task.tags | self.tags_add) - self.tags_remove,
+        )
 
 
 def check_description(description: str) -> str:

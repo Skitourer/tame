@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from tame.core.filters import NONE, Filter
-from tame.core.models import Priority, Status, Task
+from tame.core.filters import Filter
+from tame.core.models import NONE, Priority, Status, Task
 
 T0 = datetime(2026, 11, 19, tzinfo=UTC)
 

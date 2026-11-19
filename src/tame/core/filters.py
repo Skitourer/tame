@@ -3,10 +3,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from tame.core.models import Priority, Status, Task
-
-NONE: Literal[""] = ""
-"""Value of ``project``/``priority`` meaning "attribute not set"."""
+from tame.core.models import NONE, Priority, Status, Task
 
 
 @dataclass(frozen=True, slots=True)
