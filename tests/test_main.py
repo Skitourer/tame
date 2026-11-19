@@ -27,10 +27,25 @@ def test_version_rejects_args(capsys: Capture) -> None:
     assert "extra" in err
 
 
-def test_unknown_command_is_usage_error(capsys: Capture) -> None:
-    code, out, err = run(capsys, "frobnicate")
-    assert (code, out) == (1, "")
-    assert "frobnicate" in err
+def test_unknown_word_is_a_list_filter(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank")
+    assert run(capsys, "frobnicate") == (2, "", "No matches.\n")
+    assert "Call bank" in run(capsys, "bank")[1]
+
+
+def test_ambiguous_command(capsys: Capture) -> None:
+    assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
+
+
+@pytest.mark.parametrize("command", ["done", "delete", "modify", "info", "undo", "export"])
+def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
+    code, _, err = run(capsys, command)
+    assert code == 1
+    assert err == f"Command '{command}' is not implemented yet.\n"
+
+
+def test_filter_not_allowed(capsys: Capture) -> None:
+    assert run(capsys, "3", "version") == (1, "", "Command 'version' does not accept a filter.\n")
 
 
 def test_add_prints_created_id(capsys: Capture, tame_home: Path) -> None:
@@ -83,8 +98,59 @@ def test_list_empty_is_no_match(capsys: Capture) -> None:
     assert run(capsys, "list") == (2, "", "No matches.\n")
 
 
-def test_list_rejects_filters_for_now(capsys: Capture) -> None:
-    assert run(capsys, "list", "+x")[0] == 1
+def listed_ids(out: str) -> list[str]:
+    return [line.split()[0] for line in out.splitlines()[2:] if line.strip()]
+
+
+@pytest.fixture
+def three_tasks(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank", "project:home", "+phone", "pri:H")
+    run(capsys, "add", "Fix", "fence", "project:home.garden", "+diy")
+    run(capsys, "add", "Write", "report", "project:work", "+phone", "pri:L")
+
+
+@pytest.mark.usefixtures("three_tasks")
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["project:home", "list"],  # SPEC §5 example (TW order)
+        ["list", "project:home"],  # classic order
+        ["project:home"],  # no command = list
+    ],
+)
+def test_list_spec_example_both_orders(capsys: Capture, argv: list[str]) -> None:
+    code, out, _ = run(capsys, *argv)
+    assert code == 0
+    assert listed_ids(out) == ["1", "2"]
+
+
+@pytest.mark.usefixtures("three_tasks")
+@pytest.mark.parametrize(
+    ("argv", "ids"),
+    [
+        (["+phone", "list"], ["1", "3"]),
+        (["-phone"], ["2"]),
+        (["pri:H"], ["1"]),
+        (["pri:"], ["2"]),
+        (["2-3", "list"], ["2", "3"]),
+        (["1,3", "+phone", "report"], ["3"]),
+        (["list", "FENCE"], ["2"]),
+        (["project:home.garden", "list"], ["2"]),
+    ],
+)
+def test_list_filters(capsys: Capture, argv: list[str], ids: list[str]) -> None:
+    code, out, _ = run(capsys, *argv)
+    assert (code, listed_ids(out)) == (0, ids)
+
+
+@pytest.mark.usefixtures("three_tasks")
+def test_list_no_match_exit_2(capsys: Capture) -> None:
+    assert run(capsys, "status:completed", "list") == (2, "", "No matches.\n")
+    assert run(capsys, "+nope") == (2, "", "No matches.\n")
+
+
+def test_list_unknown_attribute(capsys: Capture) -> None:
+    assert run(capsys, "due.before:fri", "list") == (1, "", "Unknown attribute: due.before\n")
 
 
 def test_internal_error_exit_code(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:

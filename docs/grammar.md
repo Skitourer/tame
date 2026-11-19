@@ -1,0 +1,59 @@
+# Command-line grammar
+
+Reference for how `tame`/`tk` reads its arguments. Normative source: [SPEC §4](SPEC.md#4-cli-grammar).
+
+```text
+tk [filter] <cmd> [args]   # TW order (canonical)
+tk <cmd> [filter] [args]   # classic order (tolerated)
+tk [filter]                # = tk [filter] list
+```
+
+## Finding the command
+
+1. The first token that names a command is the command: the exact name, or a prefix of exactly
+   one command (`mod` → `modify`, `l` → `list`). A prefix of several commands is an error
+   (`d` → *Ambiguous command 'd': delete, done*). Command names are English only.
+2. Tokens before the command are the filter.
+3. `add`: every token after it describes the new task; it never takes a filter.
+4. Classic order (nothing before the command): the leading filter-like tokens after the command
+   are the filter (ids, uuids, `+tag`, `-tag`, `attr:value`), the rest are arguments. For
+   `modify`, only leading ids/uuids are the filter.
+   Commands without arguments (`list`, `done`, `delete`, `info`, `export`) treat all their
+   tokens as filter, so `tk list +phone bank` works.
+5. `--` stops parsing: it is never a command, and everything after it is plain words
+   (`tk add -- done the report`).
+6. An unknown `attr:` is an error (exit code 1).
+7. Commands that take no filter (`add`, `alias`, `help`, `import`, `undo`, `version`) reject one
+   (exit code 1).
+
+If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`.
+
+## Filter tokens
+
+All criteria are AND-combined. Without `status:`, only pending tasks match.
+
+| Token | Matches |
+|---|---|
+| `3` `3,5` `2-6` `1,4-6` | tasks with these short ids |
+| `1a2b3c4d`, `1a2b3c4d-5e6f` | tasks whose uuid starts with this (8+ hex chars; dashes ignored) |
+| `+tag` / `-tag` | tasks having / lacking the tag |
+| `project:home` | project `home` and its sub-projects (`home.garden`), not `homework` |
+| `project:` | tasks without a project |
+| `pri:H` (`priority:`) | exact priority; `pri:` = no priority |
+| `status:completed` | `pending`, `completed` or `deleted` |
+| any other word | case-insensitive substring of the description |
+
+Ids and uuid prefixes together form one selection: `tk 3 1a2b3c4d list` shows task 3 *and*
+the task with that uuid. A token of digits only is always an id.
+
+Coming in later roadmap steps: `due.before:`/`due.after:` (dates, step 5).
+
+## Examples
+
+```sh
+tk project:home list        # = tk list project:home = tk project:home
+tk +phone -work             # pending tasks tagged phone, not tagged work
+tk 2-6 pri:H                # ids 2..6 with priority H
+tk bank                     # description contains "bank"
+tk status:completed list    # completed tasks
+```

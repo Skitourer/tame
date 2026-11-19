@@ -65,27 +65,28 @@ Each write cmd = 1 transaction + 1 undo_log row. Migrations keyed on `meta.schem
 ```
 tk [filter] <cmd> [args]   # TW order (canonical)
 tk <cmd> [filter] [args]   # classic order (tolerated)
-tk                         # = tk list
+tk [filter]                # = tk [filter] list (so `tk` = tk list)
 ```
 
 Parse rules (in order):
 
-1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated.
+1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/done.
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
-4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter.
-5. `--` ends parsing: rest = description words (`tk add -- done the report`).
+4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list done delete info export`): all tokens after cmd = filter.
+5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
+7. Filter given to a cmd that takes none (`add` before it, `alias help import undo version`) → usage error (exit 1).
 
-Filter tokens (AND-combined; OR/parens out V1; default `status:pending` unless `status:` given):
+Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; OR/parens out V1; default `status:pending` unless `status:` given):
 
 | Token | Meaning |
 |---|---|
-| `3` `3,5` `2-6` | ids |
-| 8+ hex chars | uuid prefix |
+| `3` `3,5` `2-6` | ids (digits-only token = always ids) |
+| 8+ hex chars | uuid prefix (dashes ignored) |
 | `+t` / `-t` | has / lacks tag |
-| `project:x` | project = x or x.* |
-| `pri:H` `status:completed` | equality (`pri` = alias of `priority`) |
+| `project:x` | project = x or x.*; `project:` = no project |
+| `pri:H` `status:completed` | equality (`pri` = alias of `priority`); `pri:` = no priority |
 | `due.before:fri` `due.after:today` | date compare |
 | other word | case-insensitive substring of description |
 

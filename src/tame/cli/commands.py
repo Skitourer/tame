@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 from tame import __version__
-from tame.cli.parser import ParsedCommand, parse_add
+from tame.cli.parser import ParsedCommand, parse_add, parse_filter
 from tame.config import data_dir
 from tame.core.service import TaskService, utc_now
 from tame.errors import ExitCode, NoMatchError, UsageError
@@ -25,9 +25,9 @@ def _no_args(args: tuple[str, ...]) -> None:
         raise UsageError("error.unexpected_argument", arg=args[0])
 
 
-def cmd_add(args: tuple[str, ...]) -> int:
+def cmd_add(command: ParsedCommand) -> int:
     """``add``: create a task and print its short id."""
-    parsed = parse_add(args)
+    parsed = parse_add(command.args)
     with open_service() as service:
         task = service.add(
             parsed.description, project=parsed.project, tags=parsed.tags, priority=parsed.priority
@@ -36,11 +36,11 @@ def cmd_add(args: tuple[str, ...]) -> int:
     return ExitCode.OK
 
 
-def cmd_list(args: tuple[str, ...]) -> int:
-    """``list``: print pending tasks as a table."""
-    _no_args(args)
+def cmd_list(command: ParsedCommand) -> int:
+    """``list``: print the matching tasks as a table."""
+    where = parse_filter(command.filter)
     with open_service() as service:
-        tasks = service.query()
+        tasks = service.query(where)
     if not tasks:
         raise NoMatchError("error.no_matches")
     from tame.cli.render import print_task_table
@@ -49,14 +49,19 @@ def cmd_list(args: tuple[str, ...]) -> int:
     return ExitCode.OK
 
 
-def cmd_version(args: tuple[str, ...]) -> int:
+def cmd_version(command: ParsedCommand) -> int:
     """``version``: print the app and schema versions."""
-    _no_args(args)
+    _no_args(command.args)
     print(t("cmd.version.output", version=__version__, schema=SCHEMA_VERSION))
     return ExitCode.OK
 
 
-HANDLERS: dict[str, Callable[[tuple[str, ...]], int]] = {
+def cmd_not_implemented(command: ParsedCommand) -> int:
+    """Placeholder for V1 commands of later roadmap steps."""
+    raise UsageError("error.not_implemented", command=command.name)
+
+
+HANDLERS: dict[str, Callable[[ParsedCommand], int]] = {
     "add": cmd_add,
     "list": cmd_list,
     "version": cmd_version,
@@ -65,4 +70,4 @@ HANDLERS: dict[str, Callable[[tuple[str, ...]], int]] = {
 
 def run(command: ParsedCommand) -> int:
     """Run ``command`` and return its exit code."""
-    return HANDLERS[command.name](command.args)
+    return HANDLERS.get(command.name, cmd_not_implemented)(command)

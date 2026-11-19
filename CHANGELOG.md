@@ -19,3 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list` command (also the default when no command is given): pending tasks in a table,
   empty columns hidden.
 - Output is always UTF-8, including when redirected.
+- Hybrid command line: filter before the command (`tk project:home list`) or after it
+  (`tk list project:home`); unique command prefixes (`tk mod`); no command means `list`.
+- Filters: ids (`3`, `3,5`, `2-6`), uuid prefixes, `+tag`/`-tag`, `project:`, `pri:`,
+  `status:` and description words. See `docs/grammar.md`.

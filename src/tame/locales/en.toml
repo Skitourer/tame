@@ -26,8 +26,11 @@ years = "{n}y"
 
 [error]
 internal = "Internal error: {detail}"
-unknown_command = "Unknown command: {name}"
 ambiguous_command = "Ambiguous command '{name}': {candidates}"
+not_implemented = "Command '{command}' is not implemented yet."
+filter_not_allowed = "Command '{command}' does not accept a filter."
+invalid_id_range = "Invalid id range: '{token}'"
+invalid_status = "Invalid status: '{value}' (expected pending, completed or deleted)"
 unexpected_argument = "Unexpected argument: {arg}"
 unknown_attribute = "Unknown attribute: {name}"
 empty_description = "A task needs a description."

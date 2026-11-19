@@ -5,8 +5,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import replace
 from datetime import UTC, datetime
 
+from tame.core.filters import Filter
 from tame.core.models import (
-    Status,
     Task,
     check_description,
     check_project,
@@ -72,9 +72,12 @@ class TaskService:
             self._repo.insert(task)
         return task
 
-    def query(self) -> list[Task]:
-        """Return pending tasks ordered by short id.
+    def query(self, where: Filter | None = None) -> list[Task]:
+        """Return the tasks matching ``where`` (default: all pending), ordered by short id.
 
-        Filters arrive in roadmap step 3, urgency sorting in step 5.
+        Urgency sorting arrives in roadmap step 5.
         """
-        return self._repo.by_status(Status.PENDING)
+        where = where or Filter()
+        return [
+            task for task in self._repo.by_status(where.effective_status) if where.matches(task)
+        ]

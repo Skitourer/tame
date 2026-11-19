@@ -1,37 +1,231 @@
 import pytest
 
-from tame.cli.parser import AddArgs, ParsedCommand, parse_add, parse_command, resolve_command
-from tame.errors import UsageError
+from tame.cli.parser import (
+    AddArgs,
+    ParsedCommand,
+    match_command,
+    parse_add,
+    parse_command,
+    parse_filter,
+)
+from tame.core.filters import NONE, Filter
+from tame.core.models import Priority, Status
+from tame.errors import UsageError, ValidationError
+
+
+def cmd(line: str) -> ParsedCommand:
+    return parse_command(line.split())
+
+
+# --- Rule 1: command detection ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("token", "name"),
+    [("add", "add"), ("mod", "modify"), ("li", "list"), ("v", "version"), ("don", "done")],
+)
+def test_match_command_exact_or_unique_prefix(token: str, name: str) -> None:
+    assert match_command(token) == name
+
+
+@pytest.mark.parametrize("token", ["", "bank", "3", "+tag", "project:x", "lists"])
+def test_match_command_none(token: str) -> None:
+    assert match_command(token) is None
+
+
+@pytest.mark.parametrize(("token", "candidates"), [("d", "delete, done"), ("i", "import, info")])
+def test_match_command_ambiguous(token: str, candidates: str) -> None:
+    with pytest.raises(UsageError) as exc:
+        match_command(token)
+    assert exc.value.key == "error.ambiguous_command"
+    assert exc.value.params["candidates"] == candidates
 
 
 def test_no_args_means_list() -> None:
     assert parse_command([]) == ParsedCommand("list")
 
 
-def test_command_and_args() -> None:
-    assert parse_command(["add", "a", "b"]) == ParsedCommand("add", ("a", "b"))
+def test_filter_without_command_means_list() -> None:
+    assert cmd("project:home +phone") == ParsedCommand("list", filter=("project:home", "+phone"))
+
+
+def test_double_dash_stops_command_search() -> None:
+    assert cmd("-- list") == ParsedCommand("list", filter=("--", "list"))
+
+
+# --- Spec examples (§4, §5) ---------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    ("token", "name"), [("add", "add"), ("a", "add"), ("li", "list"), ("v", "version")]
+    ("line", "expected"),
+    [
+        ("project:home list", ParsedCommand("list", filter=("project:home",))),
+        ("3,5 done", ParsedCommand("done", filter=("3,5",))),
+        ("4 delete", ParsedCommand("delete", filter=("4",))),
+        ("12 modify due:mon -phone", ParsedCommand("modify", ("12",), ("due:mon", "-phone"))),
+        ("7 info", ParsedCommand("info", filter=("7",))),
+        ("project:home export", ParsedCommand("export", filter=("project:home",))),
+        ("import f.json", ParsedCommand("import", args=("f.json",))),
+        ("alias install task", ParsedCommand("alias", args=("install", "task"))),
+        ("help", ParsedCommand("help")),
+        ("help add", ParsedCommand("help", args=("add",))),
+        ("version", ParsedCommand("version")),
+        ("undo", ParsedCommand("undo")),
+        (
+            "add Call bank project:home +phone due:tomorrow pri:H",
+            ParsedCommand(
+                "add", args=("Call", "bank", "project:home", "+phone", "due:tomorrow", "pri:H")
+            ),
+        ),
+        ("add -- done the report", ParsedCommand("add", args=("--", "done", "the", "report"))),
+    ],
 )
-def test_resolve_command_exact_or_prefix(token: str, name: str) -> None:
-    assert resolve_command(token) == name
+def test_spec_examples(line: str, expected: ParsedCommand) -> None:
+    assert cmd(line) == expected
 
 
-@pytest.mark.parametrize("token", ["", "frobnicate", "3", "+tag"])
-def test_resolve_command_unknown(token: str) -> None:
+# --- Rules 2-4: TW order vs classic order -------------------------------------
+
+
+def test_rule3_add_never_takes_filter_after() -> None:
+    assert cmd("add 3 +x done") == ParsedCommand("add", args=("3", "+x", "done"))
+
+
+def test_rule3_add_rejects_filter_before() -> None:
     with pytest.raises(UsageError) as exc:
-        resolve_command(token)
-    assert exc.value.key == "error.unknown_command"
+        cmd("project:x add foo")
+    assert exc.value.key == "error.filter_not_allowed"
 
 
-def test_resolve_command_ambiguous(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("tame.cli.parser.COMMANDS", ("done", "delete"))
+def test_rule4_classic_order_list() -> None:
+    assert cmd("list project:home +phone") == ParsedCommand(
+        "list", filter=("project:home", "+phone")
+    )
+
+
+def test_rule4_argless_command_trailing_words_join_filter() -> None:
+    assert cmd("list +phone bank") == ParsedCommand("list", filter=("+phone", "bank"))
+    assert cmd("bank list +phone") == ParsedCommand("list", filter=("bank", "+phone"))
+
+
+def test_rule4_classic_done() -> None:
+    assert cmd("done 3,5") == ParsedCommand("done", filter=("3,5",))
+
+
+def test_rule4_classic_modify_only_ids_are_filter() -> None:
+    assert cmd("modify 12 +x pri:H new text") == ParsedCommand(
+        "modify", filter=("12",), args=("+x", "pri:H", "new", "text")
+    )
+    assert cmd("mod 1a2b3c4d due:mon") == ParsedCommand(
+        "modify", filter=("1a2b3c4d",), args=("due:mon",)
+    )
+
+
+def test_rule2_tw_order_modify() -> None:
+    assert cmd("+x modify pri:L") == ParsedCommand("modify", filter=("+x",), args=("pri:L",))
+
+
+@pytest.mark.parametrize("line", ["3 version", "help +x", "+x undo", "3 import f.json"])
+def test_filter_rejected_for_non_filter_commands(line: str) -> None:
     with pytest.raises(UsageError) as exc:
-        resolve_command("d")
-    assert exc.value.key == "error.ambiguous_command"
-    assert exc.value.params["candidates"] == "done, delete"
+        cmd(line)
+    assert exc.value.key == "error.filter_not_allowed"
+
+
+# --- Filter tokens --------------------------------------------------------------
+
+
+def test_parse_filter_empty() -> None:
+    assert parse_filter([]) == Filter()
+
+
+@pytest.mark.parametrize(
+    ("token", "ids"),
+    [("3", {3}), ("3,5", {3, 5}), ("2-6", {2, 3, 4, 5, 6}), ("1,4-5", {1, 4, 5}), ("7-7", {7})],
+)
+def test_parse_filter_ids(token: str, ids: set[int]) -> None:
+    assert parse_filter([token]).ids == ids
+
+
+def test_parse_filter_ids_accumulate() -> None:
+    assert parse_filter(["3", "5"]).ids == {3, 5}
+
+
+def test_parse_filter_bad_range() -> None:
+    with pytest.raises(UsageError) as exc:
+        parse_filter(["6-2"])
+    assert exc.value.key == "error.invalid_id_range"
+
+
+@pytest.mark.parametrize(
+    ("token", "prefix"),
+    [
+        ("1a2b3c4d", "1a2b3c4d"),
+        ("DEADBEEF00", "deadbeef00"),
+        ("12345678-9abc", "123456789abc"),
+        ("11111111-1111-4111-8111-111111111111", "11111111111141118111111111111111"),
+    ],
+)
+def test_parse_filter_uuid_prefix(token: str, prefix: str) -> None:
+    assert parse_filter([token]).uuid_prefixes == (prefix,)
+
+
+def test_parse_filter_digits_only_is_id() -> None:
+    assert parse_filter(["12345678"]) == Filter(ids=frozenset({12345678}))
+
+
+def test_parse_filter_tags() -> None:
+    f = parse_filter(["+a", "-b", "+c"])
+    assert (f.tags_in, f.tags_out) == ({"a", "c"}, {"b"})
+
+
+def test_parse_filter_attrs() -> None:
+    f = parse_filter(["project:home.garden", "pri:h", "status:Completed"])
+    assert (f.project, f.priority, f.status) == ("home.garden", Priority.H, Status.COMPLETED)
+
+
+def test_parse_filter_empty_attr_means_none() -> None:
+    f = parse_filter(["project:", "priority:"])
+    assert (f.project, f.priority) == (NONE, NONE)
+
+
+def test_parse_filter_words() -> None:
+    assert parse_filter(["Call", "bank"]).words == ("Call", "bank")
+
+
+def test_parse_filter_double_dash() -> None:
+    assert parse_filter(["+a", "--", "+b", "3"]) == Filter(
+        tags_in=frozenset({"a"}), words=("+b", "3")
+    )
+
+
+@pytest.mark.parametrize(
+    ("token", "name"), [("foo:bar", "foo"), ("due.before:fri", "due.before"), ("due:x", "due")]
+)
+def test_parse_filter_unknown_attr(token: str, name: str) -> None:
+    # due.before/after arrive with dates in roadmap step 5.
+    with pytest.raises(UsageError) as exc:
+        parse_filter([token])
+    assert (exc.value.key, exc.value.params) == ("error.unknown_attribute", {"name": name})
+
+
+@pytest.mark.parametrize(
+    ("token", "key"),
+    [
+        ("status:waiting", "error.invalid_status"),
+        ("status:", "error.invalid_status"),
+        ("pri:Z", "error.invalid_priority"),
+        ("project:a..b", "error.invalid_project"),
+        ("+-x", "error.invalid_tag"),
+    ],
+)
+def test_parse_filter_invalid_values(token: str, key: str) -> None:
+    with pytest.raises(ValidationError) as exc:
+        parse_filter([token])
+    assert exc.value.key == key
+
+
+# --- add ------------------------------------------------------------------------
 
 
 def test_parse_add_spec_example() -> None:

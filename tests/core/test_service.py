@@ -3,6 +3,7 @@ from datetime import datetime
 
 import pytest
 
+from tame.core.filters import Filter
 from tame.core.models import Priority, Status
 from tame.core.service import TaskService, utc_now
 from tame.errors import ValidationError
@@ -55,6 +56,13 @@ def test_query_returns_pending_by_id(service: TaskService) -> None:
     first = service.add("first")
     second = service.add("second")
     assert service.query() == [first, second]
+
+
+def test_query_with_filter(service: TaskService) -> None:
+    service.add("Call bank", tags=["phone"])
+    report = service.add("Write report", tags=["phone"], project="work")
+    assert service.query(Filter(tags_in=frozenset({"phone"}), project="work")) == [report]
+    assert service.query(Filter(status=Status.COMPLETED)) == []
 
 
 def test_utc_now_is_aware_and_second_precision() -> None:
