@@ -1,7 +1,7 @@
 # TAME
 
 [![CI](https://github.com/Skitourer/tame/actions/workflows/ci.yml/badge.svg)](https://github.com/Skitourer/tame/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://skitourer.github.io/tame/badges/coverage.json)](https://github.com/Skitourer/tame/actions/workflows/docs.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fskitourer.github.io%2Ftame%2Fbadges%2Fcoverage.json&cacheSeconds=3600)](https://github.com/Skitourer/tame/actions/workflows/docs.yml)
 [![Docs](https://img.shields.io/badge/docs-skitourer.github.io%2Ftame-orange)](https://skitourer.github.io/tame/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)

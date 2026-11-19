@@ -208,11 +208,12 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md  (+ site pages; mkdocs.yml)
 
 **Release rule** (blocking, every release):
 
-- [ ] README, docs/, `tame help` match current behavior
+- [ ] Documentation matches current behavior **everywhere**: README (incl. badges render), docs site pages (`docs/*.md`, `mkdocs build --strict`), SPEC, `tk help` + tour in every locale (`en.toml`, `fr.toml`), CONTRIBUTING, GitHub About description
 - [ ] Docstrings up to date on changed code
 - [ ] CHANGELOG updated
 - [ ] `en.toml` complete; i18n key test green
-- [ ] CI green (ruff, mypy, pytest, both OS)
+- [ ] CI and Docs workflows green (ruff, mypy, pytest, both OS; site built and deployed)
+- [ ] Install from GitHub checked (`uv tool install git+…`) on a clean tool dir
 - [ ] Version bumped (SemVer) + git tag + GitHub release
 
 **Roadmap V1** (1 PR each):
