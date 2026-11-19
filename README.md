@@ -74,6 +74,7 @@ tk 4 delete                                  # asks first; --yes skips the quest
 tk 1 modify due:+3d -phone Call the bank     # set, untag, new description
 tk 7 info                                    # every field
 tk undo                                      # revert the last change (repeat to go back)
+tk +shopping print                           # printable page, by project (or PDF)
 tk status:all export > backup.json           # Taskwarrior JSON; status:all = every task
 tk import tw.json                            # from Taskwarrior (task export > tw.json)
 tk alias install task                        # opt-in: also run tame as `task`

@@ -56,6 +56,9 @@ def main() -> None:
         tk("+nothing", code=2)
         expect("A two-minute tour.", tk("help", "tour"))
         expect("Permission is hereby granted", tk("help", "license"))
+        page = Path(home) / "tasks.html"
+        expect("Saved:", tk("print", "--file", str(page)))
+        expect("Water plants", page.read_text(encoding="utf-8"))
         tk("config", "set", "language", "fr")
         expect("Usage : tk", tk("help"))
         tk("config", "set", "language", "en")

@@ -921,3 +921,54 @@ def test_help_credits_in_french(capsys: Capture) -> None:
     out = run(capsys, "help", "credits")[1]
     assert out.startswith("TAME Arranges My Errands, par Skitourer.")
     assert "Taskwarrior" in out
+
+
+# --- print (v0.2.0) ---------------------------------------------------------------
+
+
+def test_print_opens_the_page_in_the_browser(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    opened: list[str] = []
+    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url) or True)
+    monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))
+    run(capsys, "add", "Buy", "milk", "project:errands")
+    code, out, err = run(capsys, "print")
+    assert (code, err) == (0, "")
+    assert out.startswith("Opened in your browser for printing (or saving as PDF): ")
+    (page,) = tmp_path.glob("tame-print-*.html")
+    assert opened == [page.resolve().as_uri()]
+    html = page.read_text(encoding="utf-8")
+    assert "Buy milk" in html
+    assert "window.print()" in html
+
+
+def test_print_without_a_browser(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("webbrowser.open", lambda url: False)
+    monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))
+    run(capsys, "add", "x")
+    assert run(capsys, "print")[1].startswith("Open this file in a browser to print it: ")
+
+
+def test_print_to_file(capsys: Capture, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("webbrowser.open", lambda url: pytest.fail("must not open"))
+    run(capsys, "add", "Call", "bank", "+phone")
+    run(capsys, "add", "Buy", "milk", "+shopping")
+    target = tmp_path / "list.html"
+    assert run(capsys, "+shopping", "print", "--file", str(target)) == (0, f"Saved: {target}\n", "")
+    html = target.read_text(encoding="utf-8")
+    assert "Buy milk" in html
+    assert "Call bank" not in html
+    assert "<h1>Tasks: +shopping</h1>" in html
+    assert "window.print()" not in html
+
+
+def test_print_errors(capsys: Capture, tmp_path: Path) -> None:
+    assert run(capsys, "print") == (2, "", "No matches.\n")
+    run(capsys, "add", "x")
+    assert run(capsys, "print", "--file")[0] == 1
+    code, _, err = run(capsys, "print", "--file", str(tmp_path / "missing" / "x.html"))
+    assert code == 1
+    assert err.startswith("Cannot write ")

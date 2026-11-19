@@ -38,6 +38,11 @@ removed = "Removed alias '{name}': {path}"
 not_on_path = "Warning: {dir} is not in PATH; add it to use '{name}'."
 shadowed = "Warning: '{name}' runs {path}, found first in PATH."
 
+[cmd.print]
+opened = "Opened in your browser for printing (or saving as PDF): {path}"
+not_opened = "Open this file in a browser to print it: {path}"
+saved = "Saved: {path}"
+
 [cmd.config]
 default = "# default: {value}"
 set = "{name} = {value}"
@@ -146,9 +151,22 @@ alias_exists = "{path} already exists and was not created by tame: left unchange
 alias_missing = "No alias '{name}' ({path} not found)."
 alias_not_ours = "{path} was not created by tame: left unchanged."
 alias_io = "Cannot write or delete {path}: {detail}"
+print_usage = "Usage: tk [filter] print [--file PATH]"
+print_io = "Cannot write {path}: {detail}"
 help_unknown = "No help for '{name}'. Run 'tk help' for the list."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
+
+[print]
+title = "Tasks"
+title_filtered = "Tasks: {filter}"
+no_project = "No project"
+count = "{count} tasks"
+count_one = "1 task"
+due = "due {date}"
+today = "today"
+late = "late"
+footer = "Printed with TAME"
 
 [about]
 license_header = "TAME is released under the MIT License:"
@@ -277,6 +295,22 @@ Examples:
   task export > tw.json        (in Taskwarrior)
   tk import tw.json
   tk status:all export | tk import -
+'''
+
+[help.cmd.print]
+summary = "Print tasks, grouped by project"
+usage = "tk [filter] print [--file PATH]"
+body = '''
+Makes a printable page of the matching tasks, one section per project, with a box to
+tick for each task, and opens it in your browser with the print dialog: pick a
+printer, or save as PDF. Like list, only pending tasks by default. --file PATH saves
+the page (HTML) without opening it.
+
+Examples:
+  tk print
+  tk +shopping print
+  tk project:home due.before:eow print
+  tk print --file tasks.html
 '''
 
 [help.cmd.config]

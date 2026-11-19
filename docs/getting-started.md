@@ -50,6 +50,7 @@ tk 1 info           # every field of task 1
 
 Overdue tasks are red, tasks due today yellow. The `Urg` column is the
 [urgency](urgency.md).
+On paper? `tk print` opens a printable page, grouped by project, in your browser.
 
 ## Change, complete, delete
 

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `print` command: a printable page of the matching tasks, one section per project,
+  opened in the browser with the print dialog (print, or save as PDF); `--file PATH`
+  saves it instead.
 - `tk help license`: TAME's license, and the installed libraries with their versions and
   licenses. `tk help credits`: author, thanks, libraries and tools. Also on the site
   (Credits & licenses), and mentioned by `tk version`.

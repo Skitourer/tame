@@ -76,7 +76,7 @@ Parse rules (in order):
 1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/done.
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
-4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list done delete info export`): all tokens after cmd = filter.
+4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
 5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias config help import undo version`) → usage error (exit 1).
@@ -110,6 +110,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 | modify | `tk 12 modify due:mon -phone` | apply mods |
 | info | `tk 7 info` | all fields, local times |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
+| print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
 | export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; no match → `[]`, exit 0 |
 | import | `tk import f.json` | TW JSON from FILE, or stdin if none or `-` (UTF-8, or UTF-16 with BOM); merge by uuid; prints added/updated/skipped counts; 1 undo step; any invalid task → nothing imported, error names the task number |
 | alias | `tk alias install task` | `install\|remove NAME`: opt-in shim `NAME` (`NAME.cmd` on Windows) running `python -m tame`, in the uv tool bin dir (`UV_TOOL_BIN_DIR`, `XDG_BIN_HOME`, `$XDG_DATA_HOME/../bin`, `~/.local/bin`); marked as tame's: never overwrites/removes other files; warns if the dir is not in PATH or another NAME comes first |
@@ -188,6 +189,7 @@ src/tame/
   cli/parser.py    # tokens → (filter, cmd, args)
   cli/commands.py  # 1 func per cmd
   cli/render.py    # rich output
+  cli/printout.py  # tk print: HTML page
   core/models.py   # Task dataclass
   core/filters.py  # Filter (syntax-free)
   core/dates.py    # relative date parser
