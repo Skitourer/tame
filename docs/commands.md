@@ -203,7 +203,8 @@ tk help [command | topic]
 ```
 
 Without arguments, lists commands and topics. Topics: `filters`, `dates`, `urgency`, `tour`
-(a two-minute guided tour). `tk <command> --help` is the same as `tk help <command>`. Works
+(a two-minute guided tour), `license` (TAME's license and the installed libraries'
+licenses) and `credits`. `tk <command> --help` is the same as `tk help <command>`. Works
 even when the settings file is invalid.
 
 ```sh
@@ -218,4 +219,5 @@ tk 3 done --help
 tk version
 ```
 
-Shows the tame version and the database schema version.
+Shows the tame version and the database schema version, and where to find the license and
+credits.

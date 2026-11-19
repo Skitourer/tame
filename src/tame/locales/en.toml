@@ -45,6 +45,7 @@ unset = "{name} = {value} (default)"
 
 [cmd.version]
 output = "tame {version} (schema {schema})"
+more = "MIT License. See tk help license and tk help credits."
 
 [list.col]
 id = "ID"
@@ -148,6 +149,11 @@ alias_io = "Cannot write or delete {path}: {detail}"
 help_unknown = "No help for '{name}'. Run 'tk help' for the list."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
+
+[about]
+license_header = "TAME is released under the MIT License:"
+license_missing = "MIT License. Full text: https://github.com/Skitourer/tame/blob/main/LICENSE"
+libraries = "Libraries installed with TAME, and their licenses:"
 
 [help]
 usage = "Usage: tk [filter] <command> [arguments]   (no command = list)"
@@ -407,4 +413,22 @@ A two-minute tour. Type the commands in order.
      tk status:all export > backup.json
 
 Every command: tk help. Details: tk help <command>.
+'''
+
+credits = '''
+TAME Arranges My Errands, by Skitourer.
+https://github.com/Skitourer/tame
+
+Thanks to the Taskwarrior team and community: TAME exists because Taskwarrior showed
+how good a command-line task manager can be, and its open JSON format lets tools talk
+to each other. TAME is an independent project and shares no code with it.
+
+Built with:
+  rich              tables and colors
+  python-dateutil   dates
+  tomlkit           settings file that keeps your comments
+
+Made with uv, ruff, mypy, pytest and MkDocs Material.
+
+Licenses: tk help license.
 '''

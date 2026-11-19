@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `tk help license`: TAME's license, and the installed libraries with their versions and
+  licenses. `tk help credits`: author, thanks, libraries and tools. Also on the site
+  (Credits & licenses), and mentioned by `tk version`.
+
 ### Project
 
 - CI: GitHub Actions moved to their Node.js 24 versions; Dependabot keeps them up to date.

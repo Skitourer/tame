@@ -21,7 +21,12 @@ def run(capsys: Capture, *args: str) -> tuple[int, str, str]:
 
 
 def test_version_prints_app_and_schema(capsys: Capture) -> None:
-    assert run(capsys, "version") == (0, f"tame {__version__} (schema {SCHEMA_VERSION})\n", "")
+    assert run(capsys, "version") == (
+        0,
+        f"tame {__version__} (schema {SCHEMA_VERSION})\n"
+        "MIT License. See tk help license and tk help credits.\n",
+        "",
+    )
 
 
 def test_version_rejects_args(capsys: Capture) -> None:
@@ -631,7 +636,7 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
     assert listed == list(HELP_COMMANDS)
     assert "  add      Create a task" in lines
     assert "  export   Export tasks as Taskwarrior JSON" in lines
-    assert "Topics: tk help filters | dates | urgency | tour" in out
+    assert "Topics: tk help filters | dates | urgency | tour | license | credits" in out
 
 
 def test_help_covers_every_implemented_command() -> None:
@@ -673,6 +678,8 @@ def test_help_flag_after_double_dash_is_a_word(capsys: Capture) -> None:
         ("dates", "eow   eom   eoy"),
         ("urgency", "priority     H 6.0, M 3.9, L 1.8"),
         ("tour", "A two-minute tour. Type the commands in order."),
+        ("license", "Permission is hereby granted, free of charge"),
+        ("credits", "TAME Arranges My Errands, by Skitourer."),
     ],
 )
 def test_help_topics(capsys: Capture, topic: str, text: str) -> None:
@@ -898,3 +905,19 @@ def test_tour_commands_all_work(
     for command in commands:
         code, _, err = run(capsys, *command.split()[1:])
         assert (command, code, err) == (command, 0, "")
+
+
+def test_help_license_lists_libraries(capsys: Capture) -> None:
+    out = run(capsys, "help", "license")[1]
+    assert out.startswith("TAME is released under the MIT License:\n\nMIT License")
+    assert "Libraries installed with TAME, and their licenses:" in out
+    assert any(
+        line.split()[:1] == ["rich"] and line.split()[-1] == "MIT" for line in out.splitlines()
+    )
+
+
+def test_help_credits_in_french(capsys: Capture) -> None:
+    run(capsys, "config", "set", "language", "fr")
+    out = run(capsys, "help", "credits")[1]
+    assert out.startswith("TAME Arranges My Errands, par Skitourer.")
+    assert "Taskwarrior" in out
