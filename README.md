@@ -1,14 +1,33 @@
 # TAME
 
-**TAME Arranges My Errands** — a lightweight, Taskwarrior-inspired command-line task manager,
-Windows 11 first.
+**TAME Arranges My Errands.** A small, fast to-do list for your terminal: add a task in one
+line, see what matters most, tick it off, move on.
 
-> Status: pre-alpha. All V1 commands work: `add`, `list` (with filters), `done`, `delete`,
-> `modify`, `info`, `undo`, `export`, `import`, `alias`, `config`, `help` and `version`, with
-> due dates, urgency and a French interface. See the roadmap in [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
+```text
+> tk add Call the bank +phone due:fri pri:H
+Created task 1.
+> tk add Water the plants project:home
+Created task 2.
+> tk
+ID   Age   Project   Tags    Pri   Due          Description         Urg
+───────────────────────────────────────────────────────────────────────
+ 1    5s             phone   H     2026-11-20   Call the bank      15.8
+ 2    3s   home                                 Water the plants    1.0
+> tk 1 done
+Completed task 1 'Call the bank'.
+```
 
-TAME is an independent project. It shares no code, name or logo with Taskwarrior; it only aims
-for compatibility with Taskwarrior's JSON import/export format.
+- **Quick to type**: `tk` lists your tasks, `tk 3 done` completes one, commands shorten
+  (`tk mod`), and dates speak plain English: `due:fri`, `due:eom`, `due:+2w`.
+- **Most urgent first**: priority, due date, age, tags and project add up to an urgency
+  score, so the top of the list is what to do now.
+- **Forgiving**: `tk undo` reverts any change, bulk changes ask first, deleted tasks are
+  kept.
+- **Windows first**, at home on Linux too. English or French interface.
+- **Taskwarrior-friendly**: same grammar spirit, and its JSON imports and exports both ways.
+
+> Status: pre-alpha, all V1 commands work. See the roadmap in
+> [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
 
 ## Install
 
@@ -18,7 +37,7 @@ Requires [uv](https://docs.astral.sh/uv/).
 uv tool install git+https://github.com/skitourer/tame
 ```
 
-This installs two commands: `tame` and its short alias `tk`.
+This installs two commands: `tame` and its short alias `tk`. Then try `tk help`.
 
 ## Usage
 
@@ -68,6 +87,15 @@ tk config path
 Other options: `color`, and the urgency weights `urgency.pri_H`, `urgency.due`...
 
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.
+
+## Thanks
+
+TAME exists because [Taskwarrior](https://taskwarrior.org) showed how good a command-line task
+manager can be. Many thanks to its team and community for years of great work and for an open
+JSON format that lets tools talk to each other.
+
+TAME is an independent project: it shares no code, name or logo with Taskwarrior, and only aims
+for compatibility with its JSON import/export format.
 
 ## Development
 
