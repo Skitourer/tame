@@ -25,6 +25,9 @@ settings and aliases in `.sandbox/` (ignored by git).
 .\scripts\tk.ps1 --reset                        # start over
 ```
 
+Easter eggs are hidden in the code and tests (hashed triggers, ROT13 replies). To list
+them: `uv run python scripts/spoilers.py` (spoilers!).
+
 ## Checks
 
 All of these must pass before opening a PR (CI runs them on Windows and Linux):
