@@ -172,9 +172,10 @@ Examples:
 summary = "List tasks, most urgent first"
 usage = "tk [filter] list"
 body = '''
-Shows pending tasks matching the filter (see tk help filters); status:completed or
-status:deleted shows the others. Empty columns are hidden. Overdue tasks are red,
-tasks due today yellow. Urg is the urgency (see tk help urgency).
+Shows pending tasks matching the filter (see tk help filters); status:completed,
+status:deleted or status:all shows the others, pending ones first. Empty columns are
+hidden. Overdue tasks are red, tasks due today yellow. Urg is the urgency (see
+tk help urgency).
 
 Examples:
   tk                        all pending tasks

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from tame.core.models import Priority, Task
+from tame.core.models import Priority, Status, Task
 
 _DAY = timedelta(days=1)
 _YEAR = timedelta(days=365)
@@ -58,5 +58,11 @@ def urgency(task: Task, now: datetime, coefficients: Coefficients = DEFAULT_COEF
 def by_urgency(
     tasks: list[Task], now: datetime, coefficients: Coefficients = DEFAULT_COEFFICIENTS
 ) -> list[Task]:
-    """Return ``tasks`` sorted by urgency, highest first; ties keep their order."""
-    return sorted(tasks, key=lambda task: -urgency(task, now, coefficients))
+    """Return ``tasks`` sorted pending first, then by urgency, highest first.
+
+    Ties keep their order.
+    """
+    return sorted(
+        tasks,
+        key=lambda task: (task.status is not Status.PENDING, -urgency(task, now, coefficients)),
+    )

@@ -56,7 +56,10 @@ def test_four(capsys: Capture) -> None:
     capsys.readouterr()
     code, out, _ = run(capsys, "gnzr")
     assert code == 0
-    assert r("1 reenaqf gnzrq, 1 fgvyy ebnzvat.") in out
+    assert r("1 reenaq gnzrq, 1 fgvyy ebnzvat.") in out
+    main(["1", "done"])  # the last pending task, renumbered 1
+    capsys.readouterr()
+    assert r("2 reenaqf gnzrq, 0 fgvyy ebnzvat.") in run(capsys, "gnzr")[1]
 
 
 def test_five(capsys: Capture, tame_home: Path) -> None:

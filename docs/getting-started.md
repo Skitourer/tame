@@ -2,7 +2,8 @@
 
 ## Install
 
-TAME needs [uv](https://docs.astral.sh/uv/), the Python package manager. Then:
+Never installed a Python program? Follow [Installation for beginners](install-beginners.md).
+Otherwise, with [uv](https://docs.astral.sh/uv/):
 
 ```sh
 uv tool install git+https://github.com/skitourer/tame

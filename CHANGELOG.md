@@ -59,6 +59,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and shows the coverage report in each run's summary.
 - Documentation site (MkDocs Material on GitHub Pages): getting started, commands,
   grammar, urgency, settings, coming from Taskwarrior; coverage and docs badges.
+- One-line installers (`install.ps1`, `install.sh`) that install uv if needed, then TAME;
+  "Installation for beginners" page.
+- CI installs the built package as a uv tool on Windows and Linux and runs a smoke test.
+
+### Changed
+
+- `status:all list` (and any list mixing statuses) shows pending tasks first.
 
 ### Fixed
 

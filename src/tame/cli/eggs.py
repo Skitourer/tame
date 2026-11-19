@@ -20,7 +20,7 @@ _TABLE: dict[str, tuple[int, str]] = {
     ),
     "77cf9a363c0fb1f0": (
         3,
-        "eNpTUMhXUFCogwN9LgX9mph4EKUQowAC1Qa1CqlFRYl5KcUKJYm5qSk6CtWGtQrFJZk5OQpF+Ym5mXnpegAQVBa5",
+        "eNpTUMhXUFCogwN9LgX9mph4EKUQowAC1Qa1CqlFRYl5KdVGtQolibmpKToK1Ya1CsUlmTk5CkX5ibmZeel6AD8PF3A=",
     ),
 }
 _FORTY_TWO = "Gur Nafjre. Abj, jung jnf gur Dhrfgvba?"
@@ -62,7 +62,7 @@ def hatch(argv: Sequence[str]) -> bool:
             else:
                 done = len(service.query(Filter(status=Status.COMPLETED)))
                 pending = len(service.query())
-                data = _z(data).format(done, pending)
+                data = _z(data).format(done, pending, "" if done == 1 else "s")
     print(_z(data) if kind == 2 else data if kind == 3 else _r(data))
     return True
 

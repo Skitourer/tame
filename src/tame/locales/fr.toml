@@ -174,8 +174,8 @@ summary = "Lister les tâches, les plus urgentes d'abord"
 usage = "tk [filtre] list"
 body = '''
 Affiche les tâches en cours qui correspondent au filtre (voir tk help filters) ;
-status:completed ou status:deleted affiche les autres. Les colonnes vides sont
-masquées. Les tâches en retard sont en rouge, celles dues aujourd'hui en jaune.
+status:completed, status:deleted ou status:all affiche les autres, celles en cours
+d'abord. Les colonnes vides sont masquées. Les tâches en retard sont en rouge, celles dues aujourd'hui en jaune.
 Urg est l'urgence (voir tk help urgency).
 
 Exemples :

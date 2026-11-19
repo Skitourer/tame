@@ -44,8 +44,8 @@ tk [filter] list
 ```
 
 Shows the pending tasks matching the [filter](grammar.md#filter-tokens); `status:completed`,
-`status:deleted` or `status:all` shows the others. Sorted by [urgency](urgency.md), highest
-first. Empty columns are hidden. Overdue tasks are red, tasks due today yellow (no colors when
+`status:deleted` or `status:all` shows the others. Pending tasks come first, then everything
+is sorted by [urgency](urgency.md), highest first. Empty columns are hidden. Overdue tasks are red, tasks due today yellow (no colors when
 the output is not a terminal, or with `color = false`).
 
 `list` is the default command: `tk` alone lists all pending tasks. With no task at all, it
