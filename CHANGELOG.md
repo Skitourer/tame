@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tame`/`tk`) next to `tame` and `tk`; `tk alias remove task` deletes it. Never touches
   files it did not create; warns if the directory is not in PATH or another command of
   that name comes first.
+- A few hidden easter eggs.
 
 ### Fixed
 

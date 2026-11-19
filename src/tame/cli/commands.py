@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from tame import __version__
+from tame.cli import eggs
 from tame.cli.parser import (
     ParsedCommand,
     match_command,
@@ -163,6 +164,8 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
             return ExitCode.OK
         changed = service.complete(tasks)
     _report("cmd.done.task", tasks, changed)
+    uuids = {task.uuid for task in changed}
+    eggs.after_done([task for task in tasks if task.uuid in uuids])
     return ExitCode.OK
 
 
@@ -223,7 +226,12 @@ def cmd_undo(command: ParsedCommand, settings: Settings) -> int:
     """``undo``: revert the last write command."""
     _no_args(command.args)
     with open_service(settings) as service:
-        result = service.undo()
+        try:
+            result = service.undo()
+        except NoMatchError as err:
+            print(t(err.key, **err.params), file=sys.stderr)
+            eggs.after_empty_undo()
+            return err.exit_code
     print(t("cmd.undo.header", command=result.cmd))
     for task in result.restored:
         print(t("cmd.undo.restored", task=task_ref(task), description=task.description))
