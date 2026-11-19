@@ -40,13 +40,6 @@ def test_ambiguous_command(capsys: Capture) -> None:
     assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
 
 
-@pytest.mark.parametrize("command", ["alias"])
-def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
-    code, _, err = run(capsys, command)
-    assert code == 1
-    assert err == f"Command '{command}' is not implemented yet.\n"
-
-
 def test_filter_not_allowed(capsys: Capture) -> None:
     assert run(capsys, "3", "version") == (1, "", "Command 'version' does not accept a filter.\n")
 
@@ -675,10 +668,10 @@ def test_every_help_text_exists(subject: str) -> None:
 
 
 def test_help_unknown_subject(capsys: Capture) -> None:
-    assert run(capsys, "help", "alias") == (
+    assert run(capsys, "help", "frob") == (
         1,
         "",
-        "No help for 'alias'. Run 'tk help' for the list.\n",
+        "No help for 'frob'. Run 'tk help' for the list.\n",
     )
     assert run(capsys, "help", "d")[2] == "Ambiguous command 'd': delete, done\n"
     assert run(capsys, "help", "a", "b")[0] == 1
@@ -835,3 +828,39 @@ def test_undo_import(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
     run(capsys, "import")
     assert run(capsys, "undo")[1].startswith("Undid 'import'.")
     assert run(capsys, "status:all", "export")[1] == "[]\n"
+
+
+# --- alias (roadmap step 8b) -----------------------------------------------------
+
+
+def test_alias_install_and_remove(
+    capsys: Capture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_dir = tmp_path / "bin"
+    monkeypatch.setenv("UV_TOOL_BIN_DIR", str(bin_dir))
+    monkeypatch.setenv("PATH", str(bin_dir))
+    path = bin_dir / ("task.cmd" if sys.platform == "win32" else "task")
+    assert run(capsys, "alias", "install", "task") == (0, f"Created alias 'task': {path}\n", "")
+    assert run(capsys, "alias", "remove", "task") == (0, f"Removed alias 'task': {path}\n", "")
+    assert run(capsys, "alias", "remove", "task")[2] == f"No alias 'task' ({path} not found).\n"
+
+
+def test_alias_warns_when_not_on_path(
+    capsys: Capture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("UV_TOOL_BIN_DIR", str(tmp_path / "bin"))
+    monkeypatch.setenv("PATH", str(tmp_path))
+    code, _, err = run(capsys, "alias", "install", "t")
+    assert code == 0
+    assert err.startswith("Warning: ") and "not in PATH" in err
+
+
+@pytest.mark.parametrize(
+    "args", [(), ("install",), ("add", "task"), ("install", "a", "b"), ("install", "tk")]
+)
+def test_alias_usage_errors(capsys: Capture, args: tuple[str, ...]) -> None:
+    assert run(capsys, "alias", *args)[0] == 1
+
+
+def test_alias_takes_no_filter(capsys: Capture) -> None:
+    assert run(capsys, "3", "alias", "install", "task")[0] == 1

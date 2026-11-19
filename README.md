@@ -3,10 +3,9 @@
 **TAME Arranges My Errands** — a lightweight, Taskwarrior-inspired command-line task manager,
 Windows 11 first.
 
-> Status: pre-alpha. `add`, `list` (with filters), `done`, `delete`, `modify`, `info`,
-> `undo`, `export`, `import`, `config`, `help` and `version` work, with due dates, urgency and
-> a French interface; see the
-> roadmap in [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
+> Status: pre-alpha. All V1 commands work: `add`, `list` (with filters), `done`, `delete`,
+> `modify`, `info`, `undo`, `export`, `import`, `alias`, `config`, `help` and `version`, with
+> due dates, urgency and a French interface. See the roadmap in [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
 
 TAME is an independent project. It shares no code, name or logo with Taskwarrior; it only aims
 for compatibility with Taskwarrior's JSON import/export format.
@@ -38,6 +37,7 @@ tk 7 info                                    # every field
 tk undo                                      # revert the last change (repeat to go back)
 tk status:all export > backup.json           # Taskwarrior JSON; status:all = every task
 tk import tw.json                            # from Taskwarrior (task export > tw.json)
+tk alias install task                        # opt-in: also run tame as `task`
 tk help                                      # commands; tk help <command|topic>
 tk modify --help                             # same as: tk help modify
 tk version
@@ -67,7 +67,6 @@ tk config path
 
 Other options: `color`, and the urgency weights `urgency.pri_H`, `urgency.due`...
 
-Planned V1 commands: `add list done delete modify info undo config export import help version alias`.
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.
 
 ## Development

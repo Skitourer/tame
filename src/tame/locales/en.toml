@@ -21,6 +21,12 @@ removed = "Removed task {task} '{description}'."
 [cmd.import]
 summary = "Imported: {added} added, {updated} updated, {skipped} skipped (not newer)."
 
+[cmd.alias]
+installed = "Created alias '{name}': {path}"
+removed = "Removed alias '{name}': {path}"
+not_on_path = "Warning: {dir} is not in PATH; add it to use '{name}'."
+shadowed = "Warning: '{name}' runs {path}, found first in PATH."
+
 [cmd.config]
 default = "# default: {value}"
 set = "{name} = {value}"
@@ -94,7 +100,6 @@ years = "{n}y"
 [error]
 internal = "Internal error: {detail}"
 ambiguous_command = "Ambiguous command '{name}': {candidates}"
-not_implemented = "Command '{command}' is not implemented yet."
 filter_not_allowed = "Command '{command}' does not accept a filter."
 invalid_id_range = "Invalid id range: '{token}'"
 invalid_status = "Invalid status: '{value}' (expected pending, completed, deleted or all)"
@@ -123,6 +128,12 @@ import_io = "Cannot read {path}: {detail}"
 import_json = "Invalid JSON: {detail}"
 import_item = "Task {item} of the input: {detail}"
 import_field = "Invalid value {value} for '{name}'"
+alias_usage = "Usage: tk alias install NAME | tk alias remove NAME"
+alias_name = "Invalid alias name '{name}': use letters, digits, - and _ (not tame or tk)."
+alias_exists = "{path} already exists and was not created by tame: left unchanged."
+alias_missing = "No alias '{name}' ({path} not found)."
+alias_not_ours = "{path} was not created by tame: left unchanged."
+alias_io = "Cannot write or delete {path}: {detail}"
 help_unknown = "No help for '{name}'. Run 'tk help' for the list."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
@@ -267,6 +278,21 @@ Examples:
   tk config set undo.retention 1y      keep undo history 1 year (or: forever)
   tk config set date_format %d/%m/%Y
   tk config unset date_format
+'''
+
+[help.cmd.alias]
+summary = "Add or remove a command alias, such as task"
+usage = "tk alias install NAME | tk alias remove NAME"
+body = '''
+Creates a small launcher NAME (NAME.cmd on Windows) running tame, next to the tame and
+tk commands (the uv tool directory, usually ~/.local/bin). Handy if your fingers type
+task. Not done by default: task is also the Taskwarrior and go-task command. Warns if
+another NAME comes first in PATH. remove deletes only launchers created by tame.
+
+Examples:
+  tk alias install task
+  task add Call bank
+  tk alias remove task
 '''
 
 [help.cmd.help]
