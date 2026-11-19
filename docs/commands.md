@@ -138,7 +138,8 @@ Makes a printable page of the matching tasks and opens it in your browser with t
 dialog: pick a printer, or *Save as PDF*. The title shows the filter, with the date and time
 printed. One section per project (tasks without a project last), tasks sorted by urgency, each
 with a box to tick, its priority (`!H`), tags and due date (`due … · today`, or **late** in
-bold). Three empty lines at the end leave room for tasks added by hand. Like `list`, only
+bold). Three empty lines at the end leave room for tasks added by hand, and a
+[kind word](settings.md#kind-words) closes the page. Like `list`, only
 pending tasks by default. The page follows your interface language and `date_format`.
 
 `--file PATH` saves the page (HTML) without opening it.

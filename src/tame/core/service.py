@@ -258,6 +258,14 @@ class TaskService:
         """Return the stored state of ``tasks``, for the undo log."""
         return [(task.uuid, self._repo.get(task.uuid)) for task in tasks]
 
+    def state(self, key: str) -> str | None:
+        """Return a small piece of app state (``meta`` table), or None if unset."""
+        return self._repo.get_meta(key)
+
+    def set_state(self, key: str, value: str) -> None:
+        """Store a small piece of app state (``meta`` table); not part of undo."""
+        self._repo.set_meta(key, value)
+
     def query(self, where: Filter | None = None) -> list[Task]:
         """Return the tasks matching ``where`` (default: all pending).
 

@@ -37,6 +37,7 @@ td.due { white-space: nowrap; text-align: right; }
 .late { font-weight: bold; }
 .blank td { height: 9mm; border-bottom: 1px dotted #999; }
 .extra { margin-top: 8mm; }
+.kind { margin-top: 8mm; font-style: italic; text-align: center; }
 section { break-inside: avoid-page; }
 tr { break-inside: avoid; }
 footer { margin-top: 8mm; color: #666; font-size: 8pt; text-align: right; }
@@ -52,6 +53,7 @@ def print_page(
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
     auto_print: bool = False,
+    kind_word: str | None = None,
 ) -> str:
     """Return a printable HTML page of ``tasks``, grouped by project.
 
@@ -65,6 +67,7 @@ def print_page(
         coefficients: Urgency weights.
         date_format: strftime format of dates.
         auto_print: Open the browser's print dialog when the page loads.
+        kind_word: A kind word for the foot of the page, if any.
     """
 
     def project_key(task: Task) -> tuple[bool, str]:
@@ -104,6 +107,7 @@ def print_page(
 </header>
 {chr(10).join(sections)}
 {extra}
+{f'<p class="kind">{escape(kind_word)}</p>' if kind_word else ""}
 <footer>{escape(t("print.footer"))}</footer>
 {script}
 </body>

@@ -244,6 +244,19 @@ class TaskRepo:
             tags.setdefault(r["uuid"], set()).add(r["tag"])
         return [_to_task(row, frozenset(tags.get(row["uuid"], ()))) for row in rows]
 
+    def get_meta(self, key: str) -> str | None:
+        """Return the ``meta`` value stored under ``key``, or None."""
+        row = self._conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return None if row is None else str(row["value"])
+
+    def set_meta(self, key: str, value: str) -> None:
+        """Store ``value`` under ``key`` in ``meta`` (one statement: atomic on its own)."""
+        self._conn.execute(
+            "INSERT INTO meta(key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
     def max_pending_id(self) -> int:
         """Return the highest short id among pending tasks, 0 if none."""
         row = self._conn.execute(

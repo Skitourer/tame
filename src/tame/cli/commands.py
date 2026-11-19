@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from tame import __version__
-from tame.cli import eggs
+from tame.cli import eggs, kindness
 from tame.cli.parser import (
     ParsedCommand,
     match_command,
@@ -172,7 +172,12 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
         ):
             return ExitCode.OK
         changed = service.complete(tasks)
+        word = None
+        if changed and settings.kindness and kindness.is_terminal() and not service.query():
+            word = kindness.draw(service, utc_now())
     _report("cmd.done.task", tasks, changed)
+    if word is not None:
+        kindness.show(word, color=settings.color)
     uuids = {task.uuid for task in changed}
     eggs.after_done([task for task in tasks if task.uuid in uuids])
     return ExitCode.OK
@@ -264,11 +269,12 @@ def cmd_print(command: ParsedCommand, settings: Settings) -> int:
     """
     now = utc_now()
     where = parse_filter(command.filter, now)
+    target = command.args[1] if command.args else None
     with open_service(settings) as service:
         tasks = _matching(service, where)
+        word = kindness.draw(service, now) if target is None and settings.kindness else None
     from tame.cli.printout import print_page
 
-    target = command.args[1] if command.args else None
     page = print_page(
         tasks,
         now,
@@ -276,6 +282,7 @@ def cmd_print(command: ParsedCommand, settings: Settings) -> int:
         coefficients=settings.urgency,
         date_format=settings.date_format,
         auto_print=target is None,
+        kind_word=None if word is None else f"{kindness.HEART} {word}",
     )
     if target is None:
         path = Path(tempfile.gettempdir()) / f"tame-print-{now:%Y%m%d-%H%M%S}.html"
@@ -533,4 +540,17 @@ def run(command: ParsedCommand) -> int:
         return cmd_config(command)
     if command.name == "help":
         return cmd_help(command)
-    return HANDLERS[command.name](command, load_settings())
+    settings = load_settings()
+    code = HANDLERS[command.name](command, settings)
+    if (
+        code == ExitCode.OK
+        and command.name in kindness.ELIGIBLE
+        and settings.kindness
+        and kindness.is_terminal()
+    ):
+        now = utc_now()
+        with open_service(settings) as service:
+            word = kindness.draw(service, now) if kindness.is_due(service, now) else None
+        if word is not None:
+            kindness.show(word, color=settings.color)
+    return code

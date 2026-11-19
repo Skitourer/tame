@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Kind words: now and then, a short line about friends, family, colleagues, free time
+  and nature (50 phrases, EN and FR), at most every three days; also when you complete
+  your last task and at the foot of a printed list. `tk config set kindness false`
+  turns them off. And a little secret for when you need it.
 - `print` command: a printable page of the matching tasks, one section per project,
   opened in the browser with the print dialog (print, or save as PDF); `--file PATH`
   saves it instead.
