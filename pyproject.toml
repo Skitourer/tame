@@ -1,5 +1,5 @@
 [project]
-name = "tame"
+name = "tame-tasks"
 dynamic = ["version"]
 description = "TAME Arranges My Errands: a lightweight Taskwarrior-like CLI task manager."
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
     "rich>=13.9",
     "tomlkit>=0.13",
 ]
-keywords = ["cli", "tasks", "todo", "taskwarrior"]
+keywords = ["cli", "tasks", "todo", "task-manager", "taskwarrior"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
@@ -20,13 +20,17 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 
 [project.urls]
-Homepage = "https://github.com/skitourer/tame"
-Issues = "https://github.com/skitourer/tame/issues"
-Changelog = "https://github.com/skitourer/tame/blob/main/CHANGELOG.md"
+Homepage = "https://skitourer.github.io/tame/"
+Documentation = "https://skitourer.github.io/tame/"
+Source = "https://github.com/Skitourer/tame"
+Issues = "https://github.com/Skitourer/tame/issues"
+Changelog = "https://github.com/Skitourer/tame/blob/main/CHANGELOG.md"
 
 [project.scripts]
 tame = "tame.__main__:main"

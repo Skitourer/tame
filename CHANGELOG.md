@@ -62,9 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - One-line installers (`install.ps1`, `install.sh`) that install uv if needed, then TAME;
   "Installation for beginners" page.
 - CI installs the built package as a uv tool on Windows and Linux and runs a smoke test.
+- Release workflow: a `vX.Y.Z` tag builds and checks the package, publishes it to PyPI
+  (trusted publishing, after approval) and creates the GitHub release with install notes.
 
 ### Changed
 
+- The package is named `tame-tasks` (PyPI); commands stay `tame` and `tk`. The
+  installers remove an install made under the old name.
 - `status:all list` (and any list mixing statuses) shows pending tasks first.
 
 ### Fixed

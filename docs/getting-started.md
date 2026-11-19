@@ -10,7 +10,7 @@ uv tool install git+https://github.com/skitourer/tame
 ```
 
 You get two commands, `tame` and `tk`; they are the same program. This documentation uses
-`tk`. To update later: `uv tool upgrade tame`.
+`tk`. To update later: `uv tool upgrade tame-tasks`.
 
 ## First run
 

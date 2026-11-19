@@ -11,6 +11,11 @@ if ! command -v uv >/dev/null 2>&1; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
+# Installs made before the package was named tame-tasks own the tk command: remove them.
+if uv tool list 2>/dev/null | grep -q '^tame v'; then
+    uv tool uninstall tame
+fi
+
 echo "Installing TAME..."
 uv tool install --upgrade "$package"
 
