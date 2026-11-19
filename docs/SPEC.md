@@ -18,14 +18,14 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 |---|---|
 | Lang | Python 3.12 baseline (`requires-python >=3.12`, ruff `target-version py312`); no deprecated APIs; full type hints |
 | Pkg/env | `uv`; `pyproject.toml` (PEP 621), backend `hatchling`, `src/` layout, `uv.lock` committed |
-| Install | `uv tool install git+https://github.com/skitourer/tame` (PyPI later as `tame-tasks`); `[project.scripts] tame = "tame.__main__:main"`, `tk = "tame.__main__:main"` |
+| Install | `uv tool install git+https://github.com/skitourer/tame` (PyPI later as `tame-tasks`); one-line installers `install.ps1`/`install.sh` on the docs site install uv if missing, then TAME; `[project.scripts] tame = "tame.__main__:main"`, `tk = "tame.__main__:main"` |
 | Deps | runtime: `rich`, `python-dateutil` only; stdlib `sqlite3`, `tomllib`; no argparse (custom parser) |
 | Lint/format | `ruff check` + `ruff format`, line 100 |
 | Types | `mypy --strict` on `src/` |
 | Tests | `pytest`, `pytest-cov`; coverage ≥90% enforced (`fail_under`), report in the CI run summary; badge published with the docs site, no third-party service |
 | Hooks | `pre-commit`: ruff, mypy, end-of-file, trailing-ws |
 | VCS | GitHub, `main` protected, PRs, Conventional Commits, SemVer, tags `vX.Y.Z` |
-| CI | GitHub Actions: lint + types + tests on `windows-latest` and `ubuntu-latest`, Py 3.12 + latest stable |
+| CI | GitHub Actions: lint + types + tests on `windows-latest` and `ubuntu-latest`, Py 3.12 + latest stable; built wheel installed as a uv tool and smoke-tested (`scripts/smoke.py`) on both OS |
 | Docs site | MkDocs Material (`docs` dependency group), built `--strict` on every PR, deployed to GitHub Pages from `main` with the coverage badge |
 | Repo files | `README.md`, `CHANGELOG.md` (Keep a Changelog), `CONTRIBUTING.md`, `LICENSE`, `CLAUDE.md`, `docs/`, `.github/` (CI, issue/PR templates) |
 | Data dir | Windows: `%APPDATA%\tame\` (`tasks.db`, `config.toml`). Other OS (XDG): `tasks.db` in `$XDG_DATA_HOME/tame/` (default `~/.local/share/tame/`), `config.toml` in `$XDG_CONFIG_HOME/tame/` (default `~/.config/tame/`). Env `TAME_HOME` overrides both and holds both files |
@@ -104,7 +104,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 | Cmd | Example | Behavior |
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
-| list | `tk project:home list` | table sorted by urgency desc; no filter and no task at all (any status) → welcome with first commands, exit 0 |
+| list | `tk project:home list` | table, pending tasks first, then by urgency desc; no filter and no task at all (any status) → welcome with first commands, exit 0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |

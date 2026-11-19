@@ -25,6 +25,9 @@ settings and aliases in `.sandbox/` (ignored by git).
 .\scripts\tk.ps1 --reset                        # start over
 ```
 
+To check a real install (what CI's `install` job does): build, install as a uv tool in
+throwaway directories, then run `python scripts/smoke.py <tool bin dir>`.
+
 Documentation site (MkDocs Material, deployed to GitHub Pages from `main`):
 
 ```sh

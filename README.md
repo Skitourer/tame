@@ -39,7 +39,17 @@ Completed task 1 'Call the bank'.
 
 ## Install
 
-Requires [uv](https://docs.astral.sh/uv/).
+On Windows, paste this in PowerShell. No Python needed: it installs
+[uv](https://docs.astral.sh/uv/), which brings its own Python, then TAME.
+
+```powershell
+irm https://skitourer.github.io/tame/install.ps1 | iex
+```
+
+On Linux: `curl -LsSf https://skitourer.github.io/tame/install.sh | sh`. Step by step:
+[Installation for beginners](https://skitourer.github.io/tame/install-beginners/).
+
+Already using uv?
 
 ```sh
 uv tool install git+https://github.com/skitourer/tame

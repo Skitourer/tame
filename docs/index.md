@@ -28,7 +28,13 @@ Completed task 1 'Call the bank'.
 
 ## Install
 
-Requires [uv](https://docs.astral.sh/uv/).
+On Windows, in PowerShell (no Python needed, see [Installation for beginners](install-beginners.md)):
+
+```powershell
+irm https://skitourer.github.io/tame/install.ps1 | iex
+```
+
+Already using [uv](https://docs.astral.sh/uv/)?
 
 ```sh
 uv tool install git+https://github.com/skitourer/tame
@@ -41,6 +47,7 @@ This installs two commands, `tame` and its short alias `tk`. Then follow
 
 | Page | What you'll find |
 |---|---|
+| [Installation for beginners](install-beginners.md) | step by step, nothing to know beforehand |
 | [Getting started](getting-started.md) | first tasks, the everyday commands |
 | [Commands](commands.md) | every command, with examples |
 | [Filters & grammar](grammar.md) | how a command line is read, filters, dates |

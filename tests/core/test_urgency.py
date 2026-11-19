@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from tame.core.models import Priority, Task
+from tame.core.models import Priority, Status, Task
 from tame.core.urgency import Coefficients, by_urgency, due_factor, urgency
 
 NOW = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)
@@ -67,3 +67,10 @@ def test_sum_with_custom_coefficients() -> None:
 def test_by_urgency_highest_first_ties_keep_order() -> None:
     low, high, tie = make_task("low"), make_task("high", priority=Priority.H), make_task("tie")
     assert by_urgency([low, high, tie], NOW) == [high, low, tie]
+
+
+def test_by_urgency_pending_first() -> None:
+    done = make_task("done", priority=Priority.H, status=Status.COMPLETED)
+    gone = make_task("gone", priority=Priority.M, status=Status.DELETED)
+    low, high = make_task("low"), make_task("high", priority=Priority.L)
+    assert by_urgency([done, low, gone, high], NOW) == [high, low, done, gone]
