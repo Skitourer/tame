@@ -350,6 +350,21 @@ def load_settings(path: Path | None = None) -> Settings:
     return Settings(values)
 
 
+def configured_language(path: Path | None = None) -> str:
+    """Return the ``language`` setting, or the default if it cannot be read.
+
+    Never raises and never creates the file: the language is needed before anything
+    else, including to report a broken settings file.
+    """
+    default = str(OPTIONS_BY_KEY["language"].default)
+    try:
+        data = tomllib.loads((path or config_path()).read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return default
+    value = data.get("language")
+    return value if isinstance(value, str) and _check_language(value) else default
+
+
 def _flatten(data: Mapping[str, Any], prefix: str = "") -> list[tuple[str, Any]]:
     items: list[tuple[str, Any]] = []
     for name, value in data.items():

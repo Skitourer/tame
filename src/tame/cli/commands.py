@@ -48,9 +48,6 @@ def open_service(settings: Settings) -> Iterator[TaskService]:
         yield TaskService(repo, undo_retention=settings.undo_retention)
 
 
-_YES_ANSWERS = frozenset({"y", "yes"})
-
-
 def _no_args(args: tuple[str, ...]) -> None:
     if args:
         raise UsageError("error.unexpected_argument", arg=args[0])
@@ -75,13 +72,17 @@ def task_ref(task: Task) -> str:
 
 
 def confirm(question: str) -> bool:
-    """Ask a y/N question on stdout; anything but y/yes, or end of input, means no."""
+    """Ask a y/N question on stdout; anything but a yes word, or end of input, means no.
+
+    Yes words come from ``confirm.yes`` (comma-separated); y and yes always work.
+    """
     try:
         answer = input(f"{question} {t('confirm.choices')} ")
     except EOFError:
         print()
         return False
-    return answer.strip().casefold() in _YES_ANSWERS
+    yes = {"y", "yes", *(word.strip().casefold() for word in t("confirm.yes").split(","))}
+    return answer.strip().casefold() in yes
 
 
 def _confirmed(

@@ -52,6 +52,7 @@ created on first run, with every option and a comment. Edit it by hand, or:
 
 ```sh
 tk config                              # list settings; changed ones show their default
+tk config set language fr              # French interface (commands stay in English)
 tk config set undo.retention 1y        # keep undo history one year (default 3m; or forever)
 tk config set confirm_threshold 5      # ask before changing more than 5 tasks
 tk config set date_format %d/%m/%Y
@@ -61,7 +62,7 @@ tk config edit                         # open in $EDITOR (Notepad on Windows)
 tk config path
 ```
 
-Other options: `language`, `color`, and the urgency weights `urgency.pri_H`, `urgency.due`...
+Other options: `color`, and the urgency weights `urgency.pri_H`, `urgency.due`...
 
 Planned V1 commands: `add list done delete modify info undo config export import help version alias`.
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.

@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Undo history older than `undo.retention` is purged on each change.
 - `help` command: `tk help` lists commands, `tk help <command>` shows usage and
   examples, topics `filters`, `dates`, `urgency`; `tk <command> --help` works too.
+- French user interface: `tk config set language fr`. Commands, attributes and date
+  keywords stay in English; confirmations also accept `o`/`oui`. Untranslated messages
+  fall back to English.
 
 ### Fixed
 

@@ -1,0 +1,306 @@
+# French catalog. Keys and {placeholders} must match en.toml; a missing key falls back
+# to English. Commands, attributes and date keywords stay in English.
+
+[cmd.add]
+created = "Tâche {id} créée."
+
+[cmd.done]
+task = "Tâche {task} « {description} » terminée."
+
+[cmd.delete]
+task = "Tâche {task} « {description} » supprimée."
+
+[cmd.modify]
+task = "Tâche {task} « {description} » modifiée."
+unchanged = "Aucune tâche modifiée."
+
+[cmd.undo]
+header = "Annulé : « {command} »."
+restored = "Tâche {task} « {description} » restaurée."
+removed = "Tâche {task} « {description} » retirée."
+
+[cmd.config]
+default = "# défaut : {value}"
+set = "{name} = {value}"
+unset = "{name} = {value} (défaut)"
+
+[cmd.version]
+output = "tame {version} (schéma {schema})"
+
+[list.col]
+id = "ID"
+age = "Âge"
+project = "Projet"
+tags = "Tags"
+priority = "Pri"
+due = "Échéance"
+description = "Description"
+urgency = "Urg"
+
+[info]
+id = "ID"
+uuid = "UUID"
+description = "Description"
+status = "Statut"
+project = "Projet"
+tags = "Tags"
+priority = "Priorité"
+due = "Échéance"
+entry = "Créée"
+modified = "Modifiée"
+end = "Terminée"
+urgency = "Urgence"
+
+[info.col]
+name = "Nom"
+value = "Valeur"
+
+[confirm]
+choices = "(o/N)"
+yes = "o, oui"
+cancelled = "Annulé : aucune tâche modifiée."
+
+[confirm.done]
+one = "Terminer la tâche {task} « {description} » ?"
+many = "Terminer {count} tâches ?"
+
+[confirm.delete]
+one = "Supprimer la tâche {task} « {description} » ?"
+many = "Supprimer {count} tâches ?"
+
+[confirm.modify]
+one = "Modifier la tâche {task} « {description} » ?"
+many = "Modifier {count} tâches ?"
+
+[setting.expected]
+language = "une valeur parmi : {languages}"
+count = "un nombre entier, 0 ou plus"
+date_format = "un format de date comme %Y-%m-%d ou %d/%m/%Y"
+bool = "true ou false"
+retention = "forever, ou une durée comme 1w, 3m, 1y"
+number = "un nombre"
+
+[age]
+seconds = "{n}s"
+minutes = "{n}min"
+hours = "{n}h"
+days = "{n}j"
+weeks = "{n}sem"
+months = "{n}mois"
+years = "{n}a"
+
+[error]
+internal = "Erreur interne : {detail}"
+ambiguous_command = "Commande ambiguë « {name} » : {candidates}"
+not_implemented = "La commande « {command} » n'est pas encore disponible."
+filter_not_allowed = "La commande « {command} » n'accepte pas de filtre."
+invalid_id_range = "Plage d'ids invalide : « {token} »"
+invalid_status = "Statut invalide : « {value} » (attendu : pending, completed ou deleted)"
+unexpected_argument = "Argument inattendu : {arg}"
+filter_required = "La commande « {command} » demande un filtre, p. ex. « tk 3 {command} »."
+no_modifications = "Rien à modifier : donnez attr:valeur, attr:, +tag, -tag ou une nouvelle description."
+task_not_found = "Tâche {uuid} introuvable."
+unknown_attribute = "Attribut inconnu : {name}"
+empty_description = "Une tâche doit avoir une description."
+invalid_tag = "Tag invalide : « {tag} »"
+invalid_project = "Projet invalide : « {project} »"
+invalid_priority = "Priorité invalide : « {value} » (attendu : H, M ou L)"
+invalid_date = "Date invalide : « {value} » (p. ex. 2026-12-15, tomorrow, fri, eom, +3d)"
+no_matches = "Aucune tâche trouvée."
+nothing_to_undo = "Rien à annuler."
+config_io = "Impossible de lire ou d'écrire {path} : {detail}"
+config_syntax = "Fichier de réglages invalide {path} : {detail}"
+config_unknown_key = "Réglage inconnu « {name} » dans {path}. Lancez « tk config » pour les lister."
+config_unknown_option = "Réglage inconnu « {name} ». Lancez « tk config » pour les lister."
+config_invalid_value = "Valeur {value} invalide pour « {name} » dans {path} : attendu {expected}."
+config_usage = "Usage : tk config [get CLÉ | set CLÉ VALEUR | unset CLÉ | path | edit]"
+editor_failed = "Impossible de lancer l'éditeur « {editor} » : {detail}. Définissez la variable EDITOR."
+db_open = "Impossible d'ouvrir la base {path} : {detail}"
+db_too_new = "La version de schéma {found} de la base est plus récente que celle supportée ({supported}). Mettez tame à jour."
+help_unknown = "Pas d'aide pour « {name} ». Lancez « tk help » pour la liste."
+
+# --- Help (tk help). No braces in bodies: they go through str.format. ----------------
+
+[help]
+usage = "Usage : tk [filtre] <commande> [arguments]   (sans commande = list)"
+usage_label = "Usage : {usage}"
+commands = "Commandes :"
+topics = "Sujets : tk help {topics}"
+more = "Détails : tk help <commande>, ou tk <commande> --help. Les commandes s'abrègent : tk mod."
+
+[help.cmd.add]
+summary = "Créer une tâche"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [+tag ...]"
+body = '''
+Les mots forment la description ; project:, pri:, due: et +tag peuvent être n'importe où.
+Tout ce qui suit -- est de la description, même des mots comme done ou +x.
+
+Exemples :
+  tk add Appeler la banque project:maison +tel due:fri pri:H
+  tk add -- done le rapport
+'''
+
+[help.cmd.list]
+summary = "Lister les tâches, les plus urgentes d'abord"
+usage = "tk [filtre] list"
+body = '''
+Affiche les tâches en cours qui correspondent au filtre (voir tk help filters) ;
+status:completed ou status:deleted affiche les autres. Les colonnes vides sont
+masquées. Les tâches en retard sont en rouge, celles dues aujourd'hui en jaune.
+Urg est l'urgence (voir tk help urgency).
+
+Exemples :
+  tk                        toutes les tâches en cours
+  tk project:maison         aussi : tk list project:maison
+  tk +tel -travail banque
+  tk status:completed list
+'''
+
+[help.cmd.info]
+summary = "Afficher tous les champs des tâches"
+usage = "tk [filtre] info"
+body = '''
+Affiche tous les champs des tâches trouvées, en heure locale, uuid compris.
+
+Exemples :
+  tk 7 info
+  tk status:deleted info
+'''
+
+[help.cmd.modify]
+summary = "Modifier des tâches"
+usage = "tk <filtre> modify [attr:valeur] [attr:] [+tag] [-tag] [nouvelle description]"
+body = '''
+attr:valeur fixe un attribut, attr: l'efface (project, pri, due) ; +tag et -tag
+ajoutent et retirent des tags ; les autres mots remplacent la description. Un filtre
+est obligatoire. Demande confirmation au-delà de confirm_threshold tâches (3 par
+défaut) ; --yes l'évite.
+
+Exemples :
+  tk 12 modify due:mon -tel
+  tk 3 modify project: Appeler la banque
+  tk +tel modify pri:L --yes
+'''
+
+[help.cmd.done]
+summary = "Marquer des tâches terminées"
+usage = "tk <filtre> done [--yes]"
+body = '''
+Un filtre est obligatoire. Demande confirmation au-delà de confirm_threshold tâches
+(3 par défaut) ; --yes l'évite. Les tâches en cours sont ensuite renumérotées 1..n.
+
+Exemples :
+  tk 3 done
+  tk 3,5 done
+  tk +courses done --yes
+'''
+
+[help.cmd.delete]
+summary = "Supprimer des tâches"
+usage = "tk <filtre> delete [--yes]"
+body = '''
+Un filtre est obligatoire. Demande toujours confirmation ; --yes l'évite. Les tâches
+supprimées sont gardées avec status:deleted, et tk undo les fait revenir. Les tâches
+en cours sont ensuite renumérotées 1..n.
+
+Exemples :
+  tk 4 delete
+  tk project:ancien delete --yes
+'''
+
+[help.cmd.undo]
+summary = "Annuler la dernière modification"
+usage = "tk undo"
+body = '''
+Annule le dernier add, done, delete ou modify, ids compris. Relancez-le pour remonter
+plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est purgé ;
+voir tk help config.
+'''
+
+[help.cmd.config]
+summary = "Afficher ou changer les réglages"
+usage = "tk config [get CLÉ | set CLÉ VALEUR | unset CLÉ | path | edit]"
+body = '''
+Les réglages sont dans config.toml ; modifiez-le à la main ou avec cette commande.
+Sans argument, liste tous les réglages ; ceux qui ont changé montrent leur valeur par
+défaut. unset rétablit le défaut ; edit ouvre le fichier dans $EDITOR (Notepad sous
+Windows).
+
+Réglages : language, confirm_threshold, date_format, color, undo.retention,
+urgency.pri_H, urgency.pri_M, urgency.pri_L, urgency.due, urgency.age,
+urgency.tags, urgency.project.
+
+Exemples :
+  tk config set language fr            interface en français
+  tk config set undo.retention 1y      garder l'historique 1 an (ou : forever)
+  tk config set date_format %d/%m/%Y
+  tk config unset date_format
+'''
+
+[help.cmd.help]
+summary = "Afficher l'aide"
+usage = "tk help [commande | sujet]"
+body = '''
+Sans argument, liste les commandes et les sujets. tk <commande> --help équivaut à
+tk help <commande>.
+
+Exemples :
+  tk help modify
+  tk help mod
+  tk help dates
+'''
+
+[help.cmd.version]
+summary = "Afficher la version"
+usage = "tk version"
+body = '''
+Affiche la version de tame et celle du schéma de la base.
+'''
+
+[help.topic]
+filters = '''
+Les filtres sélectionnent des tâches. Tous les critères doivent correspondre ; ids et
+uuids forment ensemble une seule sélection. Sans status:, seules les tâches en cours
+correspondent.
+
+  3   3,5   2-6        ids courts
+  1a2b3c4d             début d'uuid (8 caractères hexa ou plus)
+  +tag   -tag          a / n'a pas le tag
+  project:maison       projet maison et ses sous-projets (maison.jardin)
+  project:             sans projet
+  pri:H   pri:         priorité H / sans priorité
+  status:completed     pending, completed ou deleted
+  due.before:fri       échéance strictement avant la date (voir tk help dates)
+  due.after:today      échéance strictement après la date
+  autres mots          texte contenu dans la description, casse ignorée
+
+Le filtre se place avant la commande (tk +tel list) ou juste après
+(tk list +tel). Après --, tout est mots simples.
+'''
+dates = '''
+Les dates servent à due:, due.before: et due.after:. Les mots-clés sont en anglais,
+casse ignorée. Une date sans heure signifie 00:00 heure locale.
+
+  2026-12-15   2026-12-15T14:00     date ISO, heure locale
+  today   tomorrow   yesterday      aujourd'hui, demain, hier
+  monday .. sunday, mon .. sun      prochaine occurrence, jamais aujourd'hui
+  eow   eom   eoy                   fin de semaine (dimanche), mois, année : 23:59:59
+  +3d   +2w   +1m   +4h   -1d       depuis maintenant (d jours, w semaines, m mois, h heures)
+
+Exemples :
+  tk add Payer le loyer due:eom
+  tk 3 modify due:+2w
+  tk due.before:fri list
+'''
+urgency = '''
+Les tâches sont listées par urgence, la somme de :
+
+  priorité     H 6.0, M 3.9, L 1.8
+  échéance     12.0 x 0.2 (dans 14 jours ou plus) jusqu'à x 1.0 (7 jours de retard ou plus)
+  âge          2.0 x âge en années, au plus 1 an
+  tags         1.0 si la tâche a des tags
+  projet       1.0 si la tâche a un projet
+
+Changez les poids avec tk config set urgency.<nom> <valeur>, par exemple
+tk config set urgency.due 8.
+'''

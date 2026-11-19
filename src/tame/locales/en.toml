@@ -56,6 +56,7 @@ value = "Value"
 
 [confirm]
 choices = "(y/N)"
+yes = "y, yes"
 cancelled = "Cancelled: no task changed."
 
 [confirm.done]
@@ -225,6 +226,7 @@ urgency.pri_H, urgency.pri_M, urgency.pri_L, urgency.due, urgency.age,
 urgency.tags, urgency.project.
 
 Examples:
+  tk config set language fr            French interface
   tk config set undo.retention 1y      keep undo history 1 year (or: forever)
   tk config set date_format %d/%m/%Y
   tk config unset date_format

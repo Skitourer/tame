@@ -685,3 +685,44 @@ def test_help_works_with_an_invalid_config(capsys: Capture, tame_home: Path) -> 
     tame_home.mkdir()
     (tame_home / "config.toml").write_text("color = 1\n", encoding="utf-8")
     assert run(capsys, "help", "config")[0] == 0
+
+
+# --- French UI (roadmap step 7c) ---------------------------------------------------
+
+
+def test_language_fr_translates_output(capsys: Capture) -> None:
+    assert run(capsys, "config", "set", "language", "fr") == (0, 'language = "fr"\n', "")
+    assert run(capsys, "add", "Appeler", "due:tomorrow") == (0, "Tâche 1 créée.\n", "")
+    assert "Échéance" in run(capsys, "list")[1]
+    assert run(capsys, "nothing") == (2, "", "Aucune tâche trouvée.\n")
+    assert run(capsys, "help")[1].startswith("Usage : tk [filtre]")
+
+
+def test_language_fr_keeps_commands_and_keywords(capsys: Capture) -> None:
+    run(capsys, "config", "set", "language", "fr")
+    run(capsys, "add", "x")
+    assert run(capsys, "1", "modify", "due:fri")[0] == 0
+    assert run(capsys, "1", "done")[1] == "Tâche 1 « x » terminée.\n"
+
+
+def test_language_fr_confirm_accepts_oui(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    run(capsys, "config", "set", "language", "fr")
+    run(capsys, "add", "x")
+    answer(monkeypatch, "oui\n")
+    code, out, _ = run(capsys, "1", "delete")
+    assert code == 0
+    assert out.startswith("Supprimer la tâche 1 « x » ? (o/N) ")
+    run(capsys, "undo")
+    answer(monkeypatch, "y\n")
+    assert run(capsys, "1", "delete")[0] == 0
+
+
+def test_config_errors_use_the_configured_language(capsys: Capture, tame_home: Path) -> None:
+    tame_home.mkdir()
+    config = tame_home / "config.toml"
+    config.write_text('language = "fr"\ncolor = 1\n', encoding="utf-8")
+    assert run(capsys, "list")[2].startswith("Valeur 1 invalide pour « color »")
+    config.write_text('language = "xx"\n', encoding="utf-8")
+    assert run(capsys, "list")[2].startswith("Invalid value \"xx\" for 'language'")
+    config.write_text('language = "fr"\n[x\n', encoding="utf-8")
+    assert run(capsys, "list")[2].startswith("Invalid settings file")

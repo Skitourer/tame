@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from tame.core.service import TaskService
+from tame.i18n import set_language
 from tame.storage.repo import DB_FILENAME, TaskRepo
 
 FROZEN_NOW = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)
@@ -32,3 +33,11 @@ def frozen_now() -> datetime:
 @pytest.fixture
 def service(repo: TaskRepo, frozen_now: datetime) -> TaskService:
     return TaskService(repo, clock=lambda: frozen_now)
+
+
+@pytest.fixture(autouse=True)
+def english_ui() -> Iterator[None]:
+    """Reset the UI language: it is process-wide state set by main()."""
+    set_language("en")
+    yield
+    set_language("en")

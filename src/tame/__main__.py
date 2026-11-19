@@ -6,8 +6,9 @@ from collections.abc import Sequence
 
 from tame.cli import commands
 from tame.cli.parser import parse_command
+from tame.config import configured_language
 from tame.errors import ExitCode, TameError
-from tame.i18n import t
+from tame.i18n import set_language, t
 
 
 def _use_utf8_output() -> None:
@@ -28,6 +29,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     args = list(sys.argv[1:] if argv is None else argv)
     _use_utf8_output()
+    set_language(configured_language())
     try:
         return commands.run(parse_command(args))
     except TameError as err:
