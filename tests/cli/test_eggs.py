@@ -88,3 +88,19 @@ def test_ordinary_lines_are_untouched(capsys: Capture) -> None:
     assert not eggs.hatch([])
     assert not eggs.hatch(["list"])
     assert run(capsys, "nqq fnaqjvpu")[1] == "Created task 1.\n"
+
+
+class _Fixed:
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+    def random(self) -> float:
+        return self.value
+
+
+@pytest.mark.parametrize(("value", "shown"), [(0.19, True), (0.2, False), (0.5, False)])
+def test_six_odds(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch, value: float, shown: bool
+) -> None:
+    monkeypatch.setattr(eggs, "_random", _Fixed(value))
+    assert (r("tvtnjnggf") in run(capsys, "haqb")[2]) is shown

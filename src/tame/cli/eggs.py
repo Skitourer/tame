@@ -75,5 +75,5 @@ def after_done(tasks: Sequence[Task]) -> None:
 
 def after_empty_undo() -> None:
     """Called when ``undo`` has nothing left to undo."""
-    if _random.random() < 1 / 3:
+    if _random.random() < 1 / 5:
         print(_r(_TOO_FAR), file=sys.stderr)
