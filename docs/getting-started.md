@@ -6,7 +6,7 @@ Never installed a Python program? Follow [Installation for beginners](install-be
 Otherwise, with [uv](https://docs.astral.sh/uv/):
 
 ```sh
-uv tool install git+https://github.com/skitourer/tame
+uv tool install tame-tasks
 ```
 
 You get two commands, `tame` and `tk`; they are the same program. This documentation uses

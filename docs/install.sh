@@ -3,7 +3,7 @@
 # Usage:  curl -LsSf https://skitourer.github.io/tame/install.sh | sh
 # Run it again to update.
 set -eu
-package="git+https://github.com/skitourer/tame"
+package="tame-tasks"
 
 if ! command -v uv >/dev/null 2>&1; then
     echo "Installing uv, the tool that installs TAME and its Python..."

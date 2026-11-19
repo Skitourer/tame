@@ -37,7 +37,7 @@ irm https://skitourer.github.io/tame/install.ps1 | iex
 Already using [uv](https://docs.astral.sh/uv/)?
 
 ```sh
-uv tool install git+https://github.com/skitourer/tame
+uv tool install tame-tasks
 ```
 
 This installs two commands, `tame` and its short alias `tk`. Then follow

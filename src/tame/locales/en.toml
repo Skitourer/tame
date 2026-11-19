@@ -238,7 +238,7 @@ Examples:
 summary = "Revert the last change"
 usage = "tk undo"
 body = '''
-Reverts the last add, done, delete or modify, ids included. Run it again to go
+Reverts the last add, done, delete, modify or import, ids included. Run it again to go
 further back. History older than undo.retention (default 3 months) is purged; see
 tk help config.
 '''

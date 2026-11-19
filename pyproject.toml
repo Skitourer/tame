@@ -14,7 +14,7 @@ dependencies = [
 ]
 keywords = ["cli", "tasks", "todo", "task-manager", "taskwarrior"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",

@@ -53,7 +53,7 @@ Your tasks stay in their folder (see [Getting started](getting-started.md#where-
 
     ```powershell
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    uv tool install git+https://github.com/skitourer/tame
+    uv tool install tame-tasks
     ```
 
 - **`tk` is not recognized**: open a *new* terminal; the `PATH` change only applies to

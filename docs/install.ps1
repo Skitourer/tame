@@ -5,7 +5,7 @@
 # Not 'Stop': Windows PowerShell 5 turns any stderr line of uv into an error. Exit codes are
 # checked instead.
 $ErrorActionPreference = 'Continue'
-$Package = 'git+https://github.com/skitourer/tame'
+$Package = 'tame-tasks'
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     Write-Host 'Installing uv, the tool that installs TAME and its Python...'

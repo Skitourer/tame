@@ -23,11 +23,12 @@ irm https://skitourer.github.io/tame/install.ps1 | iex
 
 **Linux**: `curl -LsSf https://skitourer.github.io/tame/install.sh | sh`
 
-**With uv**: `uv tool install tame-tasks` · **Update**: run the same line again, or
+**With uv**: `uv tool install tame-tasks` | **Update**: run the same line again, or
 `uv tool upgrade tame-tasks`.
 
 Step by step: [Installation for beginners](https://skitourer.github.io/tame/install-beginners/)
-· Documentation: https://skitourer.github.io/tame/
+
+Documentation: https://skitourer.github.io/tame/
 """
 
 
