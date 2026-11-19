@@ -22,10 +22,15 @@ _TABLE: dict[str, tuple[int, str]] = {
         3,
         "eNpTUMhXUFCogwN9LgX9mph4EKUQowAC1Qa1CqlFRYl5KdVGtQolibmpKToK1Ya1CsUlmTk5CkX5ibmZeel6AD8PF3A=",
     ),
+    "686f746a95b6f836": (
+        4,
+        "eNpTUNCzsrLSU1CA0FwKVhCgB6XhAlZwAXUUvjoXUK86KhcmAOWAuOoALvUTgQ==",
+    ),
 }
 _FORTY_TWO = "Gur Nafjre. Abj, jung jnf gur Dhrfgvba?"
 _TOO_FAR = "Terng Fpbgg! Lbh'q arrq 1.21 tvtnjnggf gb tb onpx shegure."
 _ITEM = "Znxr n fnaqjvpu"
+_HINT = "Jnag n erzvaqre?  gx nqq Pnyy fbzrbar V ybir +ybir qhr:gbqnl"
 
 _random = random.Random()
 
@@ -48,6 +53,9 @@ def hatch(argv: Sequence[str]) -> bool:
     if entry is None:
         return False
     kind, data = entry
+    if kind == 4:
+        _heart(data)
+        return True
     if kind in (1, 3):
         from tame.cli.commands import open_service
         from tame.config import load_settings
@@ -65,6 +73,20 @@ def hatch(argv: Sequence[str]) -> bool:
                 data = _z(data).format(done, pending, "" if done == 1 else "s")
     print(_z(data) if kind == 2 else data if kind == 3 else _r(data))
     return True
+
+
+def _heart(data: str) -> None:
+    from tame.cli import kindness
+    from tame.cli.commands import open_service
+    from tame.config import load_settings
+    from tame.core.dates import utc_now
+
+    settings = load_settings()
+    with open_service(settings) as service:
+        word = kindness.draw(service, utc_now())
+    print(_z(data))
+    kindness.show(word, color=settings.color)
+    print(_r(_HINT))
 
 
 def after_done(tasks: Sequence[Task]) -> None:

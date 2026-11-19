@@ -87,6 +87,17 @@ def test_six(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
     assert err.splitlines()[1] == r("Terng Fpbgg! Lbh'q arrq 1.21 tvtnjnggf gb tb onpx shegure.")
 
 
+def test_seven(capsys: Capture) -> None:
+    code, out, _ = run(capsys, "ybir")
+    assert code == 0
+    lines = out.splitlines()
+    assert len(lines) == 10  # 7 lines of art, blank line, kind word, hint
+    assert lines[8].startswith("\u2665 ")
+    assert lines[9] == r("Jnag n erzvaqre?  gx nqq Pnyy fbzrbar V ybir +ybir qhr:gbqnl")
+    run(capsys, "pbasvt frg xvaqarff snyfr")
+    assert run(capsys, "ybir")[1].splitlines()[8].startswith("\u2665 ")  # asked for: always
+
+
 def test_ordinary_lines_are_untouched(capsys: Capture) -> None:
     assert not eggs.hatch([])
     assert not eggs.hatch(["list"])

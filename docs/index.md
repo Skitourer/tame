@@ -23,6 +23,8 @@ Completed task 1 'Call the bank'.
   [urgency](urgency.md) score, so the top of the list is what to do now.
 - **Forgiving**: `tk undo` reverts any change, bulk changes ask first, deleted tasks are kept.
 - **Windows first**, at home on Linux too. English or French interface.
+- **A little love**: now and then, TAME reminds you of the people around you
+  ([kind words](settings.md#kind-words)). Need one right now? `tk love`. ♥
 - **Taskwarrior-friendly**: same grammar spirit, and its JSON
   [imports and exports](taskwarrior.md) both ways.
 

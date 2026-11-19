@@ -152,6 +152,12 @@ OPTIONS: tuple[Option, ...] = (
     ),
     Option("color", True, "Colored output in the terminal.", "setting.expected.bool"),
     Option(
+        "kindness",
+        True,
+        "Now and then, a kind word about the people around you.",
+        "setting.expected.bool",
+    ),
+    Option(
         "undo.retention",
         "3m",
         "Keep undo history this long: forever, or <n>d/w/m/y (m = 30 days, y = 365 days).",
@@ -211,6 +217,11 @@ class Settings:
     def color(self) -> bool:
         """Whether terminal output may use colors."""
         return bool(self.values["color"])
+
+    @property
+    def kindness(self) -> bool:
+        """Whether kind words may appear now and then."""
+        return bool(self.values["kindness"])
 
     @property
     def undo_retention(self) -> timedelta | None:

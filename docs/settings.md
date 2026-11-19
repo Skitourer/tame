@@ -33,6 +33,7 @@ Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
 | `confirm_threshold` | `3` | `done`, `modify` ask before changing more tasks than this (`delete` always asks) |
 | `date_format` | `"%Y-%m-%d"` | how dates are shown ([strftime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)), e.g. `%d/%m/%Y` |
 | `color` | `true` | colored output in the terminal |
+| `kindness` | `true` | now and then, a kind word about the people around you (see [below](#kind-words)) |
 | `undo.retention` | `"3m"` | how long undo history is kept: `forever`, or `<n>d`/`w`/`m`/`y` (m = 30 days, y = 365 days) |
 | `urgency.pri_H` | `6.0` | [urgency](urgency.md) weight of priority H |
 | `urgency.pri_M` | `3.9` | weight of priority M |
@@ -49,6 +50,7 @@ language = "en"
 confirm_threshold = 3
 date_format = "%Y-%m-%d"
 color = true
+kindness = true
 
 [undo]
 retention = "3m"
@@ -57,6 +59,22 @@ retention = "3m"
 pri_H = 6.0
 due = 12.0
 ```
+
+## Kind words
+
+Now and then, after a command, TAME adds a short line about what matters more than errands:
+friends, family, colleagues, free time, nature, others.
+
+```text
+> tk 3 done
+Completed task 3 'Water the plants'.
+
+♥ Look up: the sky changes every day, and it's free.
+```
+
+They are rare: at most one every three days, then by chance. One also appears when you
+complete your last task, and at the foot of a printed list. They never go into files, pipes
+or error messages. Don't want them? `tk config set kindness false`.
 
 ## Mistakes in the file
 

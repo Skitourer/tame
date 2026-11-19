@@ -33,6 +33,8 @@ Completed task 1 'Call the bank'.
   kept.
 - **Windows first**, at home on Linux too. English or French interface.
 - **Taskwarrior-friendly**: same grammar spirit, and its JSON imports and exports both ways.
+- **A little love**: the world can be hard. Now and then, TAME reminds you of the people around
+  you, and if you need it right now, just type `tk love`. ♥
 
 > Status: alpha (0.1). Everything described here works; details may still change before
 > 1.0. See the roadmap in

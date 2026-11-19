@@ -122,6 +122,8 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
 
+**Kind words**: 50 phrases (`kindness.p01`..`p50`, EN + FR) about friends, family, colleagues, free time, nature and not fearing others, each shown as `♥ <phrase>` on its own line after a blank line (italic, dim when colors are on). Shuffled order, all 50 before any repeat; state (`kindness_last`, `kindness_order`) in `meta`, outside undo. They appear: (1) after a successful `list add done delete modify info undo`, only if stdout is a terminal, at most once every 3 days, then with a 1-in-10 chance per command; (2) when `done` leaves no pending task (terminal only); (3) at the foot of a `print` page opened in the browser (not with `--file`); (4) in an easter egg. Every appearance restarts the 3-day cooldown. Setting `kindness = false` turns off (1)-(3).
+
 Hidden easter eggs exist: English only, exempt from i18n, kept unreadable in the code (hashed triggers, ROT13/compressed replies); see `tests/cli/test_eggs.py`.
 
 ## 6. Dates & urgency
@@ -156,6 +158,7 @@ language = "en"
 confirm_threshold = 3
 date_format = "%Y-%m-%d"
 color = true
+kindness = true
 [undo]
 retention = "3m"   # forever | <n>d/w/m/y (m = 30 d, y = 365 d)
 [urgency]
