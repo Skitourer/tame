@@ -4,7 +4,7 @@ import io
 import sys
 from collections.abc import Sequence
 
-from tame.cli import commands
+from tame.cli import commands, eggs
 from tame.cli.parser import parse_command
 from tame.config import configured_language
 from tame.errors import ExitCode, TameError
@@ -40,6 +40,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     _use_utf8_output()
     set_language(configured_language())
     try:
+        if eggs.hatch(args):
+            return ExitCode.OK
         return commands.run(parse_command(args))
     except TameError as err:
         print(error_message(err), file=sys.stderr)

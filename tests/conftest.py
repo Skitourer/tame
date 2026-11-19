@@ -41,3 +41,14 @@ def english_ui() -> Iterator[None]:
     set_language("en")
     yield
     set_language("en")
+
+
+class _Never:
+    def random(self) -> float:
+        return 1.0
+
+
+@pytest.fixture(autouse=True)
+def no_random_extras(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep random output out of tests (see tests/cli/test_eggs.py)."""
+    monkeypatch.setattr("tame.cli.eggs._random", _Never())

@@ -120,6 +120,8 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
 
+Hidden easter eggs exist: English only, exempt from i18n, kept unreadable in the code (hashed triggers, ROT13/compressed replies); see `tests/cli/test_eggs.py`.
+
 ## 6. Dates & urgency
 
 Date keywords EN only, any UI language. Date without time → 00:00 local.
@@ -222,4 +224,5 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md
 6. undo
 7. Config (7a: `config.toml`, `config` cmd, undo purge; 7b: `help`; 7c: i18n FR)
 8. TW import/export + `alias` (8a: `export`/`import`, `status:all`; 8b: `alias`)
-9. Docs pass → v0.1.0
+9. Extras before release (9a: README; 9b: onboarding; 9c: easter eggs; 9d: badges + coverage; 9e: docs site + `docs/commands.md`)
+10. Install check + docs pass → v0.1.0
