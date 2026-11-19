@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Project
+
+- CI: GitHub Actions moved to their Node.js 24 versions; Dependabot keeps them up to date.
+- The Release workflow can be rehearsed by hand (build and check only).
+
 ## [0.1.0] - 2026-11-19
 
 First release: a small, fast to-do list for the terminal, Windows first, Taskwarrior-friendly.

@@ -2,25 +2,34 @@ name: Release
 
 # Push a tag vX.Y.Z (matching __version__ and a CHANGELOG section) to publish:
 # build and check -> PyPI (needs approval in the "pypi" environment) -> GitHub release.
+# Run it by hand (Actions > Release > Run workflow) to rehearse the build job only.
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   build:
     name: build and check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
       - name: Tag matches the package version
+        if: github.ref_type == 'tag'
         run: |
           version=$(uv run --no-project python -c "import re,pathlib; print(re.search(r'__version__ = \"(.+)\"', pathlib.Path('src/tame/__init__.py').read_text())[1])")
           echo "tag=${GITHUB_REF_NAME} version=${version}"
           test "${GITHUB_REF_NAME}" = "v${version}"
       - name: Release notes
-        run: uv run --no-project python scripts/release_notes.py "${GITHUB_REF_NAME}" > release-notes.md
+        run: |
+          version="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_REF_TYPE}" != tag ]; then
+            version=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
+          fi
+          uv run --no-project python scripts/release_notes.py "$version" > release-notes.md
+          cat release-notes.md
       - name: Build
         run: uv build
       - name: Smoke test the wheel
@@ -28,7 +37,7 @@ jobs:
           export UV_TOOL_DIR="$RUNNER_TEMP/uv-tools" UV_TOOL_BIN_DIR="$RUNNER_TEMP/uv-bin"
           uv tool install dist/*.whl
           uv run --no-project python scripts/smoke.py "$UV_TOOL_BIN_DIR"
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: release
           path: |
@@ -38,6 +47,7 @@ jobs:
   pypi:
     name: publish to PyPI
     needs: build
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -45,7 +55,7 @@ jobs:
     permissions:
       id-token: write  # trusted publishing: no token stored anywhere
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: release
       - uses: pypa/gh-action-pypi-publish@release/v1
@@ -57,7 +67,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: release
       - name: Create the release

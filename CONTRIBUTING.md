@@ -78,3 +78,7 @@ in SPEC §8 before every release, then:
 3. The Release workflow builds and smoke-tests the package, then waits: approve the
    `pypi` deployment in the Actions tab. It publishes to PyPI (`tame-tasks`) and creates
    the GitHub release.
+
+To rehearse without publishing: Actions → Release → *Run workflow* runs the build and
+check job only (no tag, no PyPI, no GitHub release). Dependabot keeps the GitHub Actions
+up to date with a monthly grouped PR.
