@@ -18,7 +18,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 |---|---|
 | Lang | Python 3.12 baseline (`requires-python >=3.12`, ruff `target-version py312`); no deprecated APIs; full type hints |
 | Pkg/env | `uv`; `pyproject.toml` (PEP 621), backend `hatchling`, `src/` layout, `uv.lock` committed |
-| Install | `uv tool install git+https://github.com/skitourer/tame` (PyPI: `tame-tasks`, published by `release.yml` on a `vX.Y.Z` tag via trusted publishing, after approval in the `pypi` environment); one-line installers `install.ps1`/`install.sh` on the docs site install uv if missing, then TAME; `[project.scripts] tame = "tame.__main__:main"`, `tk = "tame.__main__:main"` |
+| Install | `uv tool install tame-tasks` (PyPI; also `git+https://github.com/skitourer/tame`; published by `release.yml` on a `vX.Y.Z` tag via trusted publishing, after approval in the `pypi` environment); one-line installers `install.ps1`/`install.sh` on the docs site install uv if missing, then TAME; `[project.scripts] tame = "tame.__main__:main"`, `tk = "tame.__main__:main"` |
 | Deps | runtime: `rich`, `python-dateutil` only; stdlib `sqlite3`, `tomllib`; no argparse (custom parser) |
 | Lint/format | `ruff check` + `ruff format`, line 100 |
 | Types | `mypy --strict` on `src/` |
@@ -192,14 +192,18 @@ src/tame/
   core/filters.py  # Filter (syntax-free)
   core/dates.py    # relative date parser
   core/urgency.py
-  core/service.py  # TaskService: add/modify/complete/delete/query/undo
+  cli/eggs.py      # hidden extras (§5)
+  core/service.py  # TaskService: add/modify/complete/delete/query/undo/import
   storage/repo.py  # SQLite repo
   storage/migrations.py
-  io/tw_json.py
+  io/tw_json.py    # Taskwarrior JSON (§7)
+  alias.py         # opt-in command aliases
   i18n.py  config.py  errors.py
   locales/en.toml  fr.toml
 tests/             # mirrors src; tmp TAME_HOME fixture
-docs/SPEC.md  docs/grammar.md  docs/commands.md  (+ site pages; mkdocs.yml)
+scripts/           # tk.ps1/tk.sh sandbox, smoke.py, release_notes.py, spoilers.py
+docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.ps1/.sh
+.github/workflows/ # ci.yml, docs.yml (Pages), release.yml (PyPI + GitHub release)
 ```
 
 **Code docs**: Google-style docstrings on public modules/classes/funcs; parser rules commented with rule numbers from §4.
@@ -227,4 +231,4 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md  (+ site pages; mkdocs.yml)
 7. Config (7a: `config.toml`, `config` cmd, undo purge; 7b: `help`; 7c: i18n FR)
 8. TW import/export + `alias` (8a: `export`/`import`, `status:all`; 8b: `alias`)
 9. Extras before release (9a: README; 9b: onboarding; 9c: easter eggs; 9d: badges + coverage gate; 9e: docs site + `docs/commands.md`)
-10. Install check + docs pass → v0.1.0
+10. Release (10a: install polish, installers, CI install check; 10b: PyPI name + release workflow; 10c: docs pass → v0.1.0)

@@ -241,7 +241,7 @@ Exemples :
 summary = "Annuler la dernière modification"
 usage = "tk undo"
 body = '''
-Annule le dernier add, done, delete ou modify, ids compris. Relancez-le pour remonter
+Annule le dernier add, done, delete, modify ou import, ids compris. Relancez-le pour remonter
 plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est purgé ;
 voir tk help config.
 '''

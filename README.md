@@ -34,7 +34,8 @@ Completed task 1 'Call the bank'.
 - **Windows first**, at home on Linux too. English or French interface.
 - **Taskwarrior-friendly**: same grammar spirit, and its JSON imports and exports both ways.
 
-> Status: pre-alpha, all V1 commands work. See the roadmap in
+> Status: alpha (0.1). Everything described here works; details may still change before
+> 1.0. See the roadmap in
 > [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
 
 ## Install
@@ -52,7 +53,7 @@ On Linux: `curl -LsSf https://skitourer.github.io/tame/install.sh | sh`. Step by
 Already using uv?
 
 ```sh
-uv tool install git+https://github.com/skitourer/tame
+uv tool install tame-tasks
 ```
 
 This installs two commands: `tame` and its short alias `tk`. Run `tk` to get started, or take

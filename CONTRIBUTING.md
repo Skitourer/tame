@@ -56,8 +56,9 @@ uv run pytest --cov
   never read `argv` and never import `rich`.
 - **Docstrings**: Google style on public modules, classes and functions.
 - **Tests**: every new behavior gets tests; every example in the spec becomes a test.
-- **User-facing text** goes through `t()` with keys in `src/tame/locales/en.toml`
-  (once i18n lands).
+- **User-facing text** goes through `t()` with keys in `src/tame/locales/en.toml`, the
+  reference, translated in `fr.toml` (a test checks both have the same keys and
+  placeholders).
 
 ## Git workflow
 
@@ -69,4 +70,11 @@ uv run pytest --cov
 ## Releases
 
 Versions follow [SemVer](https://semver.org/) and are tagged `vX.Y.Z`. Apply the release checklist
-in SPEC §8 before every release.
+in SPEC §8 before every release, then:
+
+1. In a PR: set `__version__` in `src/tame/__init__.py`, rename `[Unreleased]` in the
+   CHANGELOG to `[X.Y.Z] - YYYY-MM-DD` (its text becomes the release notes), merge.
+2. Tag `main`: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. The Release workflow builds and smoke-tests the package, then waits: approve the
+   `pypi` deployment in the Actions tab. It publishes to PyPI (`tame-tasks`) and creates
+   the GitHub release.

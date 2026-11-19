@@ -18,4 +18,4 @@ tk ...
 
 - `tame version`:
 - OS:
-- Python:
+- Installed with (installer script, `uv tool install tame-tasks`, git):
