@@ -58,7 +58,8 @@ Keywords are English only and case-insensitive. A date without a time means 00:0
 
 `done`, `delete` and `modify` need a filter (`tk done` alone is an error). They ask
 *y/N* before changing more than 3 tasks; `delete` always asks. `--yes` (anywhere before
-`--`) skips the question. Any answer but `y`/`yes`, or no input at all (scripts), means no.
+`--`) skips the question. Any answer but `y`/`yes` (or `o`/`oui` with the French interface), or no input at all
+(scripts), means no.
 
 After `done` and `delete`, pending tasks are renumbered 1..n by creation time.
 

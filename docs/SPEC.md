@@ -22,10 +22,11 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 | Deps | runtime: `rich`, `python-dateutil` only; stdlib `sqlite3`, `tomllib`; no argparse (custom parser) |
 | Lint/format | `ruff check` + `ruff format`, line 100 |
 | Types | `mypy --strict` on `src/` |
-| Tests | `pytest`, `pytest-cov`; coverage ≥90% enforced (`fail_under`), report in the CI run summary; badge via GitHub Pages (step 9e), no third-party service |
+| Tests | `pytest`, `pytest-cov`; coverage ≥90% enforced (`fail_under`), report in the CI run summary; badge published with the docs site, no third-party service |
 | Hooks | `pre-commit`: ruff, mypy, end-of-file, trailing-ws |
 | VCS | GitHub, `main` protected, PRs, Conventional Commits, SemVer, tags `vX.Y.Z` |
 | CI | GitHub Actions: lint + types + tests on `windows-latest` and `ubuntu-latest`, Py 3.12 + latest stable |
+| Docs site | MkDocs Material (`docs` dependency group), built `--strict` on every PR, deployed to GitHub Pages from `main` with the coverage badge |
 | Repo files | `README.md`, `CHANGELOG.md` (Keep a Changelog), `CONTRIBUTING.md`, `LICENSE`, `CLAUDE.md`, `docs/`, `.github/` (CI, issue/PR templates) |
 | Data dir | Windows: `%APPDATA%\tame\` (`tasks.db`, `config.toml`). Other OS (XDG): `tasks.db` in `$XDG_DATA_HOME/tame/` (default `~/.local/share/tame/`), `config.toml` in `$XDG_CONFIG_HOME/tame/` (default `~/.config/tame/`). Env `TAME_HOME` overrides both and holds both files |
 | Output | always UTF-8 on stdout/stderr, also when redirected |
@@ -198,7 +199,7 @@ src/tame/
   i18n.py  config.py  errors.py
   locales/en.toml  fr.toml
 tests/             # mirrors src; tmp TAME_HOME fixture
-docs/SPEC.md  docs/grammar.md  docs/commands.md
+docs/SPEC.md  docs/grammar.md  docs/commands.md  (+ site pages; mkdocs.yml)
 ```
 
 **Code docs**: Google-style docstrings on public modules/classes/funcs; parser rules commented with rule numbers from §4.

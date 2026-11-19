@@ -1,0 +1,49 @@
+site_name: TAME
+site_description: TAME Arranges My Errands — a small, fast to-do list for your terminal.
+site_url: https://skitourer.github.io/tame/
+repo_url: https://github.com/Skitourer/tame
+repo_name: Skitourer/tame
+edit_uri: edit/main/docs/
+copyright: MIT License
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.footer
+    - navigation.instant
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Commands: commands.md
+  - Filters & grammar: grammar.md
+  - Urgency: urgency.md
+  - Settings: settings.md
+  - Coming from Taskwarrior: taskwarrior.md
+  - Specification: SPEC.md
