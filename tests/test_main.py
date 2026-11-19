@@ -91,8 +91,28 @@ def test_no_args_means_list(capsys: Capture) -> None:
     assert "Buy milk" in out
 
 
-def test_list_empty_is_no_match(capsys: Capture) -> None:
+def test_first_run_welcomes(capsys: Capture) -> None:
+    for argv in ((), ("list",)):
+        code, out, err = run(capsys, *argv)
+        assert (code, err) == (0, "")
+        assert out.splitlines()[0] == "Welcome to TAME! No tasks yet. Try:"
+        assert "tk help tour" in out
+        assert "tk config set language fr" in out
+
+
+def test_no_welcome_with_a_filter_or_any_task(capsys: Capture) -> None:
+    assert run(capsys, "+phone") == (2, "", "No matches.\n")
+    assert run(capsys, "status:all", "list") == (2, "", "No matches.\n")
+    run(capsys, "add", "x")
+    run(capsys, "1", "done")
     assert run(capsys, "list") == (2, "", "No matches.\n")
+
+
+def test_welcome_in_french(capsys: Capture) -> None:
+    run(capsys, "config", "set", "language", "fr")
+    out = run(capsys)[1]
+    assert out.startswith("Bienvenue dans TAME !")
+    assert "tk config set language en" in out
 
 
 def listed_ids(out: str) -> list[str]:
@@ -438,7 +458,7 @@ def test_undo_spec_example(capsys: Capture) -> None:
 def test_undo_add(capsys: Capture) -> None:
     run(capsys, "add", "Buy", "milk")
     assert run(capsys, "undo") == (0, "Undid 'add'.\nRemoved task 1 'Buy milk'.\n", "")
-    assert run(capsys, "list") == (2, "", "No matches.\n")
+    assert run(capsys, "status:all", "list") == (2, "", "No matches.\n")
 
 
 def test_undo_modify(capsys: Capture) -> None:
@@ -539,7 +559,7 @@ def test_invalid_config_blocks_commands_but_config_can_fix_it(
     assert code == 1
     assert "Invalid value 1 for 'color'" in err
     assert run(capsys, "config", "set", "color", "false")[0] == 0
-    assert run(capsys, "list") == (2, "", "No matches.\n")
+    assert run(capsys, "list")[0] == 0
 
 
 def test_config_edit_opens_editor_then_validates(
@@ -611,7 +631,7 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
     assert listed == list(HELP_COMMANDS)
     assert "  add      Create a task" in lines
     assert "  export   Export tasks as Taskwarrior JSON" in lines
-    assert "Topics: tk help filters | dates | urgency" in out
+    assert "Topics: tk help filters | dates | urgency | tour" in out
 
 
 def test_help_covers_every_implemented_command() -> None:
@@ -652,6 +672,7 @@ def test_help_flag_after_double_dash_is_a_word(capsys: Capture) -> None:
         ("filters", "project:home         project home and its sub-projects"),
         ("dates", "eow   eom   eoy"),
         ("urgency", "priority     H 6.0, M 3.9, L 1.8"),
+        ("tour", "A two-minute tour. Type the commands in order."),
     ],
 )
 def test_help_topics(capsys: Capture, topic: str, text: str) -> None:
@@ -864,3 +885,16 @@ def test_alias_usage_errors(capsys: Capture, args: tuple[str, ...]) -> None:
 
 def test_alias_takes_no_filter(capsys: Capture) -> None:
     assert run(capsys, "3", "alias", "install", "task")[0] == 1
+
+
+def test_tour_commands_all_work(
+    capsys: Capture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("UV_TOOL_BIN_DIR", str(tmp_path / "bin"))
+    monkeypatch.setenv("PATH", str(tmp_path / "bin"))
+    lines = [line.strip() for line in help_text("tour").splitlines()]
+    commands = [line.split("  ")[0].split(" > ")[0] for line in lines if line.startswith("tk ")]
+    assert len(commands) == 15
+    for command in commands:
+        code, _, err = run(capsys, *command.split()[1:])
+        assert (command, code, err) == (command, 0, "")

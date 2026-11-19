@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files it did not create; warns if the directory is not in PATH or another command of
   that name comes first.
 - A few hidden easter eggs.
+- First run: `tk` with no task at all shows a welcome with the first commands to try.
+- `tk help tour`: a two-minute guided tour.
 
 ### Fixed
 
