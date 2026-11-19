@@ -7,6 +7,7 @@ import pytest
 
 from tame import __version__
 from tame.__main__ import main
+from tame.cli.commands import HANDLERS, HELP_COMMANDS, HELP_TOPICS, help_text
 from tame.storage.migrations import SCHEMA_VERSION
 
 Capture = pytest.CaptureFixture[str]
@@ -38,7 +39,7 @@ def test_ambiguous_command(capsys: Capture) -> None:
     assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
 
 
-@pytest.mark.parametrize("command", ["export", "import", "alias", "help"])
+@pytest.mark.parametrize("command", ["export", "import", "alias"])
 def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
     code, _, err = run(capsys, command)
     assert code == 1
@@ -601,3 +602,86 @@ def test_cold_start_does_not_import_tomlkit() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, check=False
     )
     assert result.stdout.splitlines()[-1] == "False"
+
+
+# --- help (roadmap step 7b) --------------------------------------------------------
+
+
+def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
+    code, out, err = run(capsys, "help")
+    assert (code, err) == (0, "")
+    lines = out.splitlines()
+    assert lines[0] == "Usage: tk [filter] <command> [arguments]   (no command = list)"
+    listed = [line.split()[0] for line in lines[3:13]]
+    assert listed == list(HELP_COMMANDS)
+    assert "  add      Create a task" in lines
+    assert "Topics: tk help filters | dates | urgency" in out
+
+
+def test_help_covers_every_implemented_command() -> None:
+    assert set(HELP_COMMANDS) == set(HANDLERS) | {"config", "help"}
+
+
+@pytest.mark.parametrize("argv", [["help", "modify"], ["help", "mod"], ["modify", "--help"]])
+def test_help_on_a_command(capsys: Capture, argv: list[str]) -> None:
+    code, out, _ = run(capsys, *argv)
+    assert code == 0
+    assert out.startswith("Usage: tk <filter> modify [attr:value]")
+    assert "\n\nChange tasks.\n\n" in out
+    assert "tk 12 modify due:mon -phone" in out
+
+
+@pytest.mark.parametrize(
+    ("argv", "start"),
+    [
+        (["--help"], "Usage: tk [filter] <command>"),
+        (["3", "done", "--help"], "Usage: tk <filter> done [--yes]"),
+        (["add", "x", "--help"], "Usage: tk add <description>"),
+        (["help", "--help"], "Usage: tk help [command | topic]"),
+    ],
+)
+def test_help_flag(capsys: Capture, argv: list[str], start: str) -> None:
+    code, out, _ = run(capsys, *argv)
+    assert code == 0
+    assert out.startswith(start)
+
+
+def test_help_flag_after_double_dash_is_a_word(capsys: Capture) -> None:
+    assert run(capsys, "add", "--", "use", "--help")[1] == "Created task 1.\n"
+
+
+@pytest.mark.parametrize(
+    ("topic", "text"),
+    [
+        ("filters", "project:home         project home and its sub-projects"),
+        ("dates", "eow   eom   eoy"),
+        ("urgency", "priority     H 6.0, M 3.9, L 1.8"),
+    ],
+)
+def test_help_topics(capsys: Capture, topic: str, text: str) -> None:
+    code, out, _ = run(capsys, "help", topic)
+    assert code == 0
+    assert text in out
+
+
+@pytest.mark.parametrize("subject", list(HELP_COMMANDS) + list(HELP_TOPICS))
+def test_every_help_text_exists(subject: str) -> None:
+    text = help_text(subject)
+    assert "help.cmd." not in text  # a missing key would show up as itself
+    assert "help.topic." not in text
+
+
+def test_help_unknown_subject(capsys: Capture) -> None:
+    assert run(capsys, "help", "export") == (
+        1,
+        "",
+        "No help for 'export'. Run 'tk help' for the list.\n",
+    )
+    assert run(capsys, "help", "d")[2] == "Ambiguous command 'd': delete, done\n"
+    assert run(capsys, "help", "a", "b")[0] == 1
+
+
+def test_help_works_with_an_invalid_config(capsys: Capture, tame_home: Path) -> None:
+    tame_home.mkdir()
+    (tame_home / "config.toml").write_text("color = 1\n", encoding="utf-8")
+    assert run(capsys, "help", "config")[0] == 0

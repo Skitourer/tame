@@ -9,7 +9,13 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from tame import __version__
-from tame.cli.parser import ParsedCommand, parse_add, parse_filter, parse_modify
+from tame.cli.parser import (
+    ParsedCommand,
+    match_command,
+    parse_add,
+    parse_filter,
+    parse_modify,
+)
 from tame.config import (
     OPTIONS,
     ConfigError,
@@ -280,6 +286,61 @@ def _edit_file(path: Path) -> None:
         raise UsageError("error.editor_failed", editor=editor, detail=str(exc)) from exc
 
 
+HELP_COMMANDS = (
+    "add",
+    "list",
+    "info",
+    "modify",
+    "done",
+    "delete",
+    "undo",
+    "config",
+    "help",
+    "version",
+)
+"""Commands shown by ``tk help``, in this order: the implemented ones."""
+
+HELP_TOPICS = ("filters", "dates", "urgency")
+"""Help topics that are not commands."""
+
+
+def cmd_help(command: ParsedCommand) -> int:
+    """``help``: list commands, or show the help of a command or topic."""
+    match command.args:
+        case ():
+            print(help_overview())
+        case (subject,):
+            print(help_text(subject))
+        case _:
+            raise UsageError("error.unexpected_argument", arg=command.args[1])
+    return ExitCode.OK
+
+
+def help_overview() -> str:
+    """Return the ``tk help`` text: usage, commands with summaries, topics."""
+    width = max(len(name) for name in HELP_COMMANDS)
+    lines = [t("help.usage"), "", t("help.commands")]
+    lines += [f"  {name:<{width}}  {t(f'help.cmd.{name}.summary')}" for name in HELP_COMMANDS]
+    lines += ["", t("help.topics", topics=" | ".join(HELP_TOPICS)), t("help.more")]
+    return "\n".join(lines)
+
+
+def help_text(subject: str) -> str:
+    """Return the help of a topic, or of a command (exact name or unique prefix).
+
+    Raises:
+        UsageError: If ``subject`` is ambiguous or names nothing documented.
+    """
+    if subject in HELP_TOPICS:
+        return t(f"help.topic.{subject}").rstrip()
+    name = match_command(subject)
+    if name not in HELP_COMMANDS:
+        raise UsageError("error.help_unknown", name=subject)
+    usage = t("help.usage_label", usage=t(f"help.cmd.{name}.usage"))
+    summary = t(f"help.cmd.{name}.summary")
+    return f"{usage}\n\n{summary}.\n\n{t(f'help.cmd.{name}.body').rstrip()}"
+
+
 def cmd_not_implemented(command: ParsedCommand, settings: Settings) -> int:
     """Placeholder for V1 commands of later roadmap steps."""
     raise UsageError("error.not_implemented", command=command.name)
@@ -300,8 +361,11 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
 def run(command: ParsedCommand) -> int:
     """Run ``command`` with the settings from ``config.toml`` and return its exit code.
 
-    ``config`` runs without loading them, so that it can repair an invalid file.
+    ``config`` and ``help`` run without loading them: they must work, and help repair,
+    when the file is invalid.
     """
     if command.name == "config":
         return cmd_config(command)
+    if command.name == "help":
+        return cmd_help(command)
     return HANDLERS.get(command.name, cmd_not_implemented)(command, load_settings())

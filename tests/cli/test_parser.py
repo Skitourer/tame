@@ -370,3 +370,20 @@ def test_parse_filter_invalid_due() -> None:
     with pytest.raises(ValidationError) as exc:
         parse_filter(["due.before:someday"])
     assert exc.value.key == "error.invalid_date"
+
+
+# --- --help ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("--help", ParsedCommand("help")),
+        ("mod --help", ParsedCommand("help", args=("modify",))),
+        ("3 done --help", ParsedCommand("help", args=("done",))),
+        ("+x --help list", ParsedCommand("help", args=("list",))),
+        ("add -- --help", ParsedCommand("add", args=("--", "--help"))),
+    ],
+)
+def test_help_flag(line: str, expected: ParsedCommand) -> None:
+    assert cmd(line) == expected

@@ -115,3 +115,184 @@ config_usage = "Usage: tk config [get KEY | set KEY VALUE | unset KEY | path | e
 editor_failed = "Cannot start the editor '{editor}': {detail}. Set the EDITOR variable."
 db_open = "Cannot open database {path}: {detail}"
 db_too_new = "Database schema version {found} is newer than supported ({supported}). Upgrade tame."
+help_unknown = "No help for '{name}'. Run 'tk help' for the list."
+
+# --- Help (tk help). No braces in bodies: they go through str.format. ----------------
+
+[help]
+usage = "Usage: tk [filter] <command> [arguments]   (no command = list)"
+usage_label = "Usage: {usage}"
+commands = "Commands:"
+topics = "Topics: tk help {topics}"
+more = "Details: tk help <command>, or tk <command> --help. Commands can be shortened: tk mod."
+
+[help.cmd.add]
+summary = "Create a task"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [+tag ...]"
+body = '''
+Words make the description; project:, pri:, due: and +tag can be anywhere.
+Everything after -- is description, even words like done or +x.
+
+Examples:
+  tk add Call bank project:home +phone due:fri pri:H
+  tk add -- done the report
+'''
+
+[help.cmd.list]
+summary = "List tasks, most urgent first"
+usage = "tk [filter] list"
+body = '''
+Shows pending tasks matching the filter (see tk help filters); status:completed or
+status:deleted shows the others. Empty columns are hidden. Overdue tasks are red,
+tasks due today yellow. Urg is the urgency (see tk help urgency).
+
+Examples:
+  tk                        all pending tasks
+  tk project:home           also: tk list project:home
+  tk +phone -work bank
+  tk status:completed list
+'''
+
+[help.cmd.info]
+summary = "Show every field of tasks"
+usage = "tk [filter] info"
+body = '''
+Shows all fields of the matching tasks, in local time, including the uuid.
+
+Examples:
+  tk 7 info
+  tk status:deleted info
+'''
+
+[help.cmd.modify]
+summary = "Change tasks"
+usage = "tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]"
+body = '''
+attr:value sets an attribute, attr: clears it (project, pri, due); +tag and -tag add
+and remove tags; other words replace the description. A filter is required.
+Asks before changing more than confirm_threshold tasks (default 3); --yes skips it.
+
+Examples:
+  tk 12 modify due:mon -phone
+  tk 3 modify project: Call the bank
+  tk +phone modify pri:L --yes
+'''
+
+[help.cmd.done]
+summary = "Mark tasks completed"
+usage = "tk <filter> done [--yes]"
+body = '''
+A filter is required. Asks before completing more than confirm_threshold tasks
+(default 3); --yes skips it. Pending tasks are then renumbered 1..n.
+
+Examples:
+  tk 3 done
+  tk 3,5 done
+  tk +shopping done --yes
+'''
+
+[help.cmd.delete]
+summary = "Delete tasks"
+usage = "tk <filter> delete [--yes]"
+body = '''
+A filter is required. Always asks first; --yes skips it. Deleted tasks are kept with
+status:deleted, and tk undo brings them back. Pending tasks are then renumbered 1..n.
+
+Examples:
+  tk 4 delete
+  tk project:old delete --yes
+'''
+
+[help.cmd.undo]
+summary = "Revert the last change"
+usage = "tk undo"
+body = '''
+Reverts the last add, done, delete or modify, ids included. Run it again to go
+further back. History older than undo.retention (default 3 months) is purged; see
+tk help config.
+'''
+
+[help.cmd.config]
+summary = "Show or change settings"
+usage = "tk config [get KEY | set KEY VALUE | unset KEY | path | edit]"
+body = '''
+Settings live in config.toml; edit it by hand or with this command. Without
+arguments, lists all settings; changed ones show their default. unset restores the
+default; edit opens the file in $EDITOR (Notepad on Windows).
+
+Settings: language, confirm_threshold, date_format, color, undo.retention,
+urgency.pri_H, urgency.pri_M, urgency.pri_L, urgency.due, urgency.age,
+urgency.tags, urgency.project.
+
+Examples:
+  tk config set undo.retention 1y      keep undo history 1 year (or: forever)
+  tk config set date_format %d/%m/%Y
+  tk config unset date_format
+'''
+
+[help.cmd.help]
+summary = "Show help"
+usage = "tk help [command | topic]"
+body = '''
+Without arguments, lists commands and topics. tk <command> --help does the same as
+tk help <command>.
+
+Examples:
+  tk help modify
+  tk help mod
+  tk help dates
+'''
+
+[help.cmd.version]
+summary = "Show the version"
+usage = "tk version"
+body = '''
+Shows the tame version and the database schema version.
+'''
+
+[help.topic]
+filters = '''
+Filters select tasks. All criteria must match; ids and uuids together form one
+selection. Without status:, only pending tasks match.
+
+  3   3,5   2-6        short ids
+  1a2b3c4d             uuid prefix (8+ hex characters)
+  +tag   -tag          has / lacks the tag
+  project:home         project home and its sub-projects (home.garden)
+  project:             no project
+  pri:H   pri:         priority H / no priority
+  status:completed     pending, completed or deleted
+  due.before:fri       due strictly before the date (see tk help dates)
+  due.after:today      due strictly after the date
+  other words          text contained in the description, any case
+
+The filter goes before the command (tk +phone list) or right after it
+(tk list +phone). After --, everything is plain words.
+'''
+dates = '''
+Dates are used by due:, due.before: and due.after:. Keywords are English, any case.
+A date without a time means 00:00 local time.
+
+  2026-12-15   2026-12-15T14:00     ISO date, local time
+  today   tomorrow   yesterday
+  monday .. sunday, mon .. sun      next occurrence, never today
+  eow   eom   eoy                   end of week (Sunday), month, year: 23:59:59
+  +3d   +2w   +1m   +4h   -1d       from now (d days, w weeks, m months, h hours)
+
+Examples:
+  tk add Pay rent due:eom
+  tk 3 modify due:+2w
+  tk due.before:fri list
+'''
+urgency = '''
+Tasks are listed by urgency, the sum of:
+
+  priority     H 6.0, M 3.9, L 1.8
+  due date     12.0 x 0.2 (due in 14+ days) up to x 1.0 (7+ days overdue)
+  age          2.0 x age in years, at most 1 year
+  tags         1.0 if the task has tags
+  project      1.0 if the task has a project
+
+Change the weights with tk config set urgency.<name> <value>, for example
+tk config set urgency.due 8.
+'''

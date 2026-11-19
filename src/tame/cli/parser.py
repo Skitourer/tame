@@ -56,6 +56,7 @@ CONFIRM_COMMANDS = frozenset({"done", "delete", "modify"})
 """Commands that may ask for confirmation, and so accept ``--yes``."""
 
 YES_FLAG = "--yes"
+HELP_FLAG = "--help"
 
 _ATTR_ALIASES = {"pri": "priority"}
 _ATTR_RE = re.compile(r"([a-z]+(?:\.[a-z]+)?):(.*)", re.DOTALL)
@@ -110,12 +111,16 @@ def parse_command(argv: Sequence[str]) -> ParsedCommand:
     """Split ``argv`` into command, filter tokens and argument tokens.
 
     ``--yes`` (before any ``--``) is taken out for ``done``/``delete``/``modify``.
+    ``--help`` (before any ``--``) turns the line into ``help [<command>]``.
 
     Raises:
         UsageError: On an ambiguous command, a filter given to a command without one,
             or ``--yes`` given to a command that never asks for confirmation.
     """
     tokens = tuple(argv)
+    if HELP_FLAG in (head := _until_double_dash(tokens)):
+        named = (match_command(tok) for tok in head if tok != HELP_FLAG)
+        return ParsedCommand("help", args=tuple(name for name in named if name)[:1])
     # Rule 1: the first token naming a command is the command; `--` stops the search (rule 5).
     found: tuple[int, str] | None = None
     for index, token in enumerate(tokens):

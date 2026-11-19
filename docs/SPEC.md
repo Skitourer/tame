@@ -113,7 +113,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 | import | `tk import f.json` | TW JSON; merge by uuid |
 | alias | `tk alias install task` | manage opt-in `task` shim |
 | config | `tk config set undo.retention 1y` | list / `get` / `set` / `unset` (= default) / `path` / `edit` settings (§7) |
-| help | `tk help [cmd]` | usage |
+| help | `tk help [cmd\|topic]` | no arg: implemented cmds + 1-line summaries; cmd (exact or prefix): usage, text, examples; topics `filters` `dates` `urgency`. `--help` before `--` = `tk help [<cmd on the line>]`. Works with an invalid config |
 | version | `tk version` | app + schema version |
 
 `list` columns: ID Age Project Tags Pri Due Description Urg; hide empty cols; overdue red, due today yellow; `color=false` or non-TTY → plain.

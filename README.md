@@ -35,6 +35,8 @@ tk 4 delete                                  # asks first; --yes skips the quest
 tk 1 modify due:+3d -phone Call the bank     # set, untag, new description
 tk 7 info                                    # every field
 tk undo                                      # revert the last change (repeat to go back)
+tk help                                      # commands; tk help <command|topic>
+tk modify --help                             # same as: tk help modify
 tk version
 ```
 

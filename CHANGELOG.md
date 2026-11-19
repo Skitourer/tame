@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   urgency weights. Invalid settings are reported with the key and file.
 - `config` command: list, `get`, `set`, `unset`, `path`, `edit`. `set` keeps comments.
 - Undo history older than `undo.retention` is purged on each change.
+- `help` command: `tk help` lists commands, `tk help <command>` shows usage and
+  examples, topics `filters`, `dates`, `urgency`; `tk <command> --help` works too.
 
 ### Fixed
 

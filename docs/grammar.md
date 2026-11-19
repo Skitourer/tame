@@ -21,7 +21,8 @@ tk [filter]                # = tk [filter] list
    Commands without arguments (`list`, `done`, `delete`, `info`, `export`) treat all their
    tokens as filter, so `tk list +phone bank` works.
 5. `--` stops parsing: it is never a command, and everything after it is plain words
-   (`tk add -- done the report`).
+   (`tk add -- done the report`). Before it, `--help` turns the line into
+   `tk help <command>` (`tk 3 done --help`), or `tk help` if there is no command.
 6. An unknown `attr:` is an error (exit code 1).
 7. Commands that take no filter (`add`, `alias`, `config`, `help`, `import`, `undo`, `version`)
    reject one
@@ -79,7 +80,6 @@ All criteria are AND-combined. Without `status:`, only pending tasks match.
 
 Ids and uuid prefixes together form one selection: `tk 3 1a2b3c4d list` shows task 3 *and*
 the task with that uuid. A token of digits only is always an id.
-
 
 ## Examples
 
