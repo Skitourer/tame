@@ -37,7 +37,8 @@ Requires [uv](https://docs.astral.sh/uv/).
 uv tool install git+https://github.com/skitourer/tame
 ```
 
-This installs two commands: `tame` and its short alias `tk`. Then try `tk help`.
+This installs two commands: `tame` and its short alias `tk`. Run `tk` to get started, or take
+the two-minute tour: `tk help tour`.
 
 ## Usage
 

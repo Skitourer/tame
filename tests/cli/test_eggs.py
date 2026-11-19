@@ -31,7 +31,7 @@ class _Always:
 
 def test_one(capsys: Capture) -> None:
     assert run(capsys, "znxr zr n fnaqjvpu") == (0, r("Jung? Znxr vg lbhefrys.") + "\n", "")
-    assert main([]) == 2  # nothing created
+    assert main(["status:all", "list"]) == 2  # nothing created
     capsys.readouterr()
 
 

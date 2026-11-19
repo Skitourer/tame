@@ -33,7 +33,7 @@ from tame.config import (
     write_value,
 )
 from tame.core.dates import utc_now
-from tame.core.filters import Filter
+from tame.core.filters import ALL, Filter
 from tame.core.models import Task
 from tame.core.service import TaskService
 from tame.core.urgency import by_urgency, urgency
@@ -132,11 +132,19 @@ def cmd_add(command: ParsedCommand, settings: Settings) -> int:
 
 
 def cmd_list(command: ParsedCommand, settings: Settings) -> int:
-    """``list``: print the matching tasks as a table, most urgent first."""
+    """``list``: print the matching tasks as a table, most urgent first.
+
+    Without a filter and without any task at all, print a welcome message instead.
+    """
     now = utc_now()
     where = parse_filter(command.filter, now)
     with open_service(settings) as service:
-        tasks = by_urgency(_matching(service, where), now, settings.urgency)
+        if not (found := service.query(where)):
+            if not command.filter and not service.query(Filter(status=ALL)):
+                print(t("welcome").rstrip())  # First run: no task at all.
+                return ExitCode.OK
+            raise NoMatchError("error.no_matches")
+    tasks = by_urgency(found, now, settings.urgency)
     from tame.cli.render import print_task_table
 
     print_task_table(
@@ -391,7 +399,7 @@ HELP_COMMANDS = (
 )
 """Commands shown by ``tk help``, in this order: the implemented ones."""
 
-HELP_TOPICS = ("filters", "dates", "urgency")
+HELP_TOPICS = ("filters", "dates", "urgency", "tour")
 """Help topics that are not commands."""
 
 

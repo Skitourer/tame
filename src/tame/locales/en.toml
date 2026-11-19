@@ -1,5 +1,16 @@
 # Reference catalog: every key used in the code must exist here.
 
+
+# --- First run (tk with no task at all). No braces: goes through str.format. --------
+
+welcome = '''
+Welcome to TAME! No tasks yet. Try:
+  tk add Call the bank due:fri +phone
+  tk                 list your tasks, most urgent first
+  tk 1 done
+Guided tour: tk help tour    Interface en français : tk config set language fr
+'''
+
 [cmd.add]
 created = "Created task {id}."
 
@@ -360,4 +371,39 @@ Tasks are listed by urgency, the sum of:
 
 Change the weights with tk config set urgency.<name> <value>, for example
 tk config set urgency.due 8.
+'''
+
+tour = '''
+A two-minute tour. Type the commands in order.
+
+1. Add tasks. Words make the description; project:, pri:, due: and +tag go anywhere.
+     tk add Call the bank project:home pri:H due:fri +phone
+     tk add Buy milk +shopping due:tomorrow
+     tk add Plan holidays project:home
+
+2. List them, most urgent first (priority, due date, age, tags, project add up).
+     tk
+     tk 1 info                  every field of task 1
+
+3. Change them: attr:value sets, attr: clears, +tag/-tag, other words = description.
+     tk 2 modify pri:M -shopping
+     tk 3 modify due:+2w
+
+4. Complete one (pending tasks are then renumbered). Changed your mind? undo reverts
+   any change.
+     tk 2 done
+     tk undo
+     tk 2 done
+
+5. Filter: tags, project, priority, words, dates (see tk help filters, tk help dates).
+     tk +phone
+     tk project:home due.before:+2w
+     tk status:completed list
+
+6. Make it yours.
+     tk config set language fr  French interface
+     tk alias install task      also run tame as task
+     tk status:all export > backup.json
+
+Every command: tk help. Details: tk help <command>.
 '''
