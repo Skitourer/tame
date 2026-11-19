@@ -1,16 +1,20 @@
-"""Entry point for the ``tame`` and ``tk`` commands.
+"""Entry point for the ``tame`` and ``tk`` commands: parse, dispatch, exit code."""
 
-Minimal dispatcher for roadmap step 1: only ``version`` is wired. The hybrid
-parser (SPEC §4) replaces this dispatch in step 3.
-"""
-
+import io
 import sys
 from collections.abc import Sequence
 
-from tame import __version__
+from tame.cli import commands
+from tame.cli.parser import parse_command
+from tame.errors import ExitCode, TameError
+from tame.i18n import t
 
-EXIT_OK = 0
-EXIT_USAGE = 1
+
+def _use_utf8_output() -> None:
+    """Write UTF-8 even when redirected on Windows, where the default is the ANSI code page."""
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper) and stream.encoding.lower() != "utf-8":
+            stream.reconfigure(encoding="utf-8")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -20,15 +24,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         argv: Command-line arguments without the program name. Defaults to ``sys.argv[1:]``.
 
     Returns:
-        Process exit code (SPEC §5: 0 ok, 1 usage error).
+        Process exit code (SPEC §5). Error messages go to stderr.
     """
     args = list(sys.argv[1:] if argv is None else argv)
-    if args == ["version"]:
-        print(f"tame {__version__}")
-        return EXIT_OK
-    # TODO(step 7): route through t() once i18n lands.
-    print(f"tame: unknown command: {' '.join(args) or '(none)'}", file=sys.stderr)
-    return EXIT_USAGE
+    _use_utf8_output()
+    try:
+        return commands.run(parse_command(args))
+    except TameError as err:
+        print(t(err.key, **err.params), file=sys.stderr)
+        return err.exit_code
+    except Exception as err:
+        print(t("error.internal", detail=repr(err)), file=sys.stderr)
+        return ExitCode.INTERNAL
 
 
 if __name__ == "__main__":

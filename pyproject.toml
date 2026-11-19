@@ -73,6 +73,9 @@ select = [
     "D",        # pydocstyle
 ]
 
+# Constructor args are documented in the class docstring (Google style).
+ignore = ["D105", "D107"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -90,7 +93,7 @@ files = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["-ra", "--strict-markers", "--strict-config"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 
 [tool.coverage.run]
 source = ["tame"]

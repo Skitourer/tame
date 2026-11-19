@@ -1,0 +1,39 @@
+# Reference catalog: every key used in the code must exist here.
+
+[cmd.add]
+created = "Created task {id}."
+
+[cmd.version]
+output = "tame {version} (schema {schema})"
+
+[list.col]
+id = "ID"
+age = "Age"
+project = "Project"
+tags = "Tags"
+priority = "Pri"
+due = "Due"
+description = "Description"
+
+[age]
+seconds = "{n}s"
+minutes = "{n}min"
+hours = "{n}h"
+days = "{n}d"
+weeks = "{n}w"
+months = "{n}mo"
+years = "{n}y"
+
+[error]
+internal = "Internal error: {detail}"
+unknown_command = "Unknown command: {name}"
+ambiguous_command = "Ambiguous command '{name}': {candidates}"
+unexpected_argument = "Unexpected argument: {arg}"
+unknown_attribute = "Unknown attribute: {name}"
+empty_description = "A task needs a description."
+invalid_tag = "Invalid tag: '{tag}'"
+invalid_project = "Invalid project: '{project}'"
+invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
+no_matches = "No matches."
+db_open = "Cannot open database {path}: {detail}"
+db_too_new = "Database schema version {found} is newer than supported ({supported}). Upgrade tame."

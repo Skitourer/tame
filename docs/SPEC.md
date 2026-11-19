@@ -27,7 +27,8 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 | VCS | GitHub, `main` protected, PRs, Conventional Commits, SemVer, tags `vX.Y.Z` |
 | CI | GitHub Actions: lint + types + tests on `windows-latest` and `ubuntu-latest`, Py 3.12 + latest stable |
 | Repo files | `README.md`, `CHANGELOG.md` (Keep a Changelog), `CONTRIBUTING.md`, `LICENSE`, `CLAUDE.md`, `docs/`, `.github/` (CI, issue/PR templates) |
-| Data dir | `%APPDATA%\tame\` (`tasks.db`, `config.toml`); override env `TAME_HOME` |
+| Data dir | Windows: `%APPDATA%\tame\` (`tasks.db`, `config.toml`). Other OS (XDG): `tasks.db` in `$XDG_DATA_HOME/tame/` (default `~/.local/share/tame/`), `config.toml` in `$XDG_CONFIG_HOME/tame/` (default `~/.config/tame/`). Env `TAME_HOME` overrides both and holds both files |
+| Output | always UTF-8 on stdout/stderr, also when redirected |
 | Perf | lazy-import `rich` in render only; cold start target <250 ms |
 
 ## 3. Data model
@@ -136,7 +137,7 @@ Urgency U = sum, coeffs in config, shown 1 decimal:
 
 **i18n**: all UI text via `t(key, **kw)`; files `src/tame/locales/<lang>.toml`; `en.toml` = reference; missing key → EN fallback. Cmds, attrs, date keywords never translated. Test: every `t()` key in code exists in `en.toml`.
 
-**Config** `%APPDATA%\tame\config.toml`, created on first run with defaults:
+**Config** `config.toml` in the config dir (§2), created on first run with defaults:
 
 ```toml
 language = "en"
