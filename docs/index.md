@@ -54,4 +54,5 @@ This installs two commands, `tame` and its short alias `tk`. Then follow
 | [Urgency](urgency.md) | how tasks are ranked |
 | [Settings](settings.md) | `config.toml` and `tk config` |
 | [Coming from Taskwarrior](taskwarrior.md) | import, export, the `task` alias, differences |
+| [Credits & licenses](credits.md) | who made it, with what, under which licenses |
 | [Specification](SPEC.md) | the full V1 specification |

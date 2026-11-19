@@ -55,6 +55,7 @@ def main() -> None:
         expect("Undid 'done'.", tk("undo"))
         tk("+nothing", code=2)
         expect("A two-minute tour.", tk("help", "tour"))
+        expect("Permission is hereby granted", tk("help", "license"))
         tk("config", "set", "language", "fr")
         expect("Usage : tk", tk("help"))
         tk("config", "set", "language", "en")

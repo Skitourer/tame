@@ -115,7 +115,8 @@ manager can be. Many thanks to its team and community for years of great work an
 JSON format that lets tools talk to each other.
 
 TAME is an independent project: it shares no code, name or logo with Taskwarrior, and only aims
-for compatibility with its JSON import/export format.
+for compatibility with its JSON import/export format. Credits and licenses: `tk help credits`,
+`tk help license`.
 
 ## Development
 

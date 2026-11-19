@@ -252,6 +252,7 @@ def cmd_version(command: ParsedCommand, settings: Settings) -> int:
     """``version``: print the app and schema versions."""
     _no_args(command.args)
     print(t("cmd.version.output", version=__version__, schema=SCHEMA_VERSION))
+    print(t("cmd.version.more"))
     return ExitCode.OK
 
 
@@ -399,7 +400,7 @@ HELP_COMMANDS = (
 )
 """Commands shown by ``tk help``, in this order: the implemented ones."""
 
-HELP_TOPICS = ("filters", "dates", "urgency", "tour")
+HELP_TOPICS = ("filters", "dates", "urgency", "tour", "license", "credits")
 """Help topics that are not commands."""
 
 
@@ -424,12 +425,32 @@ def help_overview() -> str:
     return "\n".join(lines)
 
 
+def license_help() -> str:
+    """Return ``tk help license``: TAME's license, then the installed libraries' licenses."""
+    from tame import about
+
+    text = about.license_text()
+    parts = [t("about.license_header"), text.strip() if text else t("about.license_missing")]
+    libraries = about.libraries()
+    if libraries:
+        name_width = max(len(library.name) for library in libraries)
+        version_width = max(len(library.version) for library in libraries)
+        rows = [
+            f"  {lib.name:<{name_width}}  {lib.version:<{version_width}}  {lib.license}"
+            for lib in libraries
+        ]
+        parts.append(t("about.libraries") + "\n" + "\n".join(rows))
+    return "\n\n".join(parts)
+
+
 def help_text(subject: str) -> str:
     """Return the help of a topic, or of a command (exact name or unique prefix).
 
     Raises:
         UsageError: If ``subject`` is ambiguous or names nothing documented.
     """
+    if subject == "license":
+        return license_help()
     if subject in HELP_TOPICS:
         return t(f"help.topic.{subject}").rstrip()
     name = match_command(subject)
