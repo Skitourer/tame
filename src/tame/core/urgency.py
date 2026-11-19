@@ -55,6 +55,8 @@ def urgency(task: Task, now: datetime, coefficients: Coefficients = DEFAULT_COEF
     return score
 
 
-def by_urgency(tasks: list[Task], now: datetime) -> list[Task]:
+def by_urgency(
+    tasks: list[Task], now: datetime, coefficients: Coefficients = DEFAULT_COEFFICIENTS
+) -> list[Task]:
     """Return ``tasks`` sorted by urgency, highest first; ties keep their order."""
-    return sorted(tasks, key=lambda task: -urgency(task, now))
+    return sorted(tasks, key=lambda task: -urgency(task, now, coefficients))

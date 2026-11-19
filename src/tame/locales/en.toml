@@ -18,6 +18,11 @@ header = "Undid '{command}'."
 restored = "Restored task {task} '{description}'."
 removed = "Removed task {task} '{description}'."
 
+[cmd.config]
+default = "# default: {value}"
+set = "{name} = {value}"
+unset = "{name} = {value} (default)"
+
 [cmd.version]
 output = "tame {version} (schema {schema})"
 
@@ -65,6 +70,14 @@ many = "Delete {count} tasks?"
 one = "Modify task {task} '{description}'?"
 many = "Modify {count} tasks?"
 
+[setting.expected]
+language = "one of: {languages}"
+count = "a whole number, 0 or more"
+date_format = "a date format such as %Y-%m-%d or %d/%m/%Y"
+bool = "true or false"
+retention = "forever, or a duration such as 1w, 3m, 1y"
+number = "a number"
+
 [age]
 seconds = "{n}s"
 minutes = "{n}min"
@@ -93,5 +106,12 @@ invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
 invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "No matches."
 nothing_to_undo = "Nothing to undo."
+config_io = "Cannot read or write {path}: {detail}"
+config_syntax = "Invalid settings file {path}: {detail}"
+config_unknown_key = "Unknown setting '{name}' in {path}. Run 'tk config' to list them."
+config_unknown_option = "Unknown setting '{name}'. Run 'tk config' to list them."
+config_invalid_value = "Invalid value {value} for '{name}' in {path}: expected {expected}."
+config_usage = "Usage: tk config [get KEY | set KEY VALUE | unset KEY | path | edit]"
+editor_failed = "Cannot start the editor '{editor}': {detail}. Set the EDITOR variable."
 db_open = "Cannot open database {path}: {detail}"
 db_too_new = "Database schema version {found} is newer than supported ({supported}). Upgrade tame."

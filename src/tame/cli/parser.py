@@ -32,6 +32,7 @@ from tame.errors import UsageError, ValidationError
 COMMANDS = (
     "add",
     "alias",
+    "config",
     "delete",
     "done",
     "export",

@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `info` shows it. Overdue tasks are red, tasks due today yellow.
 - `undo` command: reverts the last `add`, `done`, `delete` or `modify`, ids included;
   repeat it to go further back.
+- Settings file `config.toml`, created on first run with commented defaults: `language`,
+  `confirm_threshold`, `date_format`, `color`, `undo.retention` (default 3 months) and
+  urgency weights. Invalid settings are reported with the key and file.
+- `config` command: list, `get`, `set`, `unset`, `path`, `edit`. `set` keeps comments.
+- Undo history older than `undo.retention` is purged on each change.
 
 ### Fixed
 

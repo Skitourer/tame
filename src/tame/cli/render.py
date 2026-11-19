@@ -6,14 +6,14 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from tame.core.models import Task
-from tame.core.urgency import urgency
+from tame.core.urgency import DEFAULT_COEFFICIENTS, Coefficients, urgency
 from tame.i18n import t
 
 if TYPE_CHECKING:
     from rich.console import JustifyMethod
 
-_DATE_FORMAT = "%Y-%m-%d"  # Configurable in roadmap step 7.
-_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+DEFAULT_DATE_FORMAT = "%Y-%m-%d"
+_TIME_FORMAT = "%H:%M:%S"
 
 
 def format_age(age: timedelta) -> str:
@@ -54,8 +54,23 @@ def row_style(task: Task, now: datetime) -> str | None:
     return "yellow" if due_day == today else None
 
 
-def print_task_table(tasks: Sequence[Task], now: datetime) -> None:
-    """Print ``tasks`` as a table on stdout; columns empty for every task are hidden."""
+def print_task_table(
+    tasks: Sequence[Task],
+    now: datetime,
+    *,
+    coefficients: Coefficients = DEFAULT_COEFFICIENTS,
+    date_format: str = DEFAULT_DATE_FORMAT,
+    color: bool = True,
+) -> None:
+    """Print ``tasks`` as a table on stdout; columns empty for every task are hidden.
+
+    Args:
+        tasks: Tasks, in display order.
+        now: Current time, for ages, urgency and due colors.
+        coefficients: Urgency weights.
+        date_format: strftime format of the Due column.
+        color: False to print without colors.
+    """
     from rich import box
     from rich.console import Console
     from rich.table import Table
@@ -73,13 +88,13 @@ def print_task_table(tasks: Sequence[Task], now: datetime) -> None:
         (
             t("list.col.due"),
             "left",
-            [task.due.astimezone().strftime(_DATE_FORMAT) if task.due else "" for task in tasks],
+            [task.due.astimezone().strftime(date_format) if task.due else "" for task in tasks],
         ),
         (t("list.col.description"), "left", [task.description for task in tasks]),
         (
             t("list.col.urgency"),
             "right",
-            [format_urgency(urgency(task, now)) for task in tasks],
+            [format_urgency(urgency(task, now, coefficients)) for task in tasks],
         ),
     ]
     shown = [col for col in columns if any(col[2])]
@@ -90,19 +105,29 @@ def print_task_table(tasks: Sequence[Task], now: datetime) -> None:
     rows = zip(*(cells for _, _, cells in shown), strict=True)
     for task, row in zip(tasks, rows, strict=True):
         table.add_row(*row, style=row_style(task, now))
-    Console(highlight=False).print(table)
+    Console(highlight=False, no_color=not color).print(table)
 
 
-def format_local(value: datetime) -> str:
-    """Format an aware datetime in local time, to the second."""
-    return value.astimezone().strftime(_DATETIME_FORMAT)
+def format_local(value: datetime, date_format: str = DEFAULT_DATE_FORMAT) -> str:
+    """Format an aware datetime in local time: ``date_format`` then the time, to the second."""
+    return value.astimezone().strftime(f"{date_format} {_TIME_FORMAT}")
 
 
-def info_rows(task: Task, now: datetime) -> list[tuple[str, str]]:
+def info_rows(
+    task: Task,
+    now: datetime,
+    *,
+    coefficients: Coefficients = DEFAULT_COEFFICIENTS,
+    date_format: str = DEFAULT_DATE_FORMAT,
+) -> list[tuple[str, str]]:
     """Return the (label, value) rows of ``task`` for ``info``; unset fields are left out.
 
     Unknown Taskwarrior attributes (``extra``) follow, under their own names.
     """
+
+    def local(value: datetime | None) -> str:
+        return format_local(value, date_format) if value else ""
+
     rows = [
         (t("info.id"), str(task.id) if task.id is not None else ""),
         (t("info.uuid"), task.uuid),
@@ -111,11 +136,11 @@ def info_rows(task: Task, now: datetime) -> list[tuple[str, str]]:
         (t("info.project"), task.project or ""),
         (t("info.tags"), " ".join(sorted(task.tags))),
         (t("info.priority"), task.priority or ""),
-        (t("info.due"), format_local(task.due) if task.due else ""),
-        (t("info.entry"), format_local(task.entry)),
-        (t("info.modified"), format_local(task.modified)),
-        (t("info.end"), format_local(task.end) if task.end else ""),
-        (t("info.urgency"), format_urgency(urgency(task, now))),
+        (t("info.due"), local(task.due)),
+        (t("info.entry"), local(task.entry)),
+        (t("info.modified"), local(task.modified)),
+        (t("info.end"), local(task.end)),
+        (t("info.urgency"), format_urgency(urgency(task, now, coefficients))),
     ]
     rows += [
         (name, value if isinstance(value, str) else json.dumps(value, ensure_ascii=False))
@@ -124,19 +149,28 @@ def info_rows(task: Task, now: datetime) -> list[tuple[str, str]]:
     return [(label, value) for label, value in rows if value]
 
 
-def print_task_info(tasks: Sequence[Task], now: datetime) -> None:
+def print_task_info(
+    tasks: Sequence[Task],
+    now: datetime,
+    *,
+    coefficients: Coefficients = DEFAULT_COEFFICIENTS,
+    date_format: str = DEFAULT_DATE_FORMAT,
+    color: bool = True,
+) -> None:
     """Print every field of each task, one two-column table per task."""
     from rich import box
     from rich.console import Console
     from rich.table import Table
 
-    console = Console(highlight=False)
+    console = Console(highlight=False, no_color=not color)
     for index, task in enumerate(tasks):
         if index:
             console.print()
         table = Table(box=box.SIMPLE_HEAD, show_edge=False, pad_edge=False, header_style="bold")
         table.add_column(t("info.col.name"))
         table.add_column(t("info.col.value"))
-        for label, value in info_rows(task, now):
+        for label, value in info_rows(
+            task, now, coefficients=coefficients, date_format=date_format
+        ):
             table.add_row(label, value)
         console.print(table)

@@ -78,7 +78,7 @@ Parse rules (in order):
 4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list done delete info export`): all tokens after cmd = filter.
 5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
-7. Filter given to a cmd that takes none (`add` before it, `alias help import undo version`) → usage error (exit 1).
+7. Filter given to a cmd that takes none (`add` before it, `alias config help import undo version`) → usage error (exit 1).
 
 Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; OR/parens out V1; default `status:pending` unless `status:` given):
 
@@ -112,6 +112,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 | export | `tk project:home export > f.json` | TW JSON to stdout |
 | import | `tk import f.json` | TW JSON; merge by uuid |
 | alias | `tk alias install task` | manage opt-in `task` shim |
+| config | `tk config set undo.retention 1y` | list / `get` / `set` / `unset` (= default) / `path` / `edit` settings (§7) |
 | help | `tk help [cmd]` | usage |
 | version | `tk version` | app + schema version |
 
@@ -144,13 +145,15 @@ Urgency U = sum, coeffs in config, shown 1 decimal:
 
 **i18n**: all UI text via `t(key, **kw)`; files `src/tame/locales/<lang>.toml`; `en.toml` = reference; missing key → EN fallback. Cmds, attrs, date keywords never translated. Test: every `t()` key in code exists in `en.toml`.
 
-**Config** `config.toml` in the config dir (§2), created on first run with defaults:
+**Config** `config.toml` in the config dir (§2), created on first run with commented defaults; missing keys = default:
 
 ```toml
 language = "en"
 confirm_threshold = 3
 date_format = "%Y-%m-%d"
 color = true
+[undo]
+retention = "3m"   # forever | <n>d/w/m/y (m = 30 d, y = 365 d)
 [urgency]
 pri_H = 6.0
 pri_M = 3.9
@@ -160,6 +163,10 @@ age = 2.0
 tags = 1.0
 project = 1.0
 ```
+
+Unknown key, wrong type or invalid value → usage error naming key and file (exit 1); every cmd but `config` stops. Each write cmd purges `undo_log` rows older than `undo.retention`.
+
+`tk config`: no args = list (`key = value`, non-defaults marked); `get KEY`; `set KEY VALUE` (validated; keeps comments, via tomlkit); `unset KEY` (writes the default); `path`; `edit` (`$VISUAL`/`$EDITOR`, else Notepad / vi; file validated after). Keys dotted: `urgency.pri_H`. Bools: true/false/yes/no/on/off/1/0.
 
 **TW JSON**
 
@@ -213,6 +220,6 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md
 4. done/delete/modify/info
 5. Dates + urgency
 6. undo
-7. i18n + config
+7. Config (7a: `config.toml`, `config` cmd, undo purge; 7b: `help`; 7c: i18n FR)
 8. TW import/export + `alias`
 9. Docs pass → v0.1.0

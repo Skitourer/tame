@@ -38,7 +38,7 @@ def test_ambiguous_command(capsys: Capture) -> None:
     assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
 
 
-@pytest.mark.parametrize("command", ["export", "import", "alias"])
+@pytest.mark.parametrize("command", ["export", "import", "alias", "help"])
 def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
     code, _, err = run(capsys, command)
     assert code == 1
@@ -459,3 +459,145 @@ def test_undo_nothing_exit_2(capsys: Capture) -> None:
 def test_undo_rejects_args(capsys: Capture) -> None:
     assert run(capsys, "undo", "3")[0] == 1
     assert run(capsys, "3", "undo")[0] == 1
+
+
+# --- config (roadmap step 7a) ----------------------------------------------------
+
+
+def test_first_run_creates_config(capsys: Capture, tame_home: Path) -> None:
+    run(capsys, "version")
+    assert (tame_home / "config.toml").is_file()
+
+
+def test_config_lists_settings_and_marks_changes(capsys: Capture) -> None:
+    code, out, _ = run(capsys, "config")
+    assert code == 0
+    assert out.splitlines()[:3] == [
+        'language = "en"',
+        "confirm_threshold = 3",
+        'date_format = "%Y-%m-%d"',
+    ]
+    assert 'undo.retention = "3m"' in out
+    assert "urgency.pri_H = 6.0" in out
+    assert "default" not in out
+    run(capsys, "config", "set", "confirm_threshold", "5")
+    assert "confirm_threshold = 5  # default: 3" in run(capsys, "config")[1]
+
+
+def test_config_get_set_unset(capsys: Capture) -> None:
+    assert run(capsys, "config", "get", "undo.retention") == (0, "3m\n", "")
+    assert run(capsys, "config", "set", "undo.retention", "1y") == (
+        0,
+        'undo.retention = "1y"\n',
+        "",
+    )
+    assert run(capsys, "config", "get", "undo.retention")[1] == "1y\n"
+    assert run(capsys, "config", "unset", "undo.retention") == (
+        0,
+        'undo.retention = "3m" (default)\n',
+        "",
+    )
+    assert run(capsys, "config", "get", "color")[1] == "true\n"
+
+
+def test_config_set_invalid_value(capsys: Capture, tame_home: Path) -> None:
+    code, _, err = run(capsys, "config", "set", "color", "maybe")
+    assert code == 1
+    assert err == (
+        f"Invalid value \"maybe\" for 'color' in {tame_home / 'config.toml'}: "
+        "expected true or false.\n"
+    )
+
+
+def test_config_unknown_setting(capsys: Capture) -> None:
+    assert run(capsys, "config", "get", "colour") == (
+        1,
+        "",
+        "Unknown setting 'colour'. Run 'tk config' to list them.\n",
+    )
+
+
+@pytest.mark.parametrize("args", [["get"], ["set", "color"], ["frob"], ["path", "x"]])
+def test_config_usage(capsys: Capture, args: list[str]) -> None:
+    assert run(capsys, "config", *args) == (
+        1,
+        "",
+        "Usage: tk config [get KEY | set KEY VALUE | unset KEY | path | edit]\n",
+    )
+
+
+def test_config_path(capsys: Capture, tame_home: Path) -> None:
+    assert run(capsys, "config", "path") == (0, f"{tame_home / 'config.toml'}\n", "")
+
+
+def test_config_rejects_filter(capsys: Capture) -> None:
+    assert run(capsys, "+x", "config")[0] == 1
+
+
+def test_invalid_config_blocks_commands_but_config_can_fix_it(
+    capsys: Capture, tame_home: Path
+) -> None:
+    tame_home.mkdir()
+    (tame_home / "config.toml").write_text("color = 1\n", encoding="utf-8")
+    code, _, err = run(capsys, "list")
+    assert code == 1
+    assert "Invalid value 1 for 'color'" in err
+    assert run(capsys, "config", "set", "color", "false")[0] == 0
+    assert run(capsys, "list") == (2, "", "No matches.\n")
+
+
+def test_config_edit_opens_editor_then_validates(
+    capsys: Capture, tame_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_editor(argv: list[str], check: bool) -> None:
+        calls.append(argv)
+        Path(argv[-1]).write_text("confirm_threshold = -2\n", encoding="utf-8")
+
+    monkeypatch.setenv("EDITOR", "myedit --wait")
+    monkeypatch.delenv("VISUAL", raising=False)
+    monkeypatch.setattr("subprocess.run", fake_editor)
+    code, _, err = run(capsys, "config", "edit")
+    assert calls == [["myedit", "--wait", str(tame_home / "config.toml")]]
+    assert code == 1
+    assert "confirm_threshold" in err
+
+
+def test_config_edit_editor_missing(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("VISUAL", "no-such-editor-xyz")
+    code, _, err = run(capsys, "config", "edit")
+    assert code == 1
+    assert err.startswith("Cannot start the editor 'no-such-editor-xyz'")
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_confirm_threshold_from_config(capsys: Capture) -> None:
+    run(capsys, "config", "set", "confirm_threshold", "10")
+    code, out, _ = run(capsys, "+t", "done")
+    assert (code, out.count("Completed"), "?" in out) == (0, 5, False)
+
+
+def test_date_format_from_config(capsys: Capture) -> None:
+    run(capsys, "add", "x", "due:2026-12-15")
+    run(capsys, "config", "set", "date_format", "%d/%m/%Y")
+    assert "15/12/2026" in run(capsys, "list")[1]
+    assert "15/12/2026 00:00:00" in run(capsys, "1", "info")[1]
+
+
+def test_urgency_coefficients_from_config(capsys: Capture) -> None:
+    run(capsys, "add", "tagged", "+x")
+    run(capsys, "add", "high", "pri:H")
+    run(capsys, "config", "set", "urgency.tags", "10")
+    assert descriptions(capsys) == ["1 tagged", "2 high"]
+
+
+def test_cold_start_does_not_import_tomlkit() -> None:
+    code = (
+        "import sys; from tame.__main__ import main; main(['list']); "
+        "print('tomlkit' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert result.stdout.splitlines()[-1] == "False"

@@ -3,7 +3,7 @@
 import uuid as uuid_lib
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from tame.core.dates import utc_now
 from tame.core.filters import Filter
@@ -43,11 +43,15 @@ class TaskService:
     Args:
         repo: Open task repository.
         clock: Returns the current aware datetime; injected for tests.
+        undo_retention: Undo history older than this is purged on each write; None keeps all.
     """
 
-    def __init__(self, repo: TaskRepo, clock: Clock = utc_now) -> None:
+    def __init__(
+        self, repo: TaskRepo, clock: Clock = utc_now, undo_retention: timedelta | None = None
+    ) -> None:
         self._repo = repo
         self._clock = clock
+        self._undo_retention = undo_retention
 
     def add(
         self,
@@ -87,7 +91,7 @@ class TaskService:
         with self._repo.transaction():
             task = replace(task, id=self._repo.max_pending_id() + 1)
             self._repo.insert(task)
-            self._repo.push_undo(now, "add", [(task.uuid, None)])
+            self._log(now, "add", [(task.uuid, None)])
         return task
 
     def complete(self, tasks: Iterable[Task]) -> list[Task]:
@@ -121,7 +125,7 @@ class TaskService:
             return []
         with self._repo.transaction():
             ids = self._repo.pending_ids()
-            self._repo.push_undo(now, cmd, self._snapshot(changed), ids)
+            self._log(now, cmd, self._snapshot(changed), ids)
             for task in changed:
                 self._repo.update(task)
             self._repo.renumber()
@@ -140,7 +144,7 @@ class TaskService:
         if not changed:
             return []
         with self._repo.transaction():
-            self._repo.push_undo(now, "modify", self._snapshot(changed))
+            self._log(now, "modify", self._snapshot(changed))
             for task in changed:
                 self._repo.update(task)
         return changed
@@ -175,6 +179,18 @@ class TaskService:
             self._repo.drop_undo(entry.seq)
             tasks = tuple(task for uuid in restored if (task := self._repo.get(uuid)))
         return UndoResult(cmd=entry.cmd, restored=tasks, removed=tuple(removed))
+
+    def _log(
+        self,
+        now: datetime,
+        cmd: str,
+        before: list[tuple[str, Task | None]],
+        ids: dict[str, int] | None = None,
+    ) -> None:
+        """Log a write command for undo, and purge history past the retention."""
+        self._repo.push_undo(now, cmd, before, ids)
+        if self._undo_retention is not None:
+            self._repo.prune_undo(now - self._undo_retention)
 
     def _snapshot(self, tasks: Iterable[Task]) -> list[tuple[str, Task | None]]:
         """Return the stored state of ``tasks``, for the undo log."""

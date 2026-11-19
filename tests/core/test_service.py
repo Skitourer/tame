@@ -243,3 +243,20 @@ def test_no_op_commands_are_not_logged(service: TaskService) -> None:
     assert service.complete([done]) == []
     assert service.modify([done], Changes(tags_add=frozenset({"a"}))) == []
     assert service.undo().cmd == "done"
+
+
+def test_writes_purge_undo_history_past_retention(repo: TaskRepo, frozen_now: datetime) -> None:
+    old = TaskService(repo, clock=lambda: frozen_now - timedelta(days=91))
+    old.add("old")
+    recent = TaskService(repo, clock=lambda: frozen_now, undo_retention=timedelta(days=90))
+    recent.add("recent")
+    assert recent.undo().removed[0].description == "recent"
+    with pytest.raises(NoMatchError):
+        recent.undo()  # "old" was purged by the second add
+
+
+def test_no_retention_keeps_everything(repo: TaskRepo, frozen_now: datetime) -> None:
+    TaskService(repo, clock=lambda: frozen_now - timedelta(days=4000)).add("old")
+    service = TaskService(repo, clock=lambda: frozen_now)
+    service.add("recent")
+    assert [service.undo().cmd for _ in range(2)] == ["add", "add"]

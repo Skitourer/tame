@@ -201,3 +201,16 @@ def test_pending_ids_and_set_ids(repo: TaskRepo) -> None:
     with repo.transaction():
         repo.set_ids({"a": 2, "b": 1})
     assert repo.pending_ids() == {"a": 2, "b": 1}
+
+
+def test_prune_undo(repo: TaskRepo) -> None:
+    with repo.transaction():
+        repo.push_undo(T0 - timedelta(days=2), "add", [("old", None)])
+        repo.push_undo(T0, "add", [("new", None)])
+        repo.prune_undo(T0 - timedelta(days=1))
+    entry = repo.last_undo()
+    assert entry is not None
+    assert entry.before == (("new", None),)
+    with repo.transaction():
+        repo.drop_undo(entry.seq)
+    assert repo.last_undo() is None

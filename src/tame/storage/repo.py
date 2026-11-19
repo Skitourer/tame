@@ -212,6 +212,10 @@ class TaskRepo:
         """Delete the ``undo_log`` row ``seq``."""
         self._conn.execute("DELETE FROM undo_log WHERE seq = ?", (seq,))
 
+    def prune_undo(self, before: datetime) -> None:
+        """Delete the ``undo_log`` rows logged before ``before``."""
+        self._conn.execute("DELETE FROM undo_log WHERE ts < ?", (to_db(before),))
+
     def _insert_tags(self, task: Task) -> None:
         self._conn.executemany(
             "INSERT INTO task_tags(uuid, tag) VALUES (?, ?)",

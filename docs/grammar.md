@@ -23,7 +23,8 @@ tk [filter]                # = tk [filter] list
 5. `--` stops parsing: it is never a command, and everything after it is plain words
    (`tk add -- done the report`).
 6. An unknown `attr:` is an error (exit code 1).
-7. Commands that take no filter (`add`, `alias`, `help`, `import`, `undo`, `version`) reject one
+7. Commands that take no filter (`add`, `alias`, `config`, `help`, `import`, `undo`, `version`)
+   reject one
    (exit code 1).
 
 If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`.

@@ -38,3 +38,12 @@ def lookup(key: str) -> str | None:
             return None
         node = node[part]
     return node if isinstance(node, str) else None
+
+
+@cache
+def available_languages() -> tuple[str, ...]:
+    """Return the codes of the bundled UI languages, sorted (e.g. ``("en",)``)."""
+    locales = files("tame").joinpath("locales")
+    return tuple(
+        sorted(p.name.removesuffix(".toml") for p in locales.iterdir() if p.name.endswith(".toml"))
+    )

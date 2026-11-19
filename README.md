@@ -43,7 +43,25 @@ Filter syntax and parsing rules: [docs/grammar.md](docs/grammar.md).
 Tasks are stored in `%APPDATA%\tame\tasks.db` on Windows and `~/.local/share/tame/tasks.db` on
 Linux (`$XDG_DATA_HOME` is honored). Set `TAME_HOME` to use another directory.
 
-Planned V1 commands: `add list done delete modify info undo export import help version alias`.
+## Settings
+
+Settings live in `config.toml`, next to `tasks.db` on Windows (`~/.config/tame` on Linux). It is
+created on first run, with every option and a comment. Edit it by hand, or:
+
+```sh
+tk config                              # list settings; changed ones show their default
+tk config set undo.retention 1y        # keep undo history one year (default 3m; or forever)
+tk config set confirm_threshold 5      # ask before changing more than 5 tasks
+tk config set date_format %d/%m/%Y
+tk config unset date_format            # back to the default
+tk config get color
+tk config edit                         # open in $EDITOR (Notepad on Windows)
+tk config path
+```
+
+Other options: `language`, `color`, and the urgency weights `urgency.pri_H`, `urgency.due`...
+
+Planned V1 commands: `add list done delete modify info undo config export import help version alias`.
 See [docs/SPEC.md](docs/SPEC.md) for the full specification.
 
 ## Development
