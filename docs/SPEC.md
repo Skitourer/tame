@@ -22,7 +22,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 | Deps | runtime: `rich`, `python-dateutil` only; stdlib `sqlite3`, `tomllib`; no argparse (custom parser) |
 | Lint/format | `ruff check` + `ruff format`, line 100 |
 | Types | `mypy --strict` on `src/` |
-| Tests | `pytest`, `pytest-cov`, target ≥90% on `core` |
+| Tests | `pytest`, `pytest-cov`; coverage ≥90% enforced (`fail_under`), report in the CI run summary; badge via GitHub Pages (step 9e), no third-party service |
 | Hooks | `pre-commit`: ruff, mypy, end-of-file, trailing-ws |
 | VCS | GitHub, `main` protected, PRs, Conventional Commits, SemVer, tags `vX.Y.Z` |
 | CI | GitHub Actions: lint + types + tests on `windows-latest` and `ubuntu-latest`, Py 3.12 + latest stable |
@@ -224,5 +224,5 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md
 6. undo
 7. Config (7a: `config.toml`, `config` cmd, undo purge; 7b: `help`; 7c: i18n FR)
 8. TW import/export + `alias` (8a: `export`/`import`, `status:all`; 8b: `alias`)
-9. Extras before release (9a: README; 9b: onboarding; 9c: easter eggs; 9d: badges + coverage; 9e: docs site + `docs/commands.md`)
+9. Extras before release (9a: README; 9b: onboarding; 9c: easter eggs; 9d: badges + coverage gate; 9e: docs site + `docs/commands.md`)
 10. Install check + docs pass → v0.1.0

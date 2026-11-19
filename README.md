@@ -1,5 +1,11 @@
 # TAME
 
+[![CI](https://github.com/Skitourer/tame/actions/workflows/ci.yml/badge.svg)](https://github.com/Skitourer/tame/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
+
 **TAME Arranges My Errands.** A small, fast to-do list for your terminal: add a task in one
 line, see what matters most, tick it off, move on.
 
