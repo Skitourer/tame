@@ -2,12 +2,13 @@
 
 import json
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
-from typing import Self
+from typing import Any, Self
 
 from tame.core.models import Priority, Status, Task
 from tame.errors import StorageError
@@ -15,7 +16,40 @@ from tame.storage.migrations import migrate
 
 DB_FILENAME = "tasks.db"
 
-_COLUMNS = 'uuid, id, description, status, project, priority, due, entry, modified, "end", extra'
+_FIELDS = (
+    "uuid",
+    "id",
+    "description",
+    "status",
+    "project",
+    "priority",
+    "due",
+    "entry",
+    "modified",
+    "end",
+    "extra",
+)
+_COLUMNS = ", ".join(f'"{name}"' for name in _FIELDS)
+
+
+@dataclass(frozen=True, slots=True)
+class UndoEntry:
+    """One ``undo_log`` row: the state to restore to undo a write command.
+
+    Attributes:
+        seq: Log sequence number.
+        ts: When the command ran.
+        cmd: Command name (``add``, ``done``, ``delete``, ``modify``).
+        before: ``(uuid, task)`` for each task the command changed; ``task`` is None
+            if the command created it.
+        ids: Short ids of all pending tasks before the command, if it renumbered them.
+    """
+
+    seq: int
+    ts: datetime
+    cmd: str
+    before: tuple[tuple[str, Task | None], ...]
+    ids: Mapping[str, int] | None = None
 
 
 def to_db(value: datetime) -> str:
@@ -91,7 +125,7 @@ class TaskRepo:
             StorageError: If no task has this uuid.
         """
         uuid, *values = _to_row(task)
-        assignments = ", ".join(f"{column} = ?" for column in _COLUMNS.split(", ")[1:])
+        assignments = ", ".join(f'"{name}" = ?' for name in _FIELDS[1:])
         cursor = self._conn.execute(
             f"UPDATE tasks SET {assignments} WHERE uuid = ?", (*values, uuid)
         )
@@ -110,6 +144,73 @@ class TaskRepo:
             "UPDATE tasks SET id = ? WHERE uuid = ?",
             [(number, row["uuid"]) for number, row in enumerate(rows, start=1)],
         )
+
+    def restore(self, task: Task) -> None:
+        """Store ``task`` as is: update it if its uuid exists, else insert it."""
+        if self.get(task.uuid) is None:
+            self.insert(task)
+        else:
+            self.update(task)
+
+    def remove(self, uuid: str) -> None:
+        """Delete the task row for good (undo of ``add`` only; ``delete`` is soft)."""
+        self._conn.execute("DELETE FROM tasks WHERE uuid = ?", (uuid,))
+
+    def pending_ids(self) -> dict[str, int]:
+        """Return ``{uuid: short id}`` for all pending tasks."""
+        rows = self._conn.execute("SELECT uuid, id FROM tasks WHERE status = 'pending'")
+        return {row["uuid"]: row["id"] for row in rows}
+
+    def set_ids(self, ids: Mapping[str, int]) -> None:
+        """Give the tasks in ``ids`` these short ids; clear every other task's id."""
+        self._conn.execute("UPDATE tasks SET id = NULL")
+        self._conn.executemany(
+            "UPDATE tasks SET id = ? WHERE uuid = ?", [(id_, uuid) for uuid, id_ in ids.items()]
+        )
+
+    def push_undo(
+        self,
+        ts: datetime,
+        cmd: str,
+        before: Sequence[tuple[str, Task | None]],
+        ids: Mapping[str, int] | None = None,
+    ) -> None:
+        """Append an ``undo_log`` row; ``before`` is stored as a JSON snapshot."""
+        snapshot: dict[str, Any] = {
+            "tasks": [
+                {"uuid": uuid, "task": _task_to_json(task) if task else None}
+                for uuid, task in before
+            ]
+        }
+        if ids is not None:
+            snapshot["ids"] = dict(ids)
+        self._conn.execute(
+            "INSERT INTO undo_log(ts, cmd, before) VALUES (?, ?, ?)",
+            (to_db(ts), cmd, json.dumps(snapshot, sort_keys=True)),
+        )
+
+    def last_undo(self) -> UndoEntry | None:
+        """Return the most recent ``undo_log`` row, or None if the log is empty."""
+        row = self._conn.execute(
+            "SELECT seq, ts, cmd, before FROM undo_log ORDER BY seq DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return None
+        snapshot = json.loads(row["before"])
+        return UndoEntry(
+            seq=row["seq"],
+            ts=from_db(row["ts"]),
+            cmd=row["cmd"],
+            before=tuple(
+                (item["uuid"], _task_from_json(item["task"]) if item["task"] else None)
+                for item in snapshot["tasks"]
+            ),
+            ids=snapshot.get("ids"),
+        )
+
+    def drop_undo(self, seq: int) -> None:
+        """Delete the ``undo_log`` row ``seq``."""
+        self._conn.execute("DELETE FROM undo_log WHERE seq = ?", (seq,))
 
     def _insert_tags(self, task: Task) -> None:
         self._conn.executemany(
@@ -164,7 +265,15 @@ def _to_row(task: Task) -> tuple[str | int | None, ...]:
     )
 
 
-def _to_task(row: sqlite3.Row, tags: frozenset[str]) -> Task:
+def _task_to_json(task: Task) -> dict[str, Any]:
+    return {**dict(zip(_FIELDS, _to_row(task), strict=True)), "tags": sorted(task.tags)}
+
+
+def _task_from_json(data: Mapping[str, Any]) -> Task:
+    return _to_task(data, frozenset(data["tags"]))
+
+
+def _to_task(row: Mapping[str, Any] | sqlite3.Row, tags: frozenset[str]) -> Task:
     return Task(
         uuid=row["uuid"],
         id=row["id"],

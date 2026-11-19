@@ -142,3 +142,62 @@ def test_renumber_by_entry_and_clears_closed_ids(repo: TaskRepo) -> None:
         ("c", 3),
     ]
     assert repo.get("d").id is None  # type: ignore[union-attr]
+
+
+# --- undo support -----------------------------------------------------------------
+
+
+def test_undo_log_round_trip(repo: TaskRepo) -> None:
+    task = make_task(
+        tags=frozenset({"a"}), due=T0, priority=Priority.H, extra={"wait": "x"}, project="p"
+    )
+    with repo.transaction():
+        repo.push_undo(T0, "modify", [(task.uuid, task), ("new-uuid", None)], {"u": 1})
+    entry = repo.last_undo()
+    assert entry is not None
+    assert (entry.ts, entry.cmd, entry.ids) == (T0, "modify", {"u": 1})
+    assert entry.before == ((task.uuid, task), ("new-uuid", None))
+
+
+def test_last_undo_is_latest_and_drop_removes_it(repo: TaskRepo) -> None:
+    assert repo.last_undo() is None
+    with repo.transaction():
+        repo.push_undo(T0, "add", [("a", None)])
+        repo.push_undo(T0, "done", [("b", None)])
+    latest = repo.last_undo()
+    assert latest is not None
+    assert (latest.cmd, latest.ids) == ("done", None)
+    with repo.transaction():
+        repo.drop_undo(latest.seq)
+    assert repo.last_undo().cmd == "add"  # type: ignore[union-attr]
+
+
+def test_restore_inserts_or_updates(repo: TaskRepo) -> None:
+    task = make_task(tags=frozenset({"a"}))
+    with repo.transaction():
+        repo.restore(task)
+    assert repo.get(task.uuid) == task
+    changed = make_task(description="other", tags=frozenset({"b"}))
+    with repo.transaction():
+        repo.restore(changed)
+    assert repo.get(task.uuid) == changed
+
+
+def test_remove_deletes_task_and_tags(repo: TaskRepo) -> None:
+    task = make_task(tags=frozenset({"a"}))
+    with repo.transaction():
+        repo.insert(task)
+        repo.remove(task.uuid)
+    assert repo.get(task.uuid) is None
+    assert repo.by_status(Status.PENDING) == []
+
+
+def test_pending_ids_and_set_ids(repo: TaskRepo) -> None:
+    with repo.transaction():
+        repo.insert(make_task(uuid="a", id=1))
+        repo.insert(make_task(uuid="b", id=2))
+        repo.insert(make_task(uuid="c", id=None, status=Status.COMPLETED))
+    assert repo.pending_ids() == {"a": 1, "b": 2}
+    with repo.transaction():
+        repo.set_ids({"a": 2, "b": 1})
+    assert repo.pending_ids() == {"a": 2, "b": 1}

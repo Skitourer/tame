@@ -60,6 +60,8 @@ CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT); -- schema_version
 
 Each write cmd = 1 transaction + 1 undo_log row. Migrations keyed on `meta.schema_version`.
 
+`before` = `{"tasks": [{uuid, task|null}], "ids"?: {uuid: id}}`: prior state of each changed task (null = created by the cmd, undo removes it); `ids` = pending ids before done/delete renumbering. Cmds that change nothing log nothing. `undo` pops the last row: repeated `undo` goes further back; undo is not itself undoable; empty log → exit 2.
+
 ## 4. CLI grammar
 
 ```

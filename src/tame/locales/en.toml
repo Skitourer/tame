@@ -13,6 +13,11 @@ task = "Deleted task {task} '{description}'."
 task = "Modified task {task} '{description}'."
 unchanged = "No task changed."
 
+[cmd.undo]
+header = "Undid '{command}'."
+restored = "Restored task {task} '{description}'."
+removed = "Removed task {task} '{description}'."
+
 [cmd.version]
 output = "tame {version} (schema {schema})"
 
@@ -87,5 +92,6 @@ invalid_project = "Invalid project: '{project}'"
 invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
 invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "No matches."
+nothing_to_undo = "Nothing to undo."
 db_open = "Cannot open database {path}: {detail}"
 db_too_new = "Database schema version {found} is newer than supported ({supported}). Upgrade tame."

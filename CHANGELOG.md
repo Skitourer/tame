@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `today`/`tomorrow`/`yesterday`, weekdays, `eow`/`eom`/`eoy`, offsets (`+3d`, `-1w`...).
 - Urgency (priority, due, age, tags, project): `list` sorts by it and shows it (`Urg`),
   `info` shows it. Overdue tasks are red, tasks due today yellow.
+- `undo` command: reverts the last `add`, `done`, `delete` or `modify`, ids included;
+  repeat it to go further back.
 
 ### Fixed
 

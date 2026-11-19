@@ -167,6 +167,19 @@ def cmd_info(command: ParsedCommand) -> int:
     return ExitCode.OK
 
 
+def cmd_undo(command: ParsedCommand) -> int:
+    """``undo``: revert the last write command."""
+    _no_args(command.args)
+    with open_service() as service:
+        result = service.undo()
+    print(t("cmd.undo.header", command=result.cmd))
+    for task in result.restored:
+        print(t("cmd.undo.restored", task=task_ref(task), description=task.description))
+    for task in result.removed:
+        print(t("cmd.undo.removed", task=task_ref(task), description=task.description))
+    return ExitCode.OK
+
+
 def cmd_version(command: ParsedCommand) -> int:
     """``version``: print the app and schema versions."""
     _no_args(command.args)
@@ -186,6 +199,7 @@ HANDLERS: dict[str, Callable[[ParsedCommand], int]] = {
     "info": cmd_info,
     "list": cmd_list,
     "modify": cmd_modify,
+    "undo": cmd_undo,
     "version": cmd_version,
 }
 

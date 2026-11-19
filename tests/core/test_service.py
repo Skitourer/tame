@@ -7,7 +7,7 @@ from tame.core.dates import utc_now
 from tame.core.filters import Filter
 from tame.core.models import NONE, Changes, Priority, Status
 from tame.core.service import TaskService
-from tame.errors import ValidationError
+from tame.errors import NoMatchError, ValidationError
 from tame.storage.repo import TaskRepo
 
 
@@ -178,3 +178,68 @@ def test_modify_sets_and_clears_due(service: TaskService, later: datetime) -> No
 
 def test_changes_with_due_is_truthy(later: datetime) -> None:
     assert Changes(due=later)
+
+
+# --- undo ---------------------------------------------------------------------------
+
+
+def test_undo_nothing(service: TaskService) -> None:
+    with pytest.raises(NoMatchError) as exc:
+        service.undo()
+    assert exc.value.key == "error.nothing_to_undo"
+
+
+def test_undo_add_removes_task(service: TaskService, repo: TaskRepo) -> None:
+    kept = service.add("kept")
+    added = service.add("added", tags=["x"])
+    result = service.undo()
+    assert (result.cmd, result.restored, result.removed) == ("add", (), (added,))
+    assert repo.get(added.uuid) is None
+    assert service.query() == [kept]
+
+
+def test_undo_done_restores_task_and_ids(service: TaskService, repo: TaskRepo) -> None:
+    one, two, three = (service.add(name) for name in ("one", "two", "three"))
+    service.complete([two])
+    result = service.undo()
+    assert (result.cmd, result.restored, result.removed) == ("done", (two,), ())
+    assert service.query() == [one, two, three]
+    assert repo.get(two.uuid) == two
+
+
+def test_undo_restores_original_ids_not_renumbered_ones(
+    service: TaskService, repo: TaskRepo
+) -> None:
+    # Ids out of entry order (as after an import) must come back exactly.
+    one, two = service.add("one"), service.add("two")
+    with repo.transaction():
+        repo.set_ids({one.uuid: 2, two.uuid: 1})
+    service.delete([service.query()[0]])
+    service.undo()
+    assert repo.pending_ids() == {one.uuid: 2, two.uuid: 1}
+
+
+def test_undo_modify_restores_fields(service: TaskService, repo: TaskRepo) -> None:
+    task = service.add("Call bank", project="home", tags=["phone"], priority="H")
+    service.modify([task], Changes(description="x", project=NONE, tags_remove=frozenset({"phone"})))
+    result = service.undo()
+    assert (result.cmd, result.restored) == ("modify", (task,))
+    assert repo.get(task.uuid) == task
+
+
+def test_undo_is_multi_level(service: TaskService) -> None:
+    task = service.add("one")
+    service.modify([task], Changes(description="two"))
+    service.complete(service.query())
+    assert [service.undo().cmd for _ in range(3)] == ["done", "modify", "add"]
+    assert service.query() == []
+    with pytest.raises(NoMatchError):
+        service.undo()
+
+
+def test_no_op_commands_are_not_logged(service: TaskService) -> None:
+    task = service.add("one", tags=["a"])
+    (done,) = service.complete([task])
+    assert service.complete([done]) == []
+    assert service.modify([done], Changes(tags_add=frozenset({"a"}))) == []
+    assert service.undo().cmd == "done"

@@ -38,7 +38,7 @@ def test_ambiguous_command(capsys: Capture) -> None:
     assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
 
 
-@pytest.mark.parametrize("command", ["undo", "export", "import", "alias"])
+@pytest.mark.parametrize("command", ["export", "import", "alias"])
 def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
     code, _, err = run(capsys, command)
     assert code == 1
@@ -423,3 +423,39 @@ def test_add_invalid_due(capsys: Capture) -> None:
         "",
         "Invalid date: 'someday' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)\n",
     )
+
+
+# --- undo (roadmap step 6) -------------------------------------------------------
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_undo_spec_example(capsys: Capture) -> None:
+    run(capsys, "2,4", "done")
+    assert run(capsys, "undo") == (
+        0,
+        "Undid 'done'.\nRestored task 2 'two'.\nRestored task 4 'four'.\n",
+        "",
+    )
+    assert descriptions(capsys) == ["1 one", "2 two", "3 three", "4 four", "5 five"]
+
+
+def test_undo_add(capsys: Capture) -> None:
+    run(capsys, "add", "Buy", "milk")
+    assert run(capsys, "undo") == (0, "Undid 'add'.\nRemoved task 1 'Buy milk'.\n", "")
+    assert run(capsys, "list") == (2, "", "No matches.\n")
+
+
+def test_undo_modify(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank", "+phone")
+    run(capsys, "1", "modify", "-phone", "Call", "the", "bank")
+    assert run(capsys, "undo")[1] == "Undid 'modify'.\nRestored task 1 'Call bank'.\n"
+    assert descriptions(capsys, "+phone") == ["1 bank"]
+
+
+def test_undo_nothing_exit_2(capsys: Capture) -> None:
+    assert run(capsys, "undo") == (2, "", "Nothing to undo.\n")
+
+
+def test_undo_rejects_args(capsys: Capture) -> None:
+    assert run(capsys, "undo", "3")[0] == 1
+    assert run(capsys, "3", "undo")[0] == 1
