@@ -25,6 +25,13 @@ settings and aliases in `.sandbox/` (ignored by git).
 .\scripts\tk.ps1 --reset                        # start over
 ```
 
+Documentation site (MkDocs Material, deployed to GitHub Pages from `main`):
+
+```sh
+uv run --group docs mkdocs serve       # preview at http://127.0.0.1:8000
+uv run --group docs mkdocs build --strict
+```
+
 Easter eggs are hidden in the code and tests (hashed triggers, ROT13 replies). To list
 them: `uv run python scripts/spoilers.py` (spoilers!).
 

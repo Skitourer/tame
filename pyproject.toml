@@ -41,6 +41,9 @@ dev = [
     "ruff>=0.8",
     "types-python-dateutil>=2.9",
 ]
+docs = [
+    "mkdocs-material>=9.8.2",
+]
 
 [build-system]
 requires = ["hatchling"]

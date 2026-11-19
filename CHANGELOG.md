@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tk help tour`: a two-minute guided tour.
 - README badges (CI, Python, license, ruff, mypy). CI fails under 90 % test coverage
   and shows the coverage report in each run's summary.
+- Documentation site (MkDocs Material on GitHub Pages): getting started, commands,
+  grammar, urgency, settings, coming from Taskwarrior; coverage and docs badges.
 
 ### Fixed
 

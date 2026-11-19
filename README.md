@@ -1,6 +1,8 @@
 # TAME
 
 [![CI](https://github.com/Skitourer/tame/actions/workflows/ci.yml/badge.svg)](https://github.com/Skitourer/tame/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://skitourer.github.io/tame/badges/coverage.json)](https://github.com/Skitourer/tame/actions/workflows/docs.yml)
+[![Docs](https://img.shields.io/badge/docs-skitourer.github.io%2Ftame-orange)](https://skitourer.github.io/tame/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -44,7 +46,7 @@ uv tool install git+https://github.com/skitourer/tame
 ```
 
 This installs two commands: `tame` and its short alias `tk`. Run `tk` to get started, or take
-the two-minute tour: `tk help tour`.
+the two-minute tour: `tk help tour`. Full documentation: **https://skitourer.github.io/tame/**.
 
 ## Usage
 
