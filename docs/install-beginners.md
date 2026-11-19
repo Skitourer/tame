@@ -41,7 +41,7 @@ You can read the scripts first: [install.ps1](install.ps1), [install.sh](install
 Run the same line again to update TAME. To remove it:
 
 ```sh
-uv tool uninstall tame
+uv tool uninstall tame-tasks
 ```
 
 Your tasks stay in their folder (see [Getting started](getting-started.md#where-is-my-data)).

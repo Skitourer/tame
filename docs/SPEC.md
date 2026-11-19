@@ -18,7 +18,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 |---|---|
 | Lang | Python 3.12 baseline (`requires-python >=3.12`, ruff `target-version py312`); no deprecated APIs; full type hints |
 | Pkg/env | `uv`; `pyproject.toml` (PEP 621), backend `hatchling`, `src/` layout, `uv.lock` committed |
-| Install | `uv tool install git+https://github.com/skitourer/tame` (PyPI later as `tame-tasks`); one-line installers `install.ps1`/`install.sh` on the docs site install uv if missing, then TAME; `[project.scripts] tame = "tame.__main__:main"`, `tk = "tame.__main__:main"` |
+| Install | `uv tool install git+https://github.com/skitourer/tame` (PyPI: `tame-tasks`, published by `release.yml` on a `vX.Y.Z` tag via trusted publishing, after approval in the `pypi` environment); one-line installers `install.ps1`/`install.sh` on the docs site install uv if missing, then TAME; `[project.scripts] tame = "tame.__main__:main"`, `tk = "tame.__main__:main"` |
 | Deps | runtime: `rich`, `python-dateutil` only; stdlib `sqlite3`, `tomllib`; no argparse (custom parser) |
 | Lint/format | `ruff check` + `ruff format`, line 100 |
 | Types | `mypy --strict` on `src/` |
@@ -214,7 +214,7 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md  (+ site pages; mkdocs.yml)
 - [ ] `en.toml` complete; i18n key test green
 - [ ] CI and Docs workflows green (ruff, mypy, pytest, both OS; site built and deployed)
 - [ ] Install from GitHub checked (`uv tool install git+…`) on a clean tool dir
-- [ ] Version bumped (SemVer) + git tag + GitHub release
+- [ ] Version bumped (SemVer) and CHANGELOG `## [X.Y.Z]` section; tag `vX.Y.Z` pushed → `release.yml` publishes to PyPI (approve it) and creates the GitHub release
 
 **Roadmap V1** (1 PR each):
 

@@ -1083,7 +1083,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tame"
+name = "tame-tasks"
 source = { editable = "." }
 dependencies = [
     { name = "python-dateutil" },
