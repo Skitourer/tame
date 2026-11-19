@@ -18,8 +18,9 @@ tk [filter]                # = tk [filter] list
 4. Classic order (nothing before the command): the leading filter-like tokens after the command
    are the filter (ids, uuids, `+tag`, `-tag`, `attr:value`), the rest are arguments. For
    `modify`, only leading ids/uuids are the filter.
-   Commands without arguments (`list`, `done`, `delete`, `info`, `export`) treat all their
-   tokens as filter, so `tk list +phone bank` works.
+   Commands without arguments (`list`, `done`, `delete`, `info`, `export`, `print`) treat all
+   their tokens as filter, so `tk list +phone bank` works (`print` first takes out its
+   `--file PATH` option).
 5. `--` stops parsing: it is never a command, and everything after it is plain words
    (`tk add -- done the report`). Before it, `--help` turns the line into
    `tk help <command>` (`tk 3 done --help`), or `tk help` if there is no command.

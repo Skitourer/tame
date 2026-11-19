@@ -41,21 +41,26 @@ COMMANDS = (
     "info",
     "list",
     "modify",
+    "print",
     "undo",
     "version",
 )
 """V1 command names (never translated)."""
 
-FILTER_COMMANDS = frozenset({"list", "done", "delete", "modify", "info", "export"})
+FILTER_COMMANDS = frozenset({"list", "done", "delete", "modify", "info", "export", "print"})
 """Commands that accept a filter."""
 
-_ARGLESS_COMMANDS = frozenset({"list", "done", "delete", "info", "export"})
-"""Filter commands without arguments: their trailing tokens extend the filter."""
+_ARGLESS_COMMANDS = frozenset({"list", "done", "delete", "info", "export", "print"})
+"""Filter commands without arguments: their trailing tokens extend the filter.
+
+``print`` has one option, ``--file PATH``, taken out before the filter is split.
+"""
 
 CONFIRM_COMMANDS = frozenset({"done", "delete", "modify"})
 """Commands that may ask for confirmation, and so accept ``--yes``."""
 
 YES_FLAG = "--yes"
+FILE_FLAG = "--file"
 HELP_FLAG = "--help"
 
 _ATTR_ALIASES = {"pri": "priority"}
@@ -138,6 +143,9 @@ def parse_command(argv: Sequence[str]) -> ParsedCommand:
     if name == "add":  # Rule 3: everything after `add` is the new task, never a filter.
         _check_no_filter(name, before)
         return ParsedCommand(name, args=after)
+    options: tuple[str, ...] = ()
+    if name == "print":
+        after, options = _take_file_option(after)
     yes = YES_FLAG in before or YES_FLAG in _until_double_dash(after)
     if yes:
         if name not in CONFIRM_COMMANDS:
@@ -150,9 +158,28 @@ def parse_command(argv: Sequence[str]) -> ParsedCommand:
         count = next((i for i, tok in enumerate(after) if not is_filter(tok)), len(after))
         filter_tokens, args = after[:count], after[count:]
     if name in _ARGLESS_COMMANDS:
-        filter_tokens, args = filter_tokens + args, ()
+        filter_tokens, args = filter_tokens + args, options
     _check_no_filter(name, filter_tokens)
     return ParsedCommand(name, filter=filter_tokens, args=args, yes=yes)
+
+
+def _take_file_option(tokens: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split ``--file PATH`` (before any ``--``) out of ``tokens``.
+
+    Returns:
+        The remaining tokens, and ``(FILE_FLAG, PATH)`` or ``()``.
+
+    Raises:
+        UsageError: If ``--file`` has no path after it.
+    """
+    head = _until_double_dash(tokens)
+    if FILE_FLAG not in head:
+        return tokens, ()
+    index = head.index(FILE_FLAG)
+    if index + 1 >= len(head):
+        raise UsageError("error.print_usage")
+    rest = tokens[:index] + tokens[index + 2 :]
+    return rest, (FILE_FLAG, tokens[index + 1])
 
 
 def _until_double_dash(tokens: tuple[str, ...]) -> tuple[str, ...]:

@@ -5,6 +5,7 @@ import os
 import shlex
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -256,6 +257,50 @@ def cmd_version(command: ParsedCommand, settings: Settings) -> int:
     return ExitCode.OK
 
 
+def cmd_print(command: ParsedCommand, settings: Settings) -> int:
+    """``print``: a printable page of the matching tasks, opened in the browser.
+
+    With ``--file PATH``, the page is saved there instead, without opening it.
+    """
+    now = utc_now()
+    where = parse_filter(command.filter, now)
+    with open_service(settings) as service:
+        tasks = _matching(service, where)
+    from tame.cli.printout import print_page
+
+    target = command.args[1] if command.args else None
+    page = print_page(
+        tasks,
+        now,
+        filter_text=" ".join(command.filter),
+        coefficients=settings.urgency,
+        date_format=settings.date_format,
+        auto_print=target is None,
+    )
+    if target is None:
+        path = Path(tempfile.gettempdir()) / f"tame-print-{now:%Y%m%d-%H%M%S}.html"
+    else:
+        path = Path(target)
+    try:
+        path.write_text(page, encoding="utf-8")
+    except OSError as exc:
+        raise UsageError("error.print_io", path=str(path), detail=exc.strerror) from exc
+    if target is not None:
+        print(t("cmd.print.saved", path=path))
+    elif _open_in_browser(path):
+        print(t("cmd.print.opened", path=path))
+    else:
+        print(t("cmd.print.not_opened", path=path))
+    return ExitCode.OK
+
+
+def _open_in_browser(path: Path) -> bool:
+    """Open ``path`` in the default browser; return False if none could be started."""
+    import webbrowser
+
+    return webbrowser.open(path.resolve().as_uri())
+
+
 def cmd_export(command: ParsedCommand, settings: Settings) -> int:
     """``export``: print the matching tasks as Taskwarrior JSON (``[]`` if none)."""
     now = utc_now()
@@ -391,6 +436,7 @@ HELP_COMMANDS = (
     "done",
     "delete",
     "undo",
+    "print",
     "export",
     "import",
     "config",
@@ -471,6 +517,7 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "info": cmd_info,
     "list": cmd_list,
     "modify": cmd_modify,
+    "print": cmd_print,
     "undo": cmd_undo,
     "version": cmd_version,
 }

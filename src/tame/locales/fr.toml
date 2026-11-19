@@ -39,6 +39,11 @@ removed = "Alias « {name} » supprimé : {path}"
 not_on_path = "Attention : {dir} n'est pas dans le PATH ; ajoutez-le pour utiliser « {name} »."
 shadowed = "Attention : « {name} » lance {path}, trouvé avant dans le PATH."
 
+[cmd.print]
+opened = "Ouvert dans votre navigateur pour l'imprimer (ou l'enregistrer en PDF) : {path}"
+not_opened = "Ouvrez ce fichier dans un navigateur pour l'imprimer : {path}"
+saved = "Enregistré : {path}"
+
 [cmd.config]
 default = "# défaut : {value}"
 set = "{name} = {value}"
@@ -147,9 +152,22 @@ alias_exists = "{path} existe déjà et n'a pas été créé par tame : laissé 
 alias_missing = "Pas d'alias « {name} » ({path} introuvable)."
 alias_not_ours = "{path} n'a pas été créé par tame : laissé tel quel."
 alias_io = "Impossible d'écrire ou de supprimer {path} : {detail}"
+print_usage = "Usage : tk [filtre] print [--file CHEMIN]"
+print_io = "Impossible d'écrire {path} : {detail}"
 help_unknown = "Pas d'aide pour « {name} ». Lancez « tk help » pour la liste."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
+
+[print]
+title = "Tâches"
+title_filtered = "Tâches : {filter}"
+no_project = "Sans projet"
+count = "{count} tâches"
+count_one = "1 tâche"
+due = "échéance {date}"
+today = "aujourd'hui"
+late = "en retard"
+footer = "Imprimé avec TAME"
 
 [about]
 license_header = "TAME est distribué sous licence MIT (texte officiel en anglais) :"
@@ -281,6 +299,23 @@ Exemples :
   task export > tw.json        (dans Taskwarrior)
   tk import tw.json
   tk status:all export | tk import -
+'''
+
+[help.cmd.print]
+summary = "Imprimer les tâches, par projet"
+usage = "tk [filtre] print [--file CHEMIN]"
+body = '''
+Crée une page imprimable des tâches trouvées, une section par projet, avec une case à
+cocher pour chaque tâche, et l'ouvre dans votre navigateur avec la fenêtre
+d'impression : choisissez une imprimante, ou enregistrez en PDF. Comme list,
+seulement les tâches en cours par défaut. --file CHEMIN enregistre la page (HTML)
+sans l'ouvrir.
+
+Exemples :
+  tk print
+  tk +courses print
+  tk project:maison due.before:eow print
+  tk print --file taches.html
 '''
 
 [help.cmd.config]

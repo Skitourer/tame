@@ -13,6 +13,7 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 | [`done`](#done) | mark tasks completed |
 | [`delete`](#delete) | delete tasks |
 | [`undo`](#undo) | revert the last change |
+| [`print`](#print) | print tasks, grouped by project |
 | [`export`](#export) | export tasks as Taskwarrior JSON |
 | [`import`](#import) | import Taskwarrior JSON |
 | [`alias`](#alias) | add or remove a command alias, such as `task` |
@@ -126,6 +127,28 @@ tk undo
 Reverts the last `add`, `done`, `delete`, `modify` or `import`, ids included. Run it again to
 go further back. History older than `undo.retention` (default 3 months) is purged; see
 [Settings](settings.md).
+
+## print
+
+```text
+tk [filter] print [--file PATH]
+```
+
+Makes a printable page of the matching tasks and opens it in your browser with the print
+dialog: pick a printer, or *Save as PDF*. The title shows the filter, with the date and time
+printed. One section per project (tasks without a project last), tasks sorted by urgency, each
+with a box to tick, its priority (`!H`), tags and due date (`due … · today`, or **late** in
+bold). Three empty lines at the end leave room for tasks added by hand. Like `list`, only
+pending tasks by default. The page follows your interface language and `date_format`.
+
+`--file PATH` saves the page (HTML) without opening it.
+
+```sh
+tk print
+tk +shopping print
+tk project:home due.before:eow print
+tk print --file tasks.html
+```
 
 ## export
 
