@@ -18,6 +18,9 @@ header = "Undid '{command}'."
 restored = "Restored task {task} '{description}'."
 removed = "Removed task {task} '{description}'."
 
+[cmd.import]
+summary = "Imported: {added} added, {updated} updated, {skipped} skipped (not newer)."
+
 [cmd.config]
 default = "# default: {value}"
 set = "{name} = {value}"
@@ -94,7 +97,7 @@ ambiguous_command = "Ambiguous command '{name}': {candidates}"
 not_implemented = "Command '{command}' is not implemented yet."
 filter_not_allowed = "Command '{command}' does not accept a filter."
 invalid_id_range = "Invalid id range: '{token}'"
-invalid_status = "Invalid status: '{value}' (expected pending, completed or deleted)"
+invalid_status = "Invalid status: '{value}' (expected pending, completed, deleted or all)"
 unexpected_argument = "Unexpected argument: {arg}"
 filter_required = "Command '{command}' needs a filter, e.g. 'tk 3 {command}'."
 no_modifications = "Nothing to modify: give attr:value, attr:, +tag, -tag or a new description."
@@ -116,6 +119,10 @@ config_usage = "Usage: tk config [get KEY | set KEY VALUE | unset KEY | path | e
 editor_failed = "Cannot start the editor '{editor}': {detail}. Set the EDITOR variable."
 db_open = "Cannot open database {path}: {detail}"
 db_too_new = "Database schema version {found} is newer than supported ({supported}). Upgrade tame."
+import_io = "Cannot read {path}: {detail}"
+import_json = "Invalid JSON: {detail}"
+import_item = "Task {item} of the input: {detail}"
+import_field = "Invalid value {value} for '{name}'"
 help_unknown = "No help for '{name}'. Run 'tk help' for the list."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
@@ -213,6 +220,36 @@ further back. History older than undo.retention (default 3 months) is purged; se
 tk help config.
 '''
 
+[help.cmd.export]
+summary = "Export tasks as Taskwarrior JSON"
+usage = "tk [filter] export"
+body = '''
+Prints the matching tasks as a JSON array in Taskwarrior format, one task per line;
+an empty array if none match. Like list, only pending tasks by default: status:all
+exports everything (for a backup). Attributes kept from an import come back as they
+were.
+
+Examples:
+  tk status:all export > backup.json
+  tk project:home export > home.json
+'''
+
+[help.cmd.import]
+summary = "Import Taskwarrior JSON"
+usage = "tk import [FILE | -]"
+body = '''
+Reads a JSON array, or one task object per line, from FILE or standard input
+(no FILE, or -). Tasks are merged by uuid: new ones are added, a stored task is
+replaced only if the incoming one was modified later. Attributes TAME does not use
+(annotations, depends, recur, wait...) are kept for export. Waiting and recurring
+tasks become pending. tk undo reverts the whole import.
+
+Examples:
+  task export > tw.json        (in Taskwarrior)
+  tk import tw.json
+  tk status:all export | tk import -
+'''
+
 [help.cmd.config]
 summary = "Show or change settings"
 usage = "tk config [get KEY | set KEY VALUE | unset KEY | path | edit]"
@@ -263,7 +300,7 @@ selection. Without status:, only pending tasks match.
   project:home         project home and its sub-projects (home.garden)
   project:             no project
   pri:H   pri:         priority H / no priority
-  status:completed     pending, completed or deleted
+  status:completed     pending, completed, deleted, or all
   due.before:fri       due strictly before the date (see tk help dates)
   due.after:today      due strictly after the date
   other words          text contained in the description, any case

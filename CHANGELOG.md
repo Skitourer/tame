@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - French user interface: `tk config set language fr`. Commands, attributes and date
   keywords stay in English; confirmations also accept `o`/`oui`. Untranslated messages
   fall back to English.
+- `status:all` filter: tasks of every status (`tk status:all list`).
+- `export` command: matching tasks as Taskwarrior JSON on stdout.
+- `import` command: Taskwarrior JSON (array or one object per line) from a file or
+  stdin, merged by uuid (newer `modified` wins); unsupported attributes are kept and
+  exported back. Reads UTF-16 files written by PowerShell 5. Undoable in one step.
 
 ### Fixed
 

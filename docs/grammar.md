@@ -64,7 +64,8 @@ After `done` and `delete`, pending tasks are renumbered 1..n by creation time.
 
 ## Filter tokens
 
-All criteria are AND-combined. Without `status:`, only pending tasks match.
+All criteria are AND-combined. Without `status:`, only pending tasks match; `status:all`
+matches every status.
 
 | Token | Matches |
 |---|---|
@@ -74,7 +75,7 @@ All criteria are AND-combined. Without `status:`, only pending tasks match.
 | `project:home` | project `home` and its sub-projects (`home.garden`), not `homework` |
 | `project:` | tasks without a project |
 | `pri:H` (`priority:`) | exact priority; `pri:` = no priority |
-| `status:completed` | `pending`, `completed` or `deleted` |
+| `status:completed` | `pending`, `completed`, `deleted`, or `all` |
 | `due.before:fri` `due.after:today` | due strictly before / after the date; tasks without due never match |
 | any other word | case-insensitive substring of the description |
 
@@ -89,4 +90,5 @@ tk +phone -work             # pending tasks tagged phone, not tagged work
 tk 2-6 pri:H                # ids 2..6 with priority H
 tk bank                     # description contains "bank"
 tk status:completed list    # completed tasks
+tk status:all list          # every task, whatever its status
 ```

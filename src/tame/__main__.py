@@ -18,6 +18,15 @@ def _use_utf8_output() -> None:
             stream.reconfigure(encoding="utf-8")
 
 
+def error_message(err: TameError) -> str:
+    """Translate ``err``; parameters that are errors themselves are translated too."""
+    params = {
+        name: error_message(value) if isinstance(value, TameError) else value
+        for name, value in err.params.items()
+    }
+    return t(err.key, **params)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI.
 
@@ -33,7 +42,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return commands.run(parse_command(args))
     except TameError as err:
-        print(t(err.key, **err.params), file=sys.stderr)
+        print(error_message(err), file=sys.stderr)
         return err.exit_code
     except Exception as err:
         print(t("error.internal", detail=repr(err)), file=sys.stderr)

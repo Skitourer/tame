@@ -80,7 +80,7 @@ Parse rules (in order):
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias config help import undo version`) → usage error (exit 1).
 
-Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; OR/parens out V1; default `status:pending` unless `status:` given):
+Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; OR/parens out V1; default `status:pending` unless `status:` given; `status:all` = any status):
 
 | Token | Meaning |
 |---|---|
@@ -88,7 +88,7 @@ Filter tokens (AND-combined, except ids and uuid prefixes which together form on
 | 8+ hex chars | uuid prefix (dashes ignored) |
 | `+t` / `-t` | has / lacks tag |
 | `project:x` | project = x or x.*; `project:` = no project |
-| `pri:H` `status:completed` | equality (`pri` = alias of `priority`); `pri:` = no priority |
+| `pri:H` `status:completed` | equality (`pri` = alias of `priority`); `pri:` = no priority; `status:all` = any status |
 | `due.before:fri` `due.after:today` | date compare |
 | other word | case-insensitive substring of description |
 
@@ -96,7 +96,7 @@ Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove t
 
 Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` always prompts unless `--yes`.
 
-`modify/done/delete` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 3 cmds. Answer other than `y`/`yes`, or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
+`modify/done/delete` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 3 cmds. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
 
 ## 5. Commands
 
@@ -109,8 +109,8 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 | modify | `tk 12 modify due:mon -phone` | apply mods |
 | info | `tk 7 info` | all fields, local times |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
-| export | `tk project:home export > f.json` | TW JSON to stdout |
-| import | `tk import f.json` | TW JSON; merge by uuid |
+| export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; no match → `[]`, exit 0 |
+| import | `tk import f.json` | TW JSON from FILE, or stdin if none or `-` (UTF-8, or UTF-16 with BOM); merge by uuid; prints added/updated/skipped counts; 1 undo step; any invalid task → nothing imported, error names the task number |
 | alias | `tk alias install task` | manage opt-in `task` shim |
 | config | `tk config set undo.retention 1y` | list / `get` / `set` / `unset` (= default) / `path` / `edit` settings (§7) |
 | help | `tk help [cmd\|topic]` | no arg: implemented cmds + 1-line summaries; cmd (exact or prefix): usage, text, examples; topics `filters` `dates` `urgency`. `--help` before `--` = `tk help [<cmd on the line>]`. Works with an invalid config |
@@ -171,9 +171,9 @@ Unknown key, wrong type or invalid value → usage error naming key and file (ex
 **TW JSON**
 
 - Export: JSON array, TW field names, dates `YYYYMMDDTHHMMSSZ`, `extra` keys merged back.
-- Import: JSON array or one object per line. Same uuid → update if incoming `modified` newer.
-- Unsupported TW attrs (annotations, depends, recur, wait, UDAs…) → stored in `extra`, re-exported unchanged.
-- TW status `waiting`/`recurring` → `pending`, original in `extra.tw_status`.
+- Import: JSON array or one object per line. Same uuid → update if incoming `modified` newer, else skip. Missing `uuid` → new one; `entry` → now; `modified` → `entry`; `status` → pending. `id`, `urgency` ignored. New pending tasks get the next ids (by entry); if an update changes which tasks are pending, all are renumbered.
+- Unsupported TW attrs (annotations, depends, recur, wait, UDAs…), and a `priority` other than H/M/L → stored in `extra`, re-exported unchanged (TAME fields win).
+- TW status `waiting`/`recurring` → `pending`, original in `extra.tw_status`; exported back while the task is still pending.
 
 ## 8. Layout, quality, release
 
@@ -221,5 +221,5 @@ docs/SPEC.md  docs/grammar.md  docs/commands.md
 5. Dates + urgency
 6. undo
 7. Config (7a: `config.toml`, `config` cmd, undo purge; 7b: `help`; 7c: i18n FR)
-8. TW import/export + `alias`
+8. TW import/export + `alias` (8a: `export`/`import`, `status:all`; 8b: `alias`)
 9. Docs pass → v0.1.0

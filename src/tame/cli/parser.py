@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Literal
 
 from tame.core.dates import parse_date, utc_now
-from tame.core.filters import Filter
+from tame.core.filters import ALL, Filter
 from tame.core.models import (
     NONE,
     Changes,
@@ -204,7 +204,7 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
     tags_out: set[str] = set()
     project: str | None = None
     priority: Priority | Literal[""] | None = None
-    status: Status | None = None
+    status: Status | Literal["all"] | None = None
     due_before: datetime | None = None
     due_after: datetime | None = None
     words: list[str] = []
@@ -263,7 +263,9 @@ def _parse_ids(token: str) -> set[int]:
     return ids
 
 
-def _parse_status(value: str) -> Status:
+def _parse_status(value: str) -> Status | Literal["all"]:
+    if value.lower() == ALL:
+        return ALL
     try:
         return Status(value.lower())
     except ValueError:

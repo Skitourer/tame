@@ -19,6 +19,9 @@ header = "Annulé : « {command} »."
 restored = "Tâche {task} « {description} » restaurée."
 removed = "Tâche {task} « {description} » retirée."
 
+[cmd.import]
+summary = "Import : {added} ajoutées, {updated} mises à jour, {skipped} ignorées (pas plus récentes)."
+
 [cmd.config]
 default = "# défaut : {value}"
 set = "{name} = {value}"
@@ -95,7 +98,7 @@ ambiguous_command = "Commande ambiguë « {name} » : {candidates}"
 not_implemented = "La commande « {command} » n'est pas encore disponible."
 filter_not_allowed = "La commande « {command} » n'accepte pas de filtre."
 invalid_id_range = "Plage d'ids invalide : « {token} »"
-invalid_status = "Statut invalide : « {value} » (attendu : pending, completed ou deleted)"
+invalid_status = "Statut invalide : « {value} » (attendu : pending, completed, deleted ou all)"
 unexpected_argument = "Argument inattendu : {arg}"
 filter_required = "La commande « {command} » demande un filtre, p. ex. « tk 3 {command} »."
 no_modifications = "Rien à modifier : donnez attr:valeur, attr:, +tag, -tag ou une nouvelle description."
@@ -117,6 +120,10 @@ config_usage = "Usage : tk config [get CLÉ | set CLÉ VALEUR | unset CLÉ | pat
 editor_failed = "Impossible de lancer l'éditeur « {editor} » : {detail}. Définissez la variable EDITOR."
 db_open = "Impossible d'ouvrir la base {path} : {detail}"
 db_too_new = "La version de schéma {found} de la base est plus récente que celle supportée ({supported}). Mettez tame à jour."
+import_io = "Impossible de lire {path} : {detail}"
+import_json = "JSON invalide : {detail}"
+import_item = "Tâche {item} de l'entrée : {detail}"
+import_field = "Valeur {value} invalide pour « {name} »"
 help_unknown = "Pas d'aide pour « {name} ». Lancez « tk help » pour la liste."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
@@ -217,6 +224,37 @@ plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est 
 voir tk help config.
 '''
 
+[help.cmd.export]
+summary = "Exporter les tâches en JSON Taskwarrior"
+usage = "tk [filtre] export"
+body = '''
+Affiche les tâches trouvées sous forme de tableau JSON au format Taskwarrior, une
+tâche par ligne ; un tableau vide si aucune ne correspond. Comme list, seulement les
+tâches en cours par défaut : status:all exporte tout (pour une sauvegarde). Les
+attributs conservés lors d'un import reviennent tels quels.
+
+Exemples :
+  tk status:all export > sauvegarde.json
+  tk project:maison export > maison.json
+'''
+
+[help.cmd.import]
+summary = "Importer du JSON Taskwarrior"
+usage = "tk import [FICHIER | -]"
+body = '''
+Lit un tableau JSON, ou un objet tâche par ligne, depuis FICHIER ou l'entrée standard
+(sans FICHIER, ou -). Les tâches sont fusionnées par uuid : les nouvelles sont
+ajoutées, une tâche existante n'est remplacée que si celle importée a été modifiée
+plus tard. Les attributs que TAME n'utilise pas (annotations, depends, recur,
+wait...) sont gardés pour l'export. Les tâches waiting et recurring deviennent
+pending. tk undo annule tout l'import.
+
+Exemples :
+  task export > tw.json        (dans Taskwarrior)
+  tk import tw.json
+  tk status:all export | tk import -
+'''
+
 [help.cmd.config]
 summary = "Afficher ou changer les réglages"
 usage = "tk config [get CLÉ | set CLÉ VALEUR | unset CLÉ | path | edit]"
@@ -269,7 +307,7 @@ correspondent.
   project:maison       projet maison et ses sous-projets (maison.jardin)
   project:             sans projet
   pri:H   pri:         priorité H / sans priorité
-  status:completed     pending, completed ou deleted
+  status:completed     pending, completed, deleted, ou all
   due.before:fri       échéance strictement avant la date (voir tk help dates)
   due.after:today      échéance strictement après la date
   autres mots          texte contenu dans la description, casse ignorée

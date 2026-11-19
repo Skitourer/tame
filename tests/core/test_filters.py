@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from tame.core.filters import Filter
+from tame.core.filters import ALL, Filter
 from tame.core.models import NONE, Priority, Status, Task
 
 T0 = datetime(2026, 11, 19, tzinfo=UTC)
@@ -32,7 +32,10 @@ def test_status() -> None:
     done = task(status=Status.COMPLETED, id=None)
     assert Filter(status=Status.COMPLETED).matches(done)
     assert not Filter(status=Status.COMPLETED).matches(task())
-    assert Filter().effective_status is Status.PENDING
+    assert Filter().statuses == (Status.PENDING,)
+    assert Filter(status=ALL).statuses == tuple(Status)
+    assert Filter(status=ALL).matches(done)
+    assert Filter(status=ALL).matches(task())
 
 
 @pytest.mark.parametrize(

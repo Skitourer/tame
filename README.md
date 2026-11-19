@@ -4,7 +4,8 @@
 Windows 11 first.
 
 > Status: pre-alpha. `add`, `list` (with filters), `done`, `delete`, `modify`, `info`,
-> `undo` and `version` work, with due dates and urgency; see the
+> `undo`, `export`, `import`, `config`, `help` and `version` work, with due dates, urgency and
+> a French interface; see the
 > roadmap in [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
 
 TAME is an independent project. It shares no code, name or logo with Taskwarrior; it only aims
@@ -35,6 +36,8 @@ tk 4 delete                                  # asks first; --yes skips the quest
 tk 1 modify due:+3d -phone Call the bank     # set, untag, new description
 tk 7 info                                    # every field
 tk undo                                      # revert the last change (repeat to go back)
+tk status:all export > backup.json           # Taskwarrior JSON; status:all = every task
+tk import tw.json                            # from Taskwarrior (task export > tw.json)
 tk help                                      # commands; tk help <command|topic>
 tk modify --help                             # same as: tk help modify
 tk version

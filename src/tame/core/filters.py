@@ -6,6 +6,9 @@ from typing import Literal
 
 from tame.core.models import NONE, Priority, Status, Task
 
+ALL: Literal["all"] = "all"
+"""Value of ``Filter.status`` matching every status (``status:all``)."""
+
 
 @dataclass(frozen=True, slots=True)
 class Filter:
@@ -21,7 +24,7 @@ class Filter:
         tags_out: Tags the task must not have.
         project: Project name, matching itself and its sub-projects; ``NONE`` for no project.
         priority: Exact priority; ``NONE`` for no priority.
-        status: Exact status; None means pending.
+        status: Exact status; ``ALL`` for any status; None means pending.
         due_before: The task is due strictly before this time.
         due_after: The task is due strictly after this time.
         words: Case-insensitive substrings of the description.
@@ -33,21 +36,23 @@ class Filter:
     tags_out: frozenset[str] = frozenset()
     project: str | None = None
     priority: Priority | Literal[""] | None = None
-    status: Status | None = None
+    status: Status | Literal["all"] | None = None
     due_before: datetime | None = None
     due_after: datetime | None = None
     words: tuple[str, ...] = ()
 
     @property
-    def effective_status(self) -> Status:
-        """The status to match: ``status``, or pending by default."""
-        return self.status or Status.PENDING
+    def statuses(self) -> tuple[Status, ...]:
+        """The statuses to match: ``status``, all of them, or pending by default."""
+        if self.status == ALL:
+            return tuple(Status)
+        return (self.status or Status.PENDING,)
 
     def matches(self, task: Task) -> bool:
         """Return True if ``task`` meets every criterion."""
         return (
             self._selected(task)
-            and task.status is self.effective_status
+            and task.status in self.statuses
             and self.tags_in <= task.tags
             and not self.tags_out & task.tags
             and self._project_matches(task.project)

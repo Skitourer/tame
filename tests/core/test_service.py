@@ -1,11 +1,12 @@
 import uuid
+from dataclasses import replace
 from datetime import datetime, timedelta
 
 import pytest
 
 from tame.core.dates import utc_now
 from tame.core.filters import Filter
-from tame.core.models import NONE, Changes, Priority, Status
+from tame.core.models import NONE, Changes, Priority, Status, Task
 from tame.core.service import TaskService
 from tame.errors import NoMatchError, ValidationError
 from tame.storage.repo import TaskRepo
@@ -260,3 +261,83 @@ def test_no_retention_keeps_everything(repo: TaskRepo, frozen_now: datetime) -> 
     service = TaskService(repo, clock=lambda: frozen_now)
     service.add("recent")
     assert [service.undo().cmd for _ in range(2)] == ["add", "add"]
+
+
+# --- import (roadmap step 8a) --------------------------------------------------------
+
+
+def imported(description: str, entry: datetime, **fields: object) -> Task:
+    """A task as read from Taskwarrior JSON: no short id."""
+    base: dict[str, object] = {
+        "uuid": str(uuid.uuid4()),
+        "description": description,
+        "entry": entry,
+        "modified": entry,
+    }
+    return Task(**(base | fields))  # type: ignore[arg-type]
+
+
+def test_import_adds_with_next_ids_in_entry_order(
+    service: TaskService, frozen_now: datetime
+) -> None:
+    mine = service.add("mine")
+    late = imported("late", frozen_now - timedelta(days=1))
+    early = imported("early", frozen_now - timedelta(days=9))
+    done = imported("done", frozen_now, status=Status.COMPLETED, end=frozen_now)
+    result = service.import_tasks([late, early, done])
+    assert [t.description for t in result.added] == ["late", "early", "done"]
+    assert (result.updated, result.skipped) == ((), ())
+    assert [(t.id, t.description) for t in service.query()] == [
+        (mine.id, "mine"),
+        (2, "early"),
+        (3, "late"),
+    ]
+    assert service.query(Filter(status=Status.COMPLETED))[0].id is None
+
+
+def test_import_updates_only_newer(service: TaskService, frozen_now: datetime) -> None:
+    task = service.add("old text")
+    newer = replace(task, id=None, description="new text", modified=frozen_now + timedelta(1))
+    older = replace(task, id=None, description="stale", modified=frozen_now - timedelta(1))
+    same = replace(task, id=None, description="same time")
+    result = service.import_tasks([older, same])
+    assert (result.added, result.updated, len(result.skipped)) == ((), (), 2)
+    result = service.import_tasks([newer])
+    assert [(t.id, t.description) for t in result.updated] == [(1, "new text")]
+    assert service.query()[0].description == "new text"
+
+
+def test_import_status_change_renumbers(service: TaskService, frozen_now: datetime) -> None:
+    one, two = service.add("one"), service.add("two")
+    closed = replace(
+        one, id=None, status=Status.COMPLETED, end=frozen_now, modified=frozen_now + timedelta(1)
+    )
+    service.import_tasks([closed])
+    assert [(t.id, t.description) for t in service.query()] == [(1, "two")]
+    assert two.id == 2
+
+
+def test_import_nothing_new_logs_nothing(service: TaskService) -> None:
+    task = service.add("x")
+    service.import_tasks([replace(task, id=None)])
+    assert service.undo().cmd == "add"
+
+
+def test_undo_import(service: TaskService, repo: TaskRepo, frozen_now: datetime) -> None:
+    one = service.add("one")
+    service.complete([one])
+    reopened = replace(
+        repo.get(one.uuid),  # type: ignore[type-var]
+        id=None,
+        status=Status.PENDING,
+        end=None,
+        modified=frozen_now + timedelta(1),
+    )
+    new = imported("new", frozen_now)
+    service.import_tasks([reopened, new])
+    assert len(service.query()) == 2
+    result = service.undo()
+    assert result.cmd == "import"
+    assert [t.description for t in result.removed] == ["new"]
+    assert service.query() == []
+    assert repo.get(one.uuid).status is Status.COMPLETED  # type: ignore[union-attr]

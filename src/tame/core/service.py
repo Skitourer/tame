@@ -1,7 +1,7 @@
 """Task use cases. Returns objects and raises ``TameError``; never prints."""
 
 import uuid as uuid_lib
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
@@ -35,6 +35,21 @@ class UndoResult:
     cmd: str
     restored: tuple[Task, ...]
     removed: tuple[Task, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ImportResult:
+    """What :meth:`TaskService.import_tasks` did.
+
+    Attributes:
+        added: Tasks with a new uuid, as stored.
+        updated: Existing tasks replaced by a more recently modified version, as stored.
+        skipped: Incoming tasks not newer than the stored version.
+    """
+
+    added: tuple[Task, ...]
+    updated: tuple[Task, ...]
+    skipped: tuple[Task, ...]
 
 
 class TaskService:
@@ -149,8 +164,55 @@ class TaskService:
                 self._repo.update(task)
         return changed
 
+    def import_tasks(self, tasks: Iterable[Task]) -> ImportResult:
+        """Merge ``tasks`` by uuid: add new ones, update older ones, skip the others.
+
+        A stored task is replaced only if the incoming ``modified`` is newer. New pending
+        tasks get the next free short ids, in entry order; if an update changes which
+        tasks are pending, all pending tasks are renumbered. One undo step.
+
+        Returns:
+            What was added, updated and skipped.
+        """
+        skipped: list[Task] = []
+        before: dict[str, Task | None] = {}
+        with self._repo.transaction():
+            ids = self._repo.pending_ids()
+            for task in tasks:
+                current = self._repo.get(task.uuid)
+                if current is not None and task.modified <= current.modified:
+                    skipped.append(task)
+                    continue
+                before.setdefault(task.uuid, current)
+                self._repo.restore(replace(task, id=current.id if current else None))
+            if before:
+                self._log(self._clock(), "import", list(before.items()), ids)
+                self._number_imported(before)
+            stored = {uuid: self._repo.get(uuid) for uuid in before}
+        return ImportResult(
+            added=tuple(t for u, t in stored.items() if t and before[u] is None),
+            updated=tuple(t for u, t in stored.items() if t and before[u] is not None),
+            skipped=tuple(skipped),
+        )
+
+    def _number_imported(self, before: Mapping[str, Task | None]) -> None:
+        """Give short ids to imported tasks (see :meth:`import_tasks`)."""
+        stored = [task for uuid in before if (task := self._repo.get(uuid)) is not None]
+        if any(
+            (old.status is Status.PENDING) != (task.status is Status.PENDING)
+            for task in stored
+            if (old := before[task.uuid]) is not None
+        ):
+            self._repo.renumber()
+            return
+        next_id = self._repo.max_pending_id()
+        for task in sorted(stored, key=lambda task: task.entry):
+            if task.status is Status.PENDING and task.id is None:
+                next_id += 1
+                self._repo.update(replace(task, id=next_id))
+
     def undo(self) -> UndoResult:
-        """Revert the last write command (``add``, ``done``, ``delete``, ``modify``).
+        """Revert the last write command (``add``, ``done``, ``delete``, ``modify``, ``import``).
 
         Each call goes one command further back. An undo cannot itself be undone.
 
@@ -197,8 +259,14 @@ class TaskService:
         return [(task.uuid, self._repo.get(task.uuid)) for task in tasks]
 
     def query(self, where: Filter | None = None) -> list[Task]:
-        """Return the tasks matching ``where`` (default: all pending), ordered by short id."""
+        """Return the tasks matching ``where`` (default: all pending).
+
+        Ordered by status (pending, completed, deleted), then short id, then entry.
+        """
         where = where or Filter()
         return [
-            task for task in self._repo.by_status(where.effective_status) if where.matches(task)
+            task
+            for status in where.statuses
+            for task in self._repo.by_status(status)
+            if where.matches(task)
         ]

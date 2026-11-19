@@ -12,7 +12,7 @@ from tame.cli.parser import (
     parse_modify,
 )
 from tame.core.dates import parse_date
-from tame.core.filters import Filter
+from tame.core.filters import ALL, Filter
 from tame.core.models import NONE, Changes, Priority, Status
 from tame.errors import UsageError, ValidationError
 
@@ -387,3 +387,8 @@ def test_parse_filter_invalid_due() -> None:
 )
 def test_help_flag(line: str, expected: ParsedCommand) -> None:
     assert cmd(line) == expected
+
+
+def test_parse_filter_status_all() -> None:
+    assert parse_filter(["status:all"]).status == ALL
+    assert parse_filter(["status:ALL"]).status == ALL

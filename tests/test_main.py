@@ -1,4 +1,5 @@
 import io
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -39,7 +40,7 @@ def test_ambiguous_command(capsys: Capture) -> None:
     assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
 
 
-@pytest.mark.parametrize("command", ["export", "import", "alias"])
+@pytest.mark.parametrize("command", ["alias"])
 def test_later_commands_not_implemented(capsys: Capture, command: str) -> None:
     code, _, err = run(capsys, command)
     assert code == 1
@@ -300,7 +301,8 @@ def test_done_by_uuid_of_completed_task_names_it_by_uuid(capsys: Capture) -> Non
     run(capsys, "1", "done")
     out = run(capsys, "status:completed", "info")[1]
     uuid = next(line.split()[1] for line in out.splitlines() if line.startswith("UUID"))
-    assert run(capsys, uuid[:8], "status:completed", "delete", "--yes")[1] == (
+    # The full uuid: an 8-char prefix may be all digits, which reads as an id.
+    assert run(capsys, uuid, "status:completed", "delete", "--yes")[1] == (
         f"Deleted task {uuid[:8]} 'one'.\n"
     )
 
@@ -612,9 +614,10 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
     assert (code, err) == (0, "")
     lines = out.splitlines()
     assert lines[0] == "Usage: tk [filter] <command> [arguments]   (no command = list)"
-    listed = [line.split()[0] for line in lines[3:13]]
+    listed = [line.split()[0] for line in lines[3 : 3 + len(HELP_COMMANDS)]]
     assert listed == list(HELP_COMMANDS)
     assert "  add      Create a task" in lines
+    assert "  export   Export tasks as Taskwarrior JSON" in lines
     assert "Topics: tk help filters | dates | urgency" in out
 
 
@@ -672,10 +675,10 @@ def test_every_help_text_exists(subject: str) -> None:
 
 
 def test_help_unknown_subject(capsys: Capture) -> None:
-    assert run(capsys, "help", "export") == (
+    assert run(capsys, "help", "alias") == (
         1,
         "",
-        "No help for 'export'. Run 'tk help' for the list.\n",
+        "No help for 'alias'. Run 'tk help' for the list.\n",
     )
     assert run(capsys, "help", "d")[2] == "Ambiguous command 'd': delete, done\n"
     assert run(capsys, "help", "a", "b")[0] == 1
@@ -726,3 +729,109 @@ def test_config_errors_use_the_configured_language(capsys: Capture, tame_home: P
     assert run(capsys, "list")[2].startswith("Invalid value \"xx\" for 'language'")
     config.write_text('language = "fr"\n[x\n', encoding="utf-8")
     assert run(capsys, "list")[2].startswith("Invalid settings file")
+
+
+# --- export / import (roadmap step 8a) -------------------------------------------
+
+
+def stdin_bytes(monkeypatch: pytest.MonkeyPatch, data: bytes) -> None:
+    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(data)))
+
+
+def test_status_all_lists_every_status(capsys: Capture) -> None:
+    run(capsys, "add", "open")
+    run(capsys, "add", "closed")
+    run(capsys, "2", "done")
+    out = run(capsys, "status:all", "list")[1]
+    assert "open" in out
+    assert "closed" in out
+
+
+def test_export_empty_is_an_empty_array(capsys: Capture) -> None:
+    assert run(capsys, "export") == (0, "[]\n", "")
+
+
+def test_export_pending_by_default_all_with_status_all(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank", "+phone", "pri:H", "due:2026-12-15")
+    run(capsys, "add", "closed")
+    run(capsys, "2", "done")
+    code, out, _ = run(capsys, "export")
+    assert code == 0
+    (task,) = json.loads(out)
+    assert (task["id"], task["description"], task["tags"], task["priority"]) == (
+        1,
+        "Call bank",
+        ["phone"],
+        "H",
+    )
+    assert task["status"] == "pending"
+    assert len(task["due"]) == 16 and task["due"].endswith("Z")
+    assert "urgency" in task
+    statuses = [t["status"] for t in json.loads(run(capsys, "status:all", "export")[1])]
+    assert statuses == ["pending", "completed"]
+
+
+def test_export_then_import_round_trip(capsys: Capture, tmp_path: Path, tame_home: Path) -> None:
+    run(capsys, "add", "a", "project:home")
+    run(capsys, "add", "b")
+    run(capsys, "2", "done")
+    exported = run(capsys, "status:all", "export")[1]
+    backup = tmp_path / "backup.json"
+    backup.write_text(exported, encoding="utf-8")
+    assert run(capsys, "import", str(backup)) == (
+        0,
+        "Imported: 0 added, 0 updated, 2 skipped (not newer).\n",
+        "",
+    )
+    (tame_home / "tasks.db").unlink()
+    assert run(capsys, "import", str(backup))[1].startswith("Imported: 2 added")
+    assert run(capsys, "status:all", "export")[1] == exported
+
+
+def test_import_taskwarrior_file(capsys: Capture, tmp_path: Path) -> None:
+    lines = [
+        '{"description":"Water plants","entry":"20261101T080000Z","status":"waiting",'
+        '"wait":"20261201T000000Z","uuid":"a1b2c3d4-0000-4000-8000-000000000001"}',
+        '{"description":"Old","entry":"20261001T080000Z","end":"20261002T080000Z",'
+        '"status":"completed","tags":["x"]}',
+    ]
+    path = tmp_path / "tw.json"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    assert run(capsys, "import", str(path))[1] == (
+        "Imported: 2 added, 0 updated, 0 skipped (not newer).\n"
+    )
+    assert "Water plants" in run(capsys, "list")[1]
+    (task,) = json.loads(run(capsys, "export")[1])
+    assert (task["status"], task["wait"]) == ("waiting", "20261201T000000Z")
+
+
+def test_import_from_stdin_and_utf16(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    stdin_bytes(monkeypatch, b'[{"description": "from stdin"}]')
+    assert run(capsys, "import")[1].startswith("Imported: 1 added")
+    # PowerShell 5 `tk export > f.json` writes UTF-16 with a BOM.
+    stdin_bytes(monkeypatch, '[{"description": "été"}]'.encode("utf-16"))
+    assert run(capsys, "import", "-")[1].startswith("Imported: 1 added")
+    assert "été" in run(capsys, "list")[1]
+
+
+def test_import_errors(capsys: Capture, tmp_path: Path) -> None:
+    assert run(capsys, "import", str(tmp_path / "missing.json"))[2].startswith("Cannot read ")
+    bad = tmp_path / "bad.json"
+    bad.write_text('[{"description": "ok"}, {"description": "x", "due": "soon"}]', "utf-8")
+    assert run(capsys, "import", str(bad)) == (
+        1,
+        "",
+        "Task 2 of the input: Invalid date: 'soon' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)\n",
+    )
+    assert run(capsys, "status:all", "export")[1] == "[]\n"  # nothing imported
+    bad.write_text("[{", encoding="utf-8")
+    assert run(capsys, "import", str(bad))[2].startswith("Invalid JSON: ")
+    assert run(capsys, "import", "a", "b")[0] == 1
+    assert run(capsys, "1", "import")[0] == 1
+
+
+def test_undo_import(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    stdin_bytes(monkeypatch, b'{"description": "a"}\n{"description": "b"}')
+    run(capsys, "import")
+    assert run(capsys, "undo")[1].startswith("Undid 'import'.")
+    assert run(capsys, "status:all", "export")[1] == "[]\n"

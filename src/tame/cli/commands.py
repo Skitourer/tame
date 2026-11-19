@@ -1,5 +1,6 @@
 """Command handlers: one function per command, each returning an exit code."""
 
+import codecs
 import os
 import shlex
 import subprocess
@@ -34,9 +35,10 @@ from tame.core.dates import utc_now
 from tame.core.filters import Filter
 from tame.core.models import Task
 from tame.core.service import TaskService
-from tame.core.urgency import by_urgency
-from tame.errors import ExitCode, NoMatchError, UsageError
+from tame.core.urgency import by_urgency, urgency
+from tame.errors import ExitCode, NoMatchError, UsageError, ValidationError
 from tame.i18n import t
+from tame.io import tw_json
 from tame.storage.migrations import SCHEMA_VERSION
 from tame.storage.repo import DB_FILENAME, TaskRepo
 
@@ -237,6 +239,62 @@ def cmd_version(command: ParsedCommand, settings: Settings) -> int:
     return ExitCode.OK
 
 
+def cmd_export(command: ParsedCommand, settings: Settings) -> int:
+    """``export``: print the matching tasks as Taskwarrior JSON (``[]`` if none)."""
+    now = utc_now()
+    where = parse_filter(command.filter, now)
+    with open_service(settings) as service:
+        tasks = service.query(where)
+    print(
+        tw_json.dumps(
+            tw_json.task_to_tw(task, urgency(task, now, settings.urgency)) for task in tasks
+        )
+    )
+    return ExitCode.OK
+
+
+def cmd_import(command: ParsedCommand, settings: Settings) -> int:
+    """``import``: merge Taskwarrior JSON from a file, or stdin if none or ``-``."""
+    match command.args:
+        case () | ("-",):
+            text = _decode(sys.stdin.buffer.read())
+        case (path,):
+            try:
+                text = _decode(Path(path).read_bytes())
+            except OSError as exc:
+                raise UsageError("error.import_io", path=path, detail=exc.strerror) from exc
+        case _:
+            raise UsageError("error.unexpected_argument", arg=command.args[1])
+    now = utc_now()
+    tasks = []
+    for number, item in enumerate(tw_json.loads(text), start=1):
+        try:
+            tasks.append(tw_json.task_from_tw(item, now))
+        except ValidationError as err:
+            raise ValidationError("error.import_item", item=number, detail=err) from err
+    with open_service(settings) as service:
+        result = service.import_tasks(tasks)
+    print(
+        t(
+            "cmd.import.summary",
+            added=len(result.added),
+            updated=len(result.updated),
+            skipped=len(result.skipped),
+        )
+    )
+    return ExitCode.OK
+
+
+def _decode(data: bytes) -> str:
+    """Decode UTF-8, or UTF-16 with a byte order mark (PowerShell 5 ``>`` writes it)."""
+    if data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return data.decode("utf-16")
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValidationError("error.import_json", detail=str(exc)) from None
+
+
 def cmd_config(command: ParsedCommand) -> int:
     """``config``: show or change settings in ``config.toml``.
 
@@ -295,6 +353,8 @@ HELP_COMMANDS = (
     "done",
     "delete",
     "undo",
+    "export",
+    "import",
     "config",
     "help",
     "version",
@@ -351,6 +411,8 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "add": cmd_add,
     "delete": cmd_delete,
     "done": cmd_done,
+    "export": cmd_export,
+    "import": cmd_import,
     "info": cmd_info,
     "list": cmd_list,
     "modify": cmd_modify,
