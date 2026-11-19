@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 
 from tame.cli.parser import (
@@ -9,9 +11,12 @@ from tame.cli.parser import (
     parse_filter,
     parse_modify,
 )
+from tame.core.dates import parse_date
 from tame.core.filters import Filter
 from tame.core.models import NONE, Changes, Priority, Status
 from tame.errors import UsageError, ValidationError
+
+NOW = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)
 
 
 def cmd(line: str) -> ParsedCommand:
@@ -201,7 +206,7 @@ def test_parse_filter_double_dash() -> None:
 
 
 @pytest.mark.parametrize(
-    ("token", "name"), [("foo:bar", "foo"), ("due.before:fri", "due.before"), ("due:x", "due")]
+    ("token", "name"), [("foo:bar", "foo"), ("due.on:fri", "due.on"), ("due:x", "due")]
 )
 def test_parse_filter_unknown_attr(token: str, name: str) -> None:
     # due.before/after arrive with dates in roadmap step 5.
@@ -230,9 +235,21 @@ def test_parse_filter_invalid_values(token: str, key: str) -> None:
 
 
 def test_parse_add_spec_example() -> None:
-    # SPEC §5 example without due: (dates arrive in step 5).
-    tokens = ["Call", "bank", "project:home", "+phone", "pri:H"]
-    assert parse_add(tokens) == AddArgs("Call bank", project="home", tags=("phone",), priority="H")
+    # SPEC §5: `tk add Call bank project:home +phone due:tomorrow pri:H`.
+    tokens = ["Call", "bank", "project:home", "+phone", "due:tomorrow", "pri:H"]
+    assert parse_add(tokens, NOW) == AddArgs(
+        "Call bank",
+        project="home",
+        tags=("phone",),
+        priority="H",
+        due=parse_date("tomorrow", NOW),
+    )
+
+
+def test_parse_add_invalid_due() -> None:
+    with pytest.raises(UsageError) as exc:
+        parse_add(["x", "due:someday"])
+    assert exc.value.key == "error.invalid_date"
 
 
 def test_parse_add_mods_anywhere() -> None:
@@ -291,10 +308,14 @@ def test_yes_flag_rejected_for_commands_without_confirmation(line: str) -> None:
 
 
 def test_parse_modify_spec_example() -> None:
-    # SPEC section 5 `tk 12 modify due:mon -phone`, without due (step 5).
-    assert parse_modify(["pri:L", "-phone"]) == Changes(
-        priority=Priority.L, tags_remove=frozenset({"phone"})
+    # SPEC §5: `tk 12 modify due:mon -phone`.
+    assert parse_modify(["due:mon", "-phone"], NOW) == Changes(
+        due=parse_date("mon", NOW), tags_remove=frozenset({"phone"})
     )
+
+
+def test_parse_modify_clear_due() -> None:
+    assert parse_modify(["due:"]) == Changes(due=NONE)
 
 
 def test_parse_modify_all_mods() -> None:
@@ -325,7 +346,7 @@ def test_parse_modify_nothing() -> None:
 @pytest.mark.parametrize(
     ("token", "key"),
     [
-        ("due:mon", "error.unknown_attribute"),
+        ("due:someday", "error.invalid_date"),
         ("status:completed", "error.unknown_attribute"),
         ("pri:Z", "error.invalid_priority"),
         ("project:a..b", "error.invalid_project"),
@@ -336,3 +357,16 @@ def test_parse_modify_errors(token: str, key: str) -> None:
     with pytest.raises(UsageError) as exc:
         parse_modify([token])
     assert exc.value.key == key
+
+
+def test_parse_filter_due_spec_examples() -> None:
+    # SPEC §4: `due.before:fri`, `due.after:today`.
+    assert parse_filter(["due.before:fri", "due.after:today"], NOW) == Filter(
+        due_before=parse_date("fri", NOW), due_after=parse_date("today", NOW)
+    )
+
+
+def test_parse_filter_invalid_due() -> None:
+    with pytest.raises(ValidationError) as exc:
+        parse_filter(["due.before:someday"])
+    assert exc.value.key == "error.invalid_date"

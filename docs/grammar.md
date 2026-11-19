@@ -32,13 +32,25 @@ If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`
 
 | Token | Effect |
 |---|---|
-| `project:home` `pri:H` | set the attribute |
-| `project:` `pri:` | clear it (`modify` only) |
+| `project:home` `pri:H` `due:fri` | set the attribute |
+| `project:` `pri:` `due:` | clear it (`modify` only) |
 | `+tag` | add the tag |
 | `-tag` | remove the tag (`modify` only; for `add` it is a plain word) |
 | other words | the description (`modify`: replaces it) |
 
 After `--`, everything is description. `modify` without any modification is an error.
+
+## Dates
+
+Keywords are English only and case-insensitive. A date without a time means 00:00 local.
+
+| Form | Examples | Meaning |
+|---|---|---|
+| ISO | `2026-12-15` `2026-12-15T14:00` | local time, unless it has an offset (`Z`, `+01:00`) |
+| Day | `today` `tomorrow` `yesterday` | 00:00 local |
+| Weekday | `monday`..`sunday`, `mon`..`sun` | next occurrence, never today |
+| Period end | `eow` `eom` `eoy` | last second of the week (Sunday), month, year |
+| Offset | `+3d` `+2w` `+1m` `+4h` `-1d` | from now; `m` = calendar months |
 
 ## Confirmation
 
@@ -61,12 +73,12 @@ All criteria are AND-combined. Without `status:`, only pending tasks match.
 | `project:` | tasks without a project |
 | `pri:H` (`priority:`) | exact priority; `pri:` = no priority |
 | `status:completed` | `pending`, `completed` or `deleted` |
+| `due.before:fri` `due.after:today` | due strictly before / after the date; tasks without due never match |
 | any other word | case-insensitive substring of the description |
 
 Ids and uuid prefixes together form one selection: `tk 3 1a2b3c4d list` shows task 3 *and*
 the task with that uuid. A token of digits only is always an id.
 
-Coming in later roadmap steps: `due.before:`/`due.after:` (dates, step 5).
 
 ## Examples
 

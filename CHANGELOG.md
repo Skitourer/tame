@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   confirmation above 3 tasks (`delete`: always); `--yes` skips it. Pending tasks are
   renumbered after `done`/`delete`.
 - `info` command: every field of the matching tasks, in local time.
+- Due dates: `due:` in `add`/`modify`, `due.before:`/`due.after:` filters. Dates: ISO,
+  `today`/`tomorrow`/`yesterday`, weekdays, `eow`/`eom`/`eoy`, offsets (`+3d`, `-1w`...).
+- Urgency (priority, due, age, tags, project): `list` sorts by it and shows it (`Urg`),
+  `info` shows it. Overdue tasks are red, tasks due today yellow.
 
 ### Fixed
 

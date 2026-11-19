@@ -24,6 +24,7 @@ tags = "Tags"
 priority = "Pri"
 due = "Due"
 description = "Description"
+urgency = "Urg"
 
 [info]
 id = "ID"
@@ -37,6 +38,7 @@ due = "Due"
 entry = "Entered"
 modified = "Modified"
 end = "Ended"
+urgency = "Urgency"
 
 [info.col]
 name = "Name"
@@ -83,6 +85,7 @@ empty_description = "A task needs a description."
 invalid_tag = "Invalid tag: '{tag}'"
 invalid_project = "Invalid project: '{project}'"
 invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
+invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "No matches."
 db_open = "Cannot open database {path}: {detail}"
 db_too_new = "Database schema version {found} is newer than supported ({supported}). Upgrade tame."

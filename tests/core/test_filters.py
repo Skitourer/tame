@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -113,3 +113,17 @@ def test_all_criteria_and_combined() -> None:
     where = Filter(ids=frozenset({3}), tags_in=frozenset({"phone"}), project="home")
     assert where.matches(task())
     assert not where.matches(task(project="work"))
+
+
+def test_due_before_and_after() -> None:
+    due = task(due=T0)
+    assert Filter(due_before=T0 + timedelta(seconds=1)).matches(due)
+    assert not Filter(due_before=T0).matches(due)  # strict
+    assert Filter(due_after=T0 - timedelta(seconds=1)).matches(due)
+    assert not Filter(due_after=T0).matches(due)
+    assert Filter(due_after=T0 - timedelta(days=1), due_before=T0 + timedelta(days=1)).matches(due)
+
+
+def test_due_filters_exclude_tasks_without_due() -> None:
+    assert not Filter(due_before=T0).matches(task())
+    assert not Filter(due_after=T0).matches(task())

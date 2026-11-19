@@ -6,9 +6,11 @@ from contextlib import contextmanager
 from tame import __version__
 from tame.cli.parser import ParsedCommand, parse_add, parse_filter, parse_modify
 from tame.config import data_dir
+from tame.core.dates import utc_now
 from tame.core.filters import Filter
 from tame.core.models import Task
-from tame.core.service import TaskService, utc_now
+from tame.core.service import TaskService
+from tame.core.urgency import by_urgency
 from tame.errors import ExitCode, NoMatchError, UsageError
 from tame.i18n import t
 from tame.storage.migrations import SCHEMA_VERSION
@@ -90,20 +92,25 @@ def cmd_add(command: ParsedCommand) -> int:
     parsed = parse_add(command.args)
     with open_service() as service:
         task = service.add(
-            parsed.description, project=parsed.project, tags=parsed.tags, priority=parsed.priority
+            parsed.description,
+            project=parsed.project,
+            tags=parsed.tags,
+            priority=parsed.priority,
+            due=parsed.due,
         )
     print(t("cmd.add.created", id=task.id))
     return ExitCode.OK
 
 
 def cmd_list(command: ParsedCommand) -> int:
-    """``list``: print the matching tasks as a table."""
-    where = parse_filter(command.filter)
+    """``list``: print the matching tasks as a table, most urgent first."""
+    now = utc_now()
+    where = parse_filter(command.filter, now)
     with open_service() as service:
-        tasks = _matching(service, where)
+        tasks = by_urgency(_matching(service, where), now)
     from tame.cli.render import print_task_table
 
-    print_task_table(tasks, utc_now())
+    print_task_table(tasks, now)
     return ExitCode.OK
 
 
@@ -156,7 +163,7 @@ def cmd_info(command: ParsedCommand) -> int:
         tasks = _matching(service, where)
     from tame.cli.render import print_task_info
 
-    print_task_info(tasks)
+    print_task_info(tasks, utc_now())
     return ExitCode.OK
 
 

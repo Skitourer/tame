@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from tame.core.dates import utc_now
 from tame.core.filters import Filter
 from tame.core.models import NONE, Changes, Priority, Status
-from tame.core.service import TaskService, utc_now
+from tame.core.service import TaskService
 from tame.errors import ValidationError
 from tame.storage.repo import TaskRepo
 
@@ -159,3 +160,21 @@ def test_changes_truthiness() -> None:
     assert not Changes()
     assert Changes(project=NONE)
     assert Changes(tags_remove=frozenset({"x"}))
+
+
+def test_add_with_due(service: TaskService, repo: TaskRepo, later: datetime) -> None:
+    task = service.add("x", due=later)
+    assert task.due == later
+    assert repo.get(task.uuid) == task
+
+
+def test_modify_sets_and_clears_due(service: TaskService, later: datetime) -> None:
+    task = service.add("x")
+    (with_due,) = service.modify([task], Changes(due=later))
+    assert with_due.due == later
+    (cleared,) = service.modify([with_due], Changes(due=NONE))
+    assert cleared.due is None
+
+
+def test_changes_with_due_is_truthy(later: datetime) -> None:
+    assert Changes(due=later)

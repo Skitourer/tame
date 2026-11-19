@@ -3,8 +3,9 @@
 import uuid as uuid_lib
 from collections.abc import Callable, Iterable
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 
+from tame.core.dates import utc_now
 from tame.core.filters import Filter
 from tame.core.models import (
     Changes,
@@ -18,11 +19,6 @@ from tame.core.models import (
 from tame.storage.repo import TaskRepo
 
 Clock = Callable[[], datetime]
-
-
-def utc_now() -> datetime:
-    """Return the current UTC time, truncated to the second (storage precision)."""
-    return datetime.now(UTC).replace(microsecond=0)
 
 
 class TaskService:
@@ -44,6 +40,7 @@ class TaskService:
         project: str | None = None,
         tags: Iterable[str] = (),
         priority: str | None = None,
+        due: datetime | None = None,
     ) -> Task:
         """Create a pending task with the next free short id.
 
@@ -52,6 +49,7 @@ class TaskService:
             project: Dotted project name.
             tags: Tag names, without leading ``+``.
             priority: H, M or L (any case).
+            due: Due date (aware).
 
         Returns:
             The stored task.
@@ -68,6 +66,7 @@ class TaskService:
             project=check_project(project) if project is not None else None,
             tags=frozenset(check_tag(tag) for tag in tags),
             priority=parse_priority(priority) if priority is not None else None,
+            due=due,
         )
         with self._repo.transaction():
             task = replace(task, id=self._repo.max_pending_id() + 1)
@@ -123,10 +122,7 @@ class TaskService:
         return changed
 
     def query(self, where: Filter | None = None) -> list[Task]:
-        """Return the tasks matching ``where`` (default: all pending), ordered by short id.
-
-        Urgency sorting arrives in roadmap step 5.
-        """
+        """Return the tasks matching ``where`` (default: all pending), ordered by short id."""
         where = where or Filter()
         return [
             task for task in self._repo.by_status(where.effective_status) if where.matches(task)

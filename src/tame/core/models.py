@@ -68,6 +68,7 @@ class Changes:
         description: New description; None keeps it.
         project: New project; ``NONE`` clears it; None keeps it.
         priority: New priority; ``NONE`` clears it; None keeps it.
+        due: New due date; ``NONE`` clears it; None keeps it.
         tags_add: Tags to add.
         tags_remove: Tags to remove.
     """
@@ -75,6 +76,7 @@ class Changes:
     description: str | None = None
     project: str | None = None
     priority: Priority | Literal[""] | None = None
+    due: datetime | Literal[""] | None = None
     tags_add: frozenset[str] = frozenset()
     tags_remove: frozenset[str] = frozenset()
 
@@ -85,6 +87,7 @@ class Changes:
                 self.description is not None,
                 self.project is not None,
                 self.priority is not None,
+                self.due is not None,
                 self.tags_add,
                 self.tags_remove,
             )
@@ -97,6 +100,7 @@ class Changes:
             description=task.description if self.description is None else self.description,
             project=task.project if self.project is None else self.project or None,
             priority=task.priority if self.priority is None else self.priority or None,
+            due=task.due if self.due is None else self.due or None,
             tags=(task.tags | self.tags_add) - self.tags_remove,
         )
 

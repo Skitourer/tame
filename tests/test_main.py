@@ -50,8 +50,9 @@ def test_filter_not_allowed(capsys: Capture) -> None:
 
 
 def test_add_prints_created_id(capsys: Capture, tame_home: Path) -> None:
-    # SPEC §5 example without due: (dates arrive in step 5).
-    assert run(capsys, "add", "Call", "bank", "project:home", "+phone", "pri:H") == (
+    # SPEC §5 example.
+    argv = ("add", "Call", "bank", "project:home", "+phone", "due:tomorrow", "pri:H")
+    assert run(capsys, *argv) == (
         0,
         "Created task 1.\n",
         "",
@@ -67,9 +68,9 @@ def test_add_invalid_is_usage_error(capsys: Capture) -> None:
 
 
 def test_add_unknown_attribute(capsys: Capture) -> None:
-    code, _, err = run(capsys, "add", "x", "due:tomorrow")
+    code, _, err = run(capsys, "add", "x", "wait:tomorrow")
     assert code == 1
-    assert err == "Unknown attribute: due\n"
+    assert err == "Unknown attribute: wait\n"
 
 
 def test_list_shows_tasks_and_hides_empty_columns(capsys: Capture) -> None:
@@ -79,13 +80,13 @@ def test_list_shows_tasks_and_hides_empty_columns(capsys: Capture) -> None:
     assert (code, err) == (0, "")
     lines = out.splitlines()
     header = lines[0].split()
-    assert header == ["ID", "Age", "Project", "Tags", "Pri", "Description"]
+    assert header == ["ID", "Age", "Project", "Tags", "Pri", "Description", "Urg"]
     assert "Due" not in out
     rows = [line.split() for line in lines[2:] if line.strip()]
     assert rows[0][0] == "1"
-    assert rows[0][2:] == ["home", "phone", "H", "Call", "bank"]
+    assert rows[0][2:] == ["home", "phone", "H", "Call", "bank", "8.0"]
     assert rows[1][0] == "2"
-    assert rows[1][2:] == ["Buy", "milk"]
+    assert rows[1][2:] == ["Buy", "milk", "0.0"]
 
 
 def test_no_args_means_list(capsys: Capture) -> None:
@@ -133,7 +134,7 @@ def test_list_spec_example_both_orders(capsys: Capture, argv: list[str]) -> None
         (["-phone"], ["2"]),
         (["pri:H"], ["1"]),
         (["pri:"], ["2"]),
-        (["2-3", "list"], ["2", "3"]),
+        (["2-3", "list"], ["3", "2"]),  # sorted by urgency
         (["1,3", "+phone", "report"], ["3"]),
         (["list", "FENCE"], ["2"]),
         (["project:home.garden", "list"], ["2"]),
@@ -151,7 +152,7 @@ def test_list_no_match_exit_2(capsys: Capture) -> None:
 
 
 def test_list_unknown_attribute(capsys: Capture) -> None:
-    assert run(capsys, "due.before:fri", "list") == (1, "", "Unknown attribute: due.before\n")
+    assert run(capsys, "due.on:fri", "list") == (1, "", "Unknown attribute: due.on\n")
 
 
 def test_internal_error_exit_code(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -210,7 +211,7 @@ def descriptions(capsys: Capture, *argv: str) -> list[str]:
     code, out, _ = run(capsys, *argv, "list")
     if code:
         return []
-    return [" ".join((line.split()[0], line.split()[-1])) for line in out.splitlines()[2:] if line]
+    return [" ".join((line.split()[0], line.split()[-2])) for line in out.splitlines()[2:] if line]
 
 
 @pytest.fixture
@@ -317,18 +318,19 @@ def test_write_commands_no_match(capsys: Capture, command: str) -> None:
 
 
 def test_modify_spec_example(capsys: Capture) -> None:
-    # SPEC section 5 `tk 12 modify due:mon -phone`, without due (step 5).
+    # SPEC §5: `tk 12 modify due:mon -phone`.
     run(capsys, "add", "Call", "bank", "+phone", "pri:H")
-    assert run(capsys, "1", "modify", "pri:L", "-phone") == (
+    assert run(capsys, "1", "modify", "due:mon", "-phone") == (
         0,
         "Modified task 1 'Call bank'.\n",
         "",
     )
     code, out, _ = run(capsys, "1", "info")
     assert code == 0
-    assert "Priority" in out
-    assert " L" in out
+    assert "Due" in out
     assert "phone" not in out
+    run(capsys, "1", "modify", "due:")
+    assert "Due" not in run(capsys, "1", "info")[1]
 
 
 def test_modify_replaces_description(capsys: Capture) -> None:
@@ -377,6 +379,7 @@ def test_info_spec_example(capsys: Capture) -> None:
         "Priority",
         "Entered",
         "Modified",
+        "Urgency",
     ]
 
 
@@ -385,3 +388,38 @@ def test_info_without_filter_shows_all_pending(capsys: Capture) -> None:
     run(capsys, "add", "two")
     out = run(capsys, "info")[1]
     assert out.count("UUID") == 2
+
+
+# --- dates and urgency (roadmap step 5) ----------------------------------------
+
+
+def test_list_sorted_by_urgency(capsys: Capture) -> None:
+    run(capsys, "add", "plain")
+    run(capsys, "add", "overdue", "due:-8d")
+    run(capsys, "add", "high", "pri:H")
+    run(capsys, "add", "tagged", "+x")
+    assert descriptions(capsys) == ["2 overdue", "3 high", "4 tagged", "1 plain"]
+
+
+def test_list_shows_due_date_and_urgency(capsys: Capture) -> None:
+    run(capsys, "add", "Pay", "rent", "due:2026-12-15")
+    code, out, _ = run(capsys, "list")
+    assert code == 0
+    assert out.splitlines()[0].split() == ["ID", "Age", "Due", "Description", "Urg"]
+    assert "2026-12-15" in out
+
+
+def test_due_filter_spec_example(capsys: Capture) -> None:
+    run(capsys, "add", "soon", "due:today")
+    run(capsys, "add", "later", "due:+30d")
+    run(capsys, "add", "never")
+    assert descriptions(capsys, "due.before:+7d") == ["1 soon"]
+    assert descriptions(capsys, "due.after:today") == ["2 later"]
+
+
+def test_add_invalid_due(capsys: Capture) -> None:
+    assert run(capsys, "add", "x", "due:someday") == (
+        1,
+        "",
+        "Invalid date: 'someday' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)\n",
+    )

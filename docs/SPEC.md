@@ -126,8 +126,10 @@ Date keywords EN only, any UI language. Date without time → 00:00 local.
 | ISO | `2026-12-15`, `2026-12-15T14:00` |
 | Day | `today` `tomorrow` `yesterday` |
 | Weekday | `monday`..`sunday`, `mon`..`sun` → next occurrence, never today |
-| Period end | `eow` `eom` `eoy` |
-| Offset | `+3d` `+2w` `+1m` `+4h` `-1d` (from now) |
+| Period end | `eow` `eom` `eoy` → 23:59:59 local of last day (week ends Sunday) |
+| Offset | `+3d` `+2w` `+1m` `+4h` `-1d` (from now; `m` = calendar month, day clamped) |
+
+ISO with offset/`Z` and TW `20261215T140000Z` kept as is. Keywords case-insensitive. `due.before:`/`due.after:` are strict; tasks without due never match. Overdue (red) / due today (yellow) = local calendar day of due vs today.
 
 Urgency U = sum, coeffs in config, shown 1 decimal:
 

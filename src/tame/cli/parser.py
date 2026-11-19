@@ -12,8 +12,10 @@ Comments cite the SPEC §4 rule numbers. Full reference: ``docs/grammar.md``.
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
+from tame.core.dates import parse_date, utc_now
 from tame.core.filters import Filter
 from tame.core.models import (
     NONE,
@@ -86,6 +88,7 @@ class AddArgs:
     project: str | None = None
     tags: tuple[str, ...] = ()
     priority: str | None = None
+    due: datetime | None = None
 
 
 def match_command(token: str) -> str | None:
@@ -177,13 +180,18 @@ def _is_filter_token(token: str) -> bool:
     )
 
 
-def parse_filter(tokens: Sequence[str]) -> Filter:
+def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
     """Build a :class:`Filter` from filter tokens (SPEC §4 filter table).
+
+    Args:
+        tokens: Filter tokens.
+        now: Reference time for relative dates; defaults to the current time.
 
     Raises:
         UsageError: On an unknown ``attr:`` (rule 6) or a malformed id range.
-        ValidationError: On an invalid tag, project, priority or status.
+        ValidationError: On an invalid tag, project, priority, status or date.
     """
+    now = now or utc_now()
     ids: set[int] = set()
     uuids: list[str] = []
     tags_in: set[str] = set()
@@ -191,6 +199,8 @@ def parse_filter(tokens: Sequence[str]) -> Filter:
     project: str | None = None
     priority: Priority | Literal[""] | None = None
     status: Status | None = None
+    due_before: datetime | None = None
+    due_after: datetime | None = None
     words: list[str] = []
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest are plain words.
@@ -214,6 +224,10 @@ def parse_filter(tokens: Sequence[str]) -> Filter:
                 priority = parse_priority(value) if value else NONE
             elif name == "status":
                 status = _parse_status(value)
+            elif name == "due.before":
+                due_before = parse_date(value, now)
+            elif name == "due.after":
+                due_after = parse_date(value, now)
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
         else:
@@ -226,6 +240,8 @@ def parse_filter(tokens: Sequence[str]) -> Filter:
         project=project,
         priority=priority,
         status=status,
+        due_before=due_before,
+        due_after=due_after,
         words=tuple(words),
     )
 
@@ -248,21 +264,27 @@ def _parse_status(value: str) -> Status:
         raise ValidationError("error.invalid_status", value=value) from None
 
 
-def parse_modify(tokens: Sequence[str]) -> Changes:
+def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
     """Parse the arguments of ``modify`` (SPEC §4 mods).
 
     ``attr:value`` sets, ``attr:`` clears, ``+tag`` adds, ``-tag`` removes; the other
     words, joined, replace the description.
 
+    Args:
+        tokens: Argument tokens.
+        now: Reference time for relative dates; defaults to the current time.
+
     Raises:
         UsageError: On an unknown ``attr:`` (rule 6).
-        ValidationError: On an invalid tag, project or priority.
+        ValidationError: On an invalid tag, project, priority or date.
     """
+    now = now or utc_now()
     words: list[str] = []
     tags_add: set[str] = set()
     tags_remove: set[str] = set()
     project: str | None = None
     priority: Priority | Literal[""] | None = None
+    due: datetime | Literal[""] | None = None
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -277,6 +299,8 @@ def parse_modify(tokens: Sequence[str]) -> Changes:
                 project = check_project(value) if value else NONE
             elif name == "priority":
                 priority = parse_priority(value) if value else NONE
+            elif name == "due":
+                due = parse_date(value, now) if value else NONE
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
         else:
@@ -285,20 +309,26 @@ def parse_modify(tokens: Sequence[str]) -> Changes:
         description=check_description(" ".join(words)) if words else None,
         project=project,
         priority=priority,
+        due=due,
         tags_add=frozenset(tags_add),
         tags_remove=frozenset(tags_remove),
     )
 
 
-def parse_add(tokens: Sequence[str]) -> AddArgs:
+def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
     """Parse the tokens following ``add`` (rule 3: never a filter).
+
+    Args:
+        tokens: Argument tokens.
+        now: Reference time for relative dates; defaults to the current time.
 
     Raises:
         UsageError: On an unknown ``attr:`` (rule 6).
+        ValidationError: On an invalid date.
     """
     words: list[str] = []
     tags: list[str] = []
-    attrs: dict[str, str | None] = {"project": None, "priority": None}
+    attrs: dict[str, str | None] = {"project": None, "priority": None, "due": None}
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -318,4 +348,5 @@ def parse_add(tokens: Sequence[str]) -> AddArgs:
         project=attrs["project"],
         tags=tuple(tags),
         priority=attrs["priority"],
+        due=parse_date(due, now or utc_now()) if (due := attrs["due"]) else None,
     )
