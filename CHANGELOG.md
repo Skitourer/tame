@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `import` command: Taskwarrior JSON (array or one object per line) from a file or
   stdin, merged by uuid (newer `modified` wins); unsupported attributes are kept and
   exported back. Reads UTF-16 files written by PowerShell 5. Undoable in one step.
+- `alias` command: `tk alias install task` adds an opt-in `task` command (any name but
+  `tame`/`tk`) next to `tame` and `tk`; `tk alias remove task` deletes it. Never touches
+  files it did not create; warns if the directory is not in PATH or another command of
+  that name comes first.
 
 ### Fixed
 

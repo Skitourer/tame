@@ -16,6 +16,15 @@ uv run pre-commit install
 
 Run the CLI from the checkout with `uv run tame <args>` (or `uv run tk <args>`).
 
+To try it without touching your real tasks, use the sandbox scripts: they keep tasks,
+settings and aliases in `.sandbox/` (ignored by git).
+
+```sh
+.\scripts\tk.ps1 add Call bank +phone due:fri   # PowerShell; quote '--'
+./scripts/tk.sh add Call bank +phone due:fri    # sh
+.\scripts\tk.ps1 --reset                        # start over
+```
+
 ## Checks
 
 All of these must pass before opening a PR (CI runs them on Windows and Linux):

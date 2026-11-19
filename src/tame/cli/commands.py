@@ -295,6 +295,27 @@ def _decode(data: bytes) -> str:
         raise ValidationError("error.import_json", detail=str(exc)) from None
 
 
+def cmd_alias(command: ParsedCommand, settings: Settings) -> int:
+    """``alias``: create or remove an opt-in command alias such as ``task``."""
+    from tame import alias
+
+    match command.args:
+        case ("install", name):
+            result = alias.install(name)
+            print(t("cmd.alias.installed", name=name, path=result.path))
+            if not result.on_path:
+                print(
+                    t("cmd.alias.not_on_path", name=name, dir=result.path.parent), file=sys.stderr
+                )
+            elif result.shadowed_by is not None:
+                print(t("cmd.alias.shadowed", name=name, path=result.shadowed_by), file=sys.stderr)
+        case ("remove", name):
+            print(t("cmd.alias.removed", name=name, path=alias.remove(name)))
+        case _:
+            raise UsageError("error.alias_usage")
+    return ExitCode.OK
+
+
 def cmd_config(command: ParsedCommand) -> int:
     """``config``: show or change settings in ``config.toml``.
 
@@ -356,6 +377,7 @@ HELP_COMMANDS = (
     "export",
     "import",
     "config",
+    "alias",
     "help",
     "version",
 )
@@ -402,13 +424,9 @@ def help_text(subject: str) -> str:
     return f"{usage}\n\n{summary}.\n\n{t(f'help.cmd.{name}.body').rstrip()}"
 
 
-def cmd_not_implemented(command: ParsedCommand, settings: Settings) -> int:
-    """Placeholder for V1 commands of later roadmap steps."""
-    raise UsageError("error.not_implemented", command=command.name)
-
-
 HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "add": cmd_add,
+    "alias": cmd_alias,
     "delete": cmd_delete,
     "done": cmd_done,
     "export": cmd_export,
@@ -431,4 +449,4 @@ def run(command: ParsedCommand) -> int:
         return cmd_config(command)
     if command.name == "help":
         return cmd_help(command)
-    return HANDLERS.get(command.name, cmd_not_implemented)(command, load_settings())
+    return HANDLERS[command.name](command, load_settings())

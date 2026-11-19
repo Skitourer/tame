@@ -22,6 +22,12 @@ removed = "Tâche {task} « {description} » retirée."
 [cmd.import]
 summary = "Import : {added} ajoutées, {updated} mises à jour, {skipped} ignorées (pas plus récentes)."
 
+[cmd.alias]
+installed = "Alias « {name} » créé : {path}"
+removed = "Alias « {name} » supprimé : {path}"
+not_on_path = "Attention : {dir} n'est pas dans le PATH ; ajoutez-le pour utiliser « {name} »."
+shadowed = "Attention : « {name} » lance {path}, trouvé avant dans le PATH."
+
 [cmd.config]
 default = "# défaut : {value}"
 set = "{name} = {value}"
@@ -35,7 +41,7 @@ id = "ID"
 age = "Âge"
 project = "Projet"
 tags = "Tags"
-priority = "Pri"
+priority = "Prio"
 due = "Échéance"
 description = "Description"
 urgency = "Urg"
@@ -95,7 +101,6 @@ years = "{n}a"
 [error]
 internal = "Erreur interne : {detail}"
 ambiguous_command = "Commande ambiguë « {name} » : {candidates}"
-not_implemented = "La commande « {command} » n'est pas encore disponible."
 filter_not_allowed = "La commande « {command} » n'accepte pas de filtre."
 invalid_id_range = "Plage d'ids invalide : « {token} »"
 invalid_status = "Statut invalide : « {value} » (attendu : pending, completed, deleted ou all)"
@@ -124,6 +129,12 @@ import_io = "Impossible de lire {path} : {detail}"
 import_json = "JSON invalide : {detail}"
 import_item = "Tâche {item} de l'entrée : {detail}"
 import_field = "Valeur {value} invalide pour « {name} »"
+alias_usage = "Usage : tk alias install NOM | tk alias remove NOM"
+alias_name = "Nom d'alias invalide « {name} » : lettres, chiffres, - et _ (ni tame ni tk)."
+alias_exists = "{path} existe déjà et n'a pas été créé par tame : laissé tel quel."
+alias_missing = "Pas d'alias « {name} » ({path} introuvable)."
+alias_not_ours = "{path} n'a pas été créé par tame : laissé tel quel."
+alias_io = "Impossible d'écrire ou de supprimer {path} : {detail}"
 help_unknown = "Pas d'aide pour « {name} ». Lancez « tk help » pour la liste."
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
@@ -273,6 +284,22 @@ Exemples :
   tk config set undo.retention 1y      garder l'historique 1 an (ou : forever)
   tk config set date_format %d/%m/%Y
   tk config unset date_format
+'''
+
+[help.cmd.alias]
+summary = "Ajouter ou retirer un alias de commande, comme task"
+usage = "tk alias install NOM | tk alias remove NOM"
+body = '''
+Crée un petit lanceur NOM (NOM.cmd sous Windows) qui lance tame, à côté des commandes
+tame et tk (le dossier des outils uv, en général ~/.local/bin). Pratique si vos doigts
+tapent task. Pas fait par défaut : task est aussi la commande de Taskwarrior et de
+go-task. Prévient si un autre NOM passe avant dans le PATH. remove ne supprime que les
+lanceurs créés par tame.
+
+Exemples :
+  tk alias install task
+  task add Appeler la banque
+  tk alias remove task
 '''
 
 [help.cmd.help]
