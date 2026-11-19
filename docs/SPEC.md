@@ -9,6 +9,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
+- **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
 - **Out V1**: recurrence, depends, annotations, wait, contexts, custom reports, sync, hooks, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -237,3 +238,5 @@ docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.
 8. TW import/export + `alias` (8a: `export`/`import`, `status:all`; 8b: `alias`)
 9. Extras before release (9a: README; 9b: onboarding; 9c: easter eggs; 9d: badges + coverage gate; 9e: docs site + `docs/commands.md`)
 10. Release (10a: install polish, installers, CI install check; 10b: PyPI name + release workflow; 10c: docs pass → v0.1.0)
+
+**Roadmap 0.2.0**: `license`/`credits` help topics; `print`; kind words; GitHub Actions on Node.js 24.
