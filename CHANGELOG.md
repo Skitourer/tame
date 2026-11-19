@@ -7,23 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-20
+
+A little more paper, and a little more love.
+
 ### Added
 
-- Kind words: now and then, a short line about friends, family, colleagues, free time
-  and nature (50 phrases, EN and FR), at most every three days; also when you complete
-  your last task and at the foot of a printed list. `tk config set kindness false`
-  turns them off. And a little secret for when you need it.
-- `print` command: a printable page of the matching tasks, one section per project,
-  opened in the browser with the print dialog (print, or save as PDF); `--file PATH`
-  saves it instead.
-- `tk help license`: TAME's license, and the installed libraries with their versions and
-  licenses. `tk help credits`: author, thanks, libraries and tools. Also on the site
-  (Credits & licenses), and mentioned by `tk version`.
+- **`tk print`**: a printable page of your tasks, one section per project, with a box to
+  tick for each, its priority, tags and due date (today, or late in bold), and room to add
+  tasks by hand. It opens in your browser with the print dialog: print it, or save it as
+  PDF. Works with filters: `tk +shopping print`. `--file PATH` saves the page instead.
+- **Kind words**: now and then, a short line about friends, family, colleagues, free time
+  and nature (50 phrases, in English and French). At most one every three days, never in
+  files or scripts; also when you complete your last task, and at the foot of a printed
+  list. `tk config set kindness false` turns them off. And a little secret, for the days
+  when you need it.
+- **`tk help license`** and **`tk help credits`**: TAME's license, the libraries it uses with
+  their licenses, and thanks. `tk version` points to them.
 
 ### Project
 
-- CI: GitHub Actions moved to their Node.js 24 versions; Dependabot keeps them up to date.
-- The Release workflow can be rehearsed by hand (build and check only).
+- GitHub Actions moved to their Node.js 24 versions; Dependabot keeps them up to date.
+- The release workflow can be rehearsed by hand.
+- Required checks on `main` now include the install test and the docs build.
 
 ## [0.1.0] - 2026-11-19
 

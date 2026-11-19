@@ -36,7 +36,7 @@ Completed task 1 'Call the bank'.
 - **A little love**: the world can be hard. Now and then, TAME reminds you of the people around
   you, and if you need it right now, just type `tk love`. ♥
 
-> Status: alpha (0.1). Everything described here works; details may still change before
+> Status: alpha (0.2). Everything described here works; details may still change before
 > 1.0. See the roadmap in
 > [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
 
