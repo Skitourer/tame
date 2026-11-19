@@ -72,7 +72,7 @@ def test_five(capsys: Capture, tame_home: Path) -> None:
     ]
     main(["add", "y"])
     out = run(capsys, "1 qbar")[1]
-    assert r("Nafjre") not in out
+    assert r("Gur Nafjre. Abj, jung jnf gur Dhrfgvba?") not in out
 
 
 def test_six(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -81,7 +81,7 @@ def test_six(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
     code, _, err = run(capsys, "haqb")
     assert code == 2
     assert err.splitlines()[0] == "Nothing to undo."
-    assert r("tvtnjnggf") in err.splitlines()[1]
+    assert err.splitlines()[1] == r("Terng Fpbgg! Lbh'q arrq 1.21 tvtnjnggf gb tb onpx shegure.")
 
 
 def test_ordinary_lines_are_untouched(capsys: Capture) -> None:
@@ -103,4 +103,5 @@ def test_six_odds(
     capsys: Capture, monkeypatch: pytest.MonkeyPatch, value: float, shown: bool
 ) -> None:
     monkeypatch.setattr(eggs, "_random", _Fixed(value))
-    assert (r("tvtnjnggf") in run(capsys, "haqb")[2]) is shown
+    too_far = r("Terng Fpbgg! Lbh'q arrq 1.21 tvtnjnggf gb tb onpx shegure.")
+    assert (too_far in run(capsys, "haqb")[2]) is shown
