@@ -341,12 +341,8 @@ def cmd_completion(command: ParsedCommand, settings: Settings) -> int:
         case (shell,):
             names = ["tk", "tame", *alias.installed()]
             print(completion.script(shell, names), end="")
-        case _:
-            raise UsageError(
-                "error.completion_shell",
-                shell=" ".join(command.args),
-                shells=", ".join(completion.SHELLS),
-            )
+        case _:  # No shell, or too many words: say what to type.
+            raise UsageError("error.completion_usage", shells=" | ".join(completion.SHELLS))
     return ExitCode.OK
 
 

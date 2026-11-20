@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run profile scripts. `tk completion powershell|bash` still prints the script, for other
   setups; it is no longer in the `tk help` list.
 
+### Fixed
+
+- `tk completion` without a shell said *Unknown shell ''*; it now shows its usage and how to
+  turn completion on.
+
 ## [0.3.0] - 2026-11-20
 
 Everyday comfort, nothing new to learn: plain commands work as before, the new things are

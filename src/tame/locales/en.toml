@@ -158,6 +158,7 @@ ambiguous_annotation = "Several notes of task {task} contain '{text}': {candidat
 no_annotation = "No note matches '{text}'."
 no_notes = "No note to remove."
 completion_shell = "Unknown shell '{shell}': use one of {shells}."
+completion_usage = "Usage: tk completion {shells} (prints the script). To turn Tab completion on: tk config set completion true"
 no_modifications = "Nothing to modify: give attr:value, attr:, +tag, -tag or a new description."
 task_not_found = "Task {uuid} not found."
 unknown_attribute = "Unknown attribute: {name}"
