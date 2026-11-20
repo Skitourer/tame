@@ -328,7 +328,7 @@ usage = "tk [filter] next"
 body = '''
 Like list, but shows only the next_limit most urgent tasks (10 by default), leaves
 out blocked tasks (+BLOCKED: waiting for another pending task) and the Age and Tags
-columns. A last line tells how many more tasks match.
+columns. The last lines tell how many tasks match in all.
 
 Make it what tk alone runs: tk config set default_command next
 

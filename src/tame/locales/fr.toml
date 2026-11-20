@@ -330,8 +330,8 @@ usage = "tk [filtre] next"
 body = '''
 Comme list, mais n'affiche que les next_limit tâches les plus urgentes (10 par
 défaut), sans les tâches bloquées (+BLOCKED : en attente d'une autre tâche en cours)
-ni les colonnes Âge et Tags. Une dernière ligne indique combien d'autres tâches
-correspondent.
+ni les colonnes Âge et Tags. Les dernières lignes indiquent combien de tâches
+correspondent en tout.
 
 Pour que tk tout seul l'affiche : tk config set default_command next
 

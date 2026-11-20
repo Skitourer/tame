@@ -5,16 +5,26 @@ line, see what matters most, tick it off, move on.
 
 ```text
 > tk add Call the bank +phone due:fri pri:H
-Created task 1.
+
+✓ Created task 1.
+
 > tk add Water the plants project:home
-Created task 2.
+
+✓ Created task 2.
+
 > tk
+
 ID   Age   Project   Tags    Pri   Due          Description         Urg
 ───────────────────────────────────────────────────────────────────────
  1    5s             phone   H     2026-11-20   Call the bank      15.8
  2    3s   home                                 Water the plants    1.0
+
+2 tasks
+
 > tk 1 done
-Completed task 1 'Call the bank'.
+
+✓ Completed task 1 'Call the bank'.
+
 ```
 
 - **Quick to type**: `tk` lists your tasks, `tk 3 done` completes one, commands shorten

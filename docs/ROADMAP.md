@@ -18,7 +18,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 | `wait:` | `tk 4 modify wait:mon` | Hidden from `list`/`next` until the date; Adds the `+WAITING` virtual tag (reserved name from then on); `+WAITING` or `status:all` shows them. TW `waiting` status maps to `pending` + `wait`. |
 | Shell completion | `tk config set completion true` | Commands, attributes, projects, tags, date keywords. PowerShell and bash. Data from a hidden `tk _complete` command (fast path, no rich import). |
 
-## 0.3.4 – readable output
+## 0.3.4 – readable output (released: 0.3.4)
 
 | Feature | Example | Notes |
 |---|---|---|
