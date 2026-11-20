@@ -24,6 +24,12 @@ task = "Deleted task {task} '{description}'."
 task = "Modified task {task} '{description}'."
 unchanged = "No task changed."
 
+[cmd.annotate]
+task = "Annotated task {task} '{description}'."
+
+[cmd.denotate]
+task = "Denotated task {task} '{description}'."
+
 [cmd.undo]
 header = "Undid '{command}'."
 restored = "Restored task {task} '{description}'."
@@ -96,6 +102,14 @@ many = "Complete {count} tasks?"
 one = "Delete task {task} '{description}'?"
 many = "Delete {count} tasks?"
 
+[confirm.annotate]
+one = "Annotate task {task} '{description}'?"
+many = "Annotate {count} tasks?"
+
+[confirm.denotate]
+one = "Remove a note from task {task} '{description}'?"
+many = "Remove a note from {count} tasks?"
+
 [confirm.modify]
 one = "Modify task {task} '{description}'?"
 many = "Modify {count} tasks?"
@@ -130,6 +144,10 @@ invalid_id_range = "Invalid id range: '{token}'"
 invalid_status = "Invalid status: '{value}' (expected pending, completed, deleted or all)"
 unexpected_argument = "Unexpected argument: {arg}"
 filter_required = "Command '{command}' needs a filter, e.g. 'tk 3 {command}'."
+empty_annotation = "Nothing to annotate: give the text of the note."
+ambiguous_annotation = "Several notes of task {task} contain '{text}': {candidates}. Give more of the text."
+no_annotation = "No note matches '{text}'."
+no_notes = "No note to remove."
 no_modifications = "Nothing to modify: give attr:value, attr:, +tag, -tag or a new description."
 task_not_found = "Task {uuid} not found."
 unknown_attribute = "Unknown attribute: {name}"
@@ -311,6 +329,32 @@ Examples:
   tk +phone modify pri:L --yes
 '''
 
+[help.cmd.annotate]
+summary = "Add a note to tasks"
+usage = "tk <filter> annotate <text>"
+body = '''
+Adds a dated note to each matching task. tk info shows the notes, tk print prints
+them under the task, and list shows how many a task has: Call bank [2]. A filter is
+required. Asks before changing more than confirm_threshold tasks; --yes skips it.
+
+Examples:
+  tk 3 annotate Call back Monday, ask for Ann
+  tk 3 annotate -- done by mail      (after --, words are text)
+'''
+
+[help.cmd.denotate]
+summary = "Remove a note from tasks"
+usage = "tk <filter> denotate [text]"
+body = '''
+Removes one note from each matching task: the one with exactly this text (any case),
+else the only one containing it, else, without text, the most recent. If several
+notes contain the text, nothing is removed: give more of it.
+
+Examples:
+  tk 3 denotate Call back
+  tk 3 denotate                      (the most recent note)
+'''
+
 [help.cmd.done]
 summary = "Mark tasks completed"
 usage = "tk <filter> done [--yes]"
@@ -340,7 +384,7 @@ Examples:
 summary = "Revert the last change"
 usage = "tk undo"
 body = '''
-Reverts the last add, done, delete, modify or import, ids included. Run it again to go
+Reverts the last add, done, delete, modify, annotate, denotate or import, ids included. Run it again to go
 further back. History older than undo.retention (default 3 months) is purged; see
 tk help config.
 '''

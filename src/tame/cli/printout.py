@@ -34,6 +34,7 @@ td.due { white-space: nowrap; text-align: right; }
 .pri { border: 1px solid #000; border-radius: 1mm; padding: 0 1mm; font-size: 8.5pt;
   font-weight: bold; color: #000; white-space: nowrap; }
 .tags { color: #444; font-size: 9pt; }
+.note { display: block; color: #444; font-size: 9pt; font-style: italic; }
 .late { font-weight: bold; }
 .blank td { height: 9mm; border-bottom: 1px dotted #999; }
 .extra { margin-top: 8mm; }
@@ -120,9 +121,14 @@ def _row(task: Task, now: datetime, date_format: str) -> str:
     priority = f' <span class="pri">!{task.priority.value}</span>' if task.priority else ""
     tags = " ".join(f"+{escape(tag)}" for tag in sorted(task.tags))
     tags_html = f' <span class="tags">{tags}</span>' if tags else ""
+    notes = "".join(
+        f'<span class="note">{escape(note.entry.astimezone().strftime(date_format))} '
+        f"{escape(note.description)}</span>"
+        for note in task.annotations
+    )
     return (
         f'<tr><td class="box">{box}</td>'
-        f'<td class="desc">{escape(task.description)}{priority}{tags_html}</td>'
+        f'<td class="desc">{escape(task.description)}{priority}{tags_html}{notes}</td>'
         f"{_due_cell(task, now, date_format)}</tr>"
     )
 

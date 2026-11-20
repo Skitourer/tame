@@ -120,3 +120,11 @@ def test_page_follows_the_interface_language() -> None:
     assert "Sans projet" in page
     late = make_task("b", due=NOW - timedelta(days=1))
     assert "échéance 2026-11-18 · en retard" in print_page([late], NOW)
+
+
+def test_print_shows_annotations_under_the_task() -> None:
+    from tame.core.models import Annotation
+
+    task = make_task("Call bank", annotations=(Annotation(NOW, "ask <Ann>"),))
+    page = print_page([task], NOW, date_format="%Y-%m-%d")
+    assert '<span class="note">2026-11-19 ask &lt;Ann&gt;</span>' in page

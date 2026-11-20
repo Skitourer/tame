@@ -92,7 +92,7 @@ def print_task_table(
             "left",
             [task.due.astimezone().strftime(date_format) if task.due else "" for task in tasks],
         ),
-        (t("list.col.description"), "left", [task.description for task in tasks]),
+        (t("list.col.description"), "left", [_description_cell(task) for task in tasks]),
         (
             t("list.col.urgency"),
             "right",
@@ -110,6 +110,14 @@ def print_task_table(
     for task, row in zip(tasks, rows, strict=True):
         table.add_row(*row, style=row_style(task, now))
     Console(highlight=False, no_color=not color).print(table)
+
+
+def _description_cell(task: Task) -> str:
+    """Return the description as rich markup, with the annotation count, dim, if any."""
+    from rich.markup import escape
+
+    count = f" [dim]\\[{len(task.annotations)}][/dim]" if task.annotations else ""
+    return escape(task.description) + count
 
 
 def format_local(value: datetime, date_format: str = DEFAULT_DATE_FORMAT) -> str:

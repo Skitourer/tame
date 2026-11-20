@@ -82,3 +82,18 @@ def test_row_style(due: datetime | None, style: str | None) -> None:
 @pytest.mark.parametrize(("value", "text"), [(0.0, "0.0"), (8.04, "8.0"), (12.96, "13.0")])
 def test_format_urgency(value: float, text: str) -> None:
     assert format_urgency(value) == text
+
+
+def test_description_cell_escapes_markup_and_counts_notes() -> None:
+    from tame.cli.render import _description_cell
+
+    task = Task(uuid="u", description="[bold]x", entry=T0, modified=T0)
+    assert _description_cell(task) == "\\[bold]x"
+    noted = Task(
+        uuid="u",
+        description="x",
+        entry=T0,
+        modified=T0,
+        annotations=(Annotation(T0, "a"), Annotation(T0, "b")),
+    )
+    assert _description_cell(noted) == "x [dim]\\[2][/dim]"

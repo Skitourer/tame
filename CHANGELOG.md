@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Annotations**: `tk 3 annotate Call back Monday` adds a dated note to a task;
+  `tk 3 denotate Call` removes it (or, without text, the most recent one). `tk info` shows
+  the notes, `tk print` prints them under the task, and `list`/`next` show how many:
+  `Call bank [2]`. Taskwarrior annotations are imported and exported as before.
 - **`tk next`**: the 10 most urgent tasks you can do now, in a compact table; blocked tasks
   are left out. Works with filters: `tk +home next`. `next_limit` sets how many;
   `tk config set default_command next` makes it what `tk` alone shows.
@@ -19,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tk de` is now ambiguous (`delete`, `denotate`): type `del` or more.
 - The virtual tag names (`OVERDUE`, `TODAY`…) are reserved: `add` and `modify` refuse to set
   them. Such tags imported from Taskwarrior are kept, and `modify -NAME` removes them.
 
