@@ -109,7 +109,7 @@ weeks and months follow your local calendar. `tk info` lists the virtual tags of
 These names are reserved: `tk add x +TODAY` is refused. A real tag with one of these names,
 imported from Taskwarrior, is kept and exported back; `tk 3 modify -TODAY` removes it.
 
-```sh
+```text
 tk +OVERDUE                 # late tasks
 tk +TODAY print             # today's page
 tk +WEEK -BLOCKED           # due this week, and nothing to wait for
@@ -121,7 +121,7 @@ tk project:home -TAGGED     # home tasks with no tag at all
 `wait:` puts a task aside until a date: *no point thinking about it before Monday*. Unlike
 `due:` (do it *before*), `wait:` means *not before*.
 
-```sh
+```text
 tk add Chase the bank wait:mon due:fri
 tk                          # not listed until Monday; a last line says "1 waiting task hidden"
 tk +WAITING                 # the waiting tasks
@@ -135,7 +135,7 @@ and `tk info` shows its `wait` date.
 
 ## Examples
 
-```sh
+```text
 tk project:home list        # = tk list project:home = tk project:home
 tk +phone -work             # pending tasks tagged phone, not tagged work
 tk 2-6 pri:H                # ids 2..6 with priority H

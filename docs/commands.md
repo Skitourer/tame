@@ -37,7 +37,7 @@ tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]
 Words make the description; `project:`, `pri:`, `due:`, [`wait:`](grammar.md#waiting-tasks) and `+tag` can be anywhere. Everything
 after `--` is description, even words like `done` or `+x`. Prints the new task's id.
 
-```sh
+```text
 tk add Call bank project:home +phone due:fri pri:H
 tk add -- +1 vote for the new logo   # after --, +1 is text, not a tag
 tk add Chase the bank wait:mon due:fri
@@ -62,7 +62,7 @@ last line says how many (`tk +WAITING` shows them, with a Wait column). To make 
 default, see
 [`default_command`](settings.md#all-settings).
 
-```sh
+```text
 tk
 tk project:home             # also: tk list project:home
 tk +phone -work bank
@@ -80,7 +80,7 @@ Like `list`, for when you wonder what to do now: only the `next_limit` most urge
 pending task), and without the Age and Tags columns. If more tasks match, the last lines say
 how many: `10 of 34 tasks`, then `tk list shows them all.`
 
-```sh
+```text
 tk next
 tk +home next               # also: tk next +home
 tk n                        # unique prefix
@@ -99,7 +99,7 @@ priority, urgency...), its dates, each followed by how long ago or how soon
 (`overdue by 2 days`, `3 days ago`), its annotations, then its uuid and any attribute kept
 from a Taskwarrior import.
 
-```sh
+```text
 tk 7 info
 tk status:deleted info
 ```
@@ -114,7 +114,7 @@ tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]
 add and remove tags; other words replace the description. A filter is required. Asks before
 changing more than `confirm_threshold` tasks (default 3); `--yes` skips the question.
 
-```sh
+```text
 tk 12 modify due:mon -phone
 tk 3 modify project: Call the bank
 tk +phone modify pri:L --yes
@@ -132,7 +132,7 @@ last call. [`info`](#info) shows the notes, [`print`](#print) prints them under 
 is required; asks before changing more than `confirm_threshold` tasks, `--yes` skips it.
 After `--`, words are text even if they look like a command. `tk undo` removes the note.
 
-```sh
+```text
 tk 3 annotate Call back Monday, ask for Ann
 tk annotate 3 Call back Monday      # also works: ids right after the command are the filter
 tk 3 annotate -- Answer --yes by mail   # after --, --yes is text
@@ -150,7 +150,7 @@ only one containing it, else, without text, the most recent. If several notes co
 text, nothing is removed and the error lists them: give more of the text. No note removed at
 all → exit code 2.
 
-```sh
+```text
 tk 3 denotate Call back
 tk 3 denotate                       # the most recent note
 ```
@@ -164,7 +164,7 @@ tk <filter> done [--yes]
 Marks the matching tasks completed. A filter is required. Asks before completing more than
 `confirm_threshold` tasks; `--yes` skips it. Pending tasks are then renumbered 1..n.
 
-```sh
+```text
 tk 3 done
 tk 3,5 done
 tk +shopping done --yes
@@ -179,7 +179,7 @@ tk <filter> delete [--yes]
 A filter is required. Always asks first; `--yes` skips it. Deleted tasks are kept with
 `status:deleted`, and `tk undo` brings them back. Pending tasks are then renumbered 1..n.
 
-```sh
+```text
 tk 4 delete
 tk project:old delete --yes
 ```
@@ -210,7 +210,7 @@ pending tasks by default. The page follows your interface language and `date_for
 
 `--file PATH` saves the page (HTML) without opening it.
 
-```sh
+```text
 tk print
 tk +shopping print
 tk project:home due.before:eow print
@@ -227,7 +227,7 @@ Prints the matching tasks as a JSON array in Taskwarrior format, one task per li
 none match. Like `list`, only pending tasks by default: `status:all` exports everything.
 Waiting tasks are always included.
 
-```sh
+```text
 tk status:all export > backup.json
 tk project:home export > home.json
 ```
@@ -244,7 +244,7 @@ Reads a JSON array, or one task object per line, from `FILE` or standard input (
 `-`). UTF-8, or UTF-16 as written by PowerShell 5. Tasks are merged by uuid; the whole import
 is one `undo` step. If any task is invalid, nothing is imported and the error names it.
 
-```sh
+```text
 tk import tw.json
 tk status:all export | tk import -
 ```
@@ -256,7 +256,7 @@ Merge rules: [Coming from Taskwarrior](taskwarrior.md#import).
 **Tab completion** makes Tab complete commands, attributes, your tags and projects, date
 keywords and help topics. Turn it on once:
 
-```sh
+```text
 tk config set completion true
 ```
 
@@ -296,7 +296,7 @@ also the Taskwarrior and go-task command. Warns if the directory is not in `PATH
 another `NAME` comes first in `PATH`. `remove` deletes only launchers created by tame, and
 `install` never overwrites another file.
 
-```sh
+```text
 tk alias install task
 task add Call bank
 tk alias remove task
@@ -313,7 +313,7 @@ default; `edit` opens the file in `$VISUAL`/`$EDITOR` (Notepad on Windows) and c
 afterwards. Works even when the settings file is invalid, to repair it. All settings:
 [Settings](settings.md).
 
-```sh
+```text
 tk config set language fr
 tk config set undo.retention 1y
 tk config unset date_format
@@ -332,7 +332,7 @@ guided tour), `license` (TAME's license and the installed libraries'
 licenses) and `credits`. `tk <command> --help` is the same as `tk help <command>`. Works
 even when the settings file is invalid.
 
-```sh
+```text
 tk help modify
 tk help tour
 tk help settings

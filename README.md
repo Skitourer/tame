@@ -76,7 +76,7 @@ the two-minute tour: `tk help tour`. Tab completion in PowerShell or bash:
 
 ## Usage
 
-```sh
+```text
 tk add Call bank project:home +phone due:fri pri:H  # Created task 1.
 tk add -- +1 vote for the new logo          # after --, +1 is text, not a tag
 tk list                                      # most urgent first; or just: tk
@@ -114,7 +114,7 @@ with BitLocker or EFS.
 Settings live in `config.toml`, next to `tasks.db` on Windows (`~/.config/tame` on Linux). It is
 created on first run, with every option and a comment. Edit it by hand, or:
 
-```sh
+```text
 tk config                              # list settings; changed ones show their default
 tk config set language fr              # French interface (commands stay in English)
 tk config set undo.retention 1y        # keep undo history one year (default 3m; or forever)
