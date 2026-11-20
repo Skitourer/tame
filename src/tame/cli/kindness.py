@@ -1,27 +1,30 @@
 """Kind words (SPEC §5): now and then, a line about the people around us.
 
-Fifty phrases (``kindness.p01``..``p50`` in the locales) come in a shuffled order, all of
-them before any repeats. They appear:
+Phrases live in the locales as lists, one per pool (``kindness.<pool>``); their length
+is read from English, so adding phrases needs no code change. Each pool comes in its
+own shuffled order, all of its phrases before any repeat:
 
-- after an everyday command, in a terminal only, at most once every ``COOLDOWN`` and then
-  with a ``CHANCE`` per command;
-- when ``done`` empties the list;
-- at the foot of a ``print`` page;
-- in an easter egg (see ``eggs``).
+- ``empty``: when ``done`` empties the list;
+- ``general``: after an everyday command, in a terminal only, at most once every
+  ``COOLDOWN`` and then with a ``CHANCE`` per command; at the foot of a ``print`` page;
+  in an easter egg (see ``eggs``);
+- ``reminders``: a ``tk add … +love`` line suggested by that easter egg.
 
-The ``kindness`` setting turns the first three off. State (last time shown, remaining
-order) lives in the ``meta`` table, outside undo.
+The ``kindness`` setting turns the first two pools off, but for the egg. State (last
+time shown, remaining order per pool) lives in the ``meta`` table, outside undo.
 """
 
 import json
 import random
 import sys
 from datetime import datetime, timedelta
+from typing import Literal
 
 from tame.core.service import TaskService
-from tame.i18n import t
+from tame.i18n import phrases
 
-COUNT = 50
+Pool = Literal["empty", "general", "reminders"]
+POOLS: tuple[Pool, ...] = ("empty", "general", "reminders")
 COOLDOWN = timedelta(days=3)
 CHANCE = 1 / 10
 HEART = "♥"
@@ -40,27 +43,41 @@ def is_terminal() -> bool:
     return sys.stdout.isatty()
 
 
-def phrase(index: int) -> str:
-    """Return phrase ``index`` (0-based) in the interface language."""
-    return t(f"kindness.p{index + 1:02d}")
+def pool(name: Pool) -> tuple[str, ...]:
+    """Return the phrases of pool ``name`` in the interface language."""
+    return phrases(f"kindness.{name}")
 
 
-def draw(service: TaskService, now: datetime) -> str:
-    """Return the next phrase, remember it, and restart the cooldown.
+def draw(service: TaskService, now: datetime, name: Pool = "general") -> str:
+    """Return the next phrase of pool ``name``, remember it, and restart the cooldown."""
+    service.set_state(_LAST, now.isoformat())
+    return _next(service, name)
 
-    Phrases follow a shuffled order; a new order starts once all have been shown.
+
+def reminder(service: TaskService) -> str:
+    """Return the next ``love`` reminder (a ``tk add`` line); the cooldown is left alone."""
+    return _next(service, "reminders")
+
+
+def _next(service: TaskService, name: Pool) -> str:
+    """Pop the next phrase of ``name`` from its shuffled order; a new order starts when empty.
+
+    Indices beyond the pool (phrases removed) are dropped; phrases added later join
+    from the next order on.
     """
+    texts = pool(name)
+    key = f"{_ORDER}.{name}"
     try:
-        order = [i for i in json.loads(service.state(_ORDER) or "[]") if 0 <= int(i) < COUNT]
+        order = [int(i) for i in json.loads(service.state(key) or "[]")]
+        order = [i for i in order if 0 <= i < len(texts)]
     except (ValueError, TypeError):
         order = []
     if not order:
-        order = list(range(COUNT))
+        order = list(range(len(texts)))
         _random.shuffle(order)
-    index = int(order.pop())
-    service.set_state(_ORDER, json.dumps(order))
-    service.set_state(_LAST, now.isoformat())
-    return phrase(index)
+    index = order.pop()
+    service.set_state(key, json.dumps(order))
+    return texts[index]
 
 
 def is_due(service: TaskService, now: datetime) -> bool:

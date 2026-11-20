@@ -65,6 +65,12 @@ uv run pytest --cov
 - **User-facing text** goes through `t()` with keys in `src/tame/locales/en.toml`, the
   reference, translated in `fr.toml` (a test checks both have the same keys and
   placeholders).
+- **Kind words** are lists in the `[kindness]` section of each locale: `empty` (when `done`
+  empties the list), `general` (everywhere else) and `reminders` (`tk add … +love due:…`
+  lines). To add some, append them at the end of the list in every locale, in the same order;
+  no code change. Name only general relations (friend, loved one, neighbour, colleague,
+  family), never a specific relative. Tests check lengths, duplicates, the wording and that
+  each reminder is a valid, shell-safe `tk add` line.
 
 ## Git workflow
 

@@ -61,13 +61,43 @@ def lookup(key: str, lang: str | None = None) -> str | None:
     return message
 
 
-def _find(catalog: dict[str, Any], key: str) -> str | None:
+def phrases(key: str, lang: str | None = None) -> tuple[str, ...]:
+    """Return the list of texts at ``key`` (e.g. ``kindness.general``), in order.
+
+    English is the reference: its length is the list's length, and an item a
+    translation lacks is taken from English.
+
+    Args:
+        key: Dotted key of a list of strings.
+        lang: Language to look in; defaults to the active one.
+    """
+    english = _find_list(_catalog(DEFAULT_LANGUAGE), key)
+    lang = lang or _language
+    if lang == DEFAULT_LANGUAGE:
+        return english
+    local = _find_list(_catalog(lang), key)
+    return local[: len(english)] + english[len(local) :]
+
+
+def _node(catalog: dict[str, Any], key: str) -> Any:
     node: Any = catalog
     for part in key.split("."):
         if not isinstance(node, dict) or part not in node:
             return None
         node = node[part]
+    return node
+
+
+def _find(catalog: dict[str, Any], key: str) -> str | None:
+    node = _node(catalog, key)
     return node if isinstance(node, str) else None
+
+
+def _find_list(catalog: dict[str, Any], key: str) -> tuple[str, ...]:
+    node = _node(catalog, key)
+    if not isinstance(node, list):
+        return ()
+    return tuple(item for item in node if isinstance(item, str))
 
 
 @cache
