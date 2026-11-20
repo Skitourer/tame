@@ -12,7 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from tame import __version__
-from tame.cli import eggs, kindness
+from tame.cli import eggs, kindness, render
 from tame.cli.parser import (
     ParsedCommand,
     match_command,
@@ -20,6 +20,7 @@ from tame.cli.parser import (
     parse_filter,
     parse_modify,
 )
+from tame.cli.render import task_ref
 from tame.config import (
     OPTIONS,
     ConfigError,
@@ -72,18 +73,13 @@ def _matching(service: TaskService, where: Filter) -> list[Task]:
     return tasks
 
 
-def task_ref(task: Task) -> str:
-    """Return how a task is named in messages: its short id, else its uuid's first 8 chars."""
-    return str(task.id) if task.id is not None else task.uuid[:8]
-
-
 def confirm(question: str) -> bool:
     """Ask a y/N question on stdout; anything but a yes word, or end of input, means no.
 
     Yes words come from ``confirm.yes`` (comma-separated); y and yes always work.
     """
     try:
-        answer = input(f"{question} {t('confirm.choices')} ")
+        answer = render.ask(question)
     except EOFError:
         print()
         return False
@@ -107,7 +103,7 @@ def _confirmed(
         question = t(many_key, count=len(tasks))
     if confirm(question):
         return True
-    print(t("confirm.cancelled"))
+    render.hint(t("confirm.cancelled"))
     return False
 
 
@@ -116,7 +112,7 @@ def _report(key: str, before: Sequence[Task], changed: Sequence[Task]) -> None:
     uuids = {task.uuid for task in changed}
     for task in before:
         if task.uuid in uuids:
-            print(t(key, task=task_ref(task), description=task.description))
+            render.success(t(key, task=task_ref(task), description=task.description))
 
 
 def cmd_add(command: ParsedCommand, settings: Settings) -> int:
@@ -131,7 +127,7 @@ def cmd_add(command: ParsedCommand, settings: Settings) -> int:
             due=parsed.due,
             wait=parsed.wait,
         )
-    print(t("cmd.add.created", id=task.id))
+    render.success(t("cmd.add.created", id=task.id))
     return ExitCode.OK
 
 
@@ -158,26 +154,25 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
         found, hidden = service.query_hidden(where)
         if not found:
             if not command.filter and not service.query(Filter(status=ALL)):
-                print(t("welcome").rstrip())  # First run: no task at all.
+                render.say(t("welcome").strip())  # First run: no task at all.
                 return ExitCode.OK
             if hidden:
-                print(_hidden_line(hidden))
+                render.say(_hidden_line(hidden), "summary")
             raise NoMatchError("error.no_matches")
     tasks = by_urgency(found, now, settings.urgency)
-    from tame.cli.render import print_task_table
-
-    print_task_table(
-        tasks[:limit],
+    shown = tasks[:limit]
+    render.print_task_table(
+        shown,
         now,
         coefficients=settings.urgency,
         date_format=settings.date_format,
-        color=settings.color,
         compact=limit is not None,
     )
-    if limit is not None and len(tasks) > limit:
-        print(t("next.more", shown=limit, total=len(tasks)))
+    render.emit([[], render.summary_line(len(shown), tasks, now)])
+    if len(shown) < len(tasks):
+        render.say(t("next.more"), "summary")
     if hidden:
-        print(_hidden_line(hidden))
+        render.say(_hidden_line(hidden), "summary")
     return ExitCode.OK
 
 
@@ -205,7 +200,7 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
             word = kindness.draw(service, utc_now())
     _report("cmd.done.task", tasks, changed)
     if word is not None:
-        kindness.show(word, color=settings.color)
+        kindness.show(word)
     uuids = {task.uuid for task in changed}
     eggs.after_done([task for task in tasks if task.uuid in uuids])
     return ExitCode.OK
@@ -242,7 +237,7 @@ def cmd_modify(command: ParsedCommand, settings: Settings) -> int:
             return ExitCode.OK
         changed = service.modify(tasks, changes)
     if not changed:
-        print(t("cmd.modify.unchanged"))
+        render.hint(t("cmd.modify.unchanged"))
     _report("cmd.modify.task", tasks, changed)
     return ExitCode.OK
 
@@ -302,15 +297,12 @@ def cmd_info(command: ParsedCommand, settings: Settings) -> int:
         tasks = _matching(service, where)
         tagger = service.virtual_tagger()
         virtual = {task.uuid: tagger(task) for task in tasks}
-    from tame.cli.render import print_task_info
-
-    print_task_info(
+    render.print_task_info(
         tasks,
         utc_now(),
         virtual=virtual,
         coefficients=settings.urgency,
         date_format=settings.date_format,
-        color=settings.color,
     )
     return ExitCode.OK
 
@@ -322,14 +314,14 @@ def cmd_undo(command: ParsedCommand, settings: Settings) -> int:
         try:
             result = service.undo()
         except NoMatchError as err:
-            print(t(err.key, **err.params), file=sys.stderr)
+            render.error(t(err.key, **err.params))
             eggs.after_empty_undo()
             return err.exit_code
-    print(t("cmd.undo.header", command=result.cmd))
+    render.success(t("cmd.undo.header", command=result.cmd))
     for task in result.restored:
-        print(t("cmd.undo.restored", task=task_ref(task), description=task.description))
+        render.success(t("cmd.undo.restored", task=task_ref(task), description=task.description))
     for task in result.removed:
-        print(t("cmd.undo.removed", task=task_ref(task), description=task.description))
+        render.success(t("cmd.undo.removed", task=task_ref(task), description=task.description))
     return ExitCode.OK
 
 
@@ -350,8 +342,8 @@ def cmd_completion(command: ParsedCommand, settings: Settings) -> int:
 def cmd_version(command: ParsedCommand, settings: Settings) -> int:
     """``version``: print the app and schema versions."""
     _no_args(command.args)
-    print(t("cmd.version.output", version=__version__, schema=SCHEMA_VERSION))
-    print(t("cmd.version.more"))
+    render.say(t("cmd.version.output", version=__version__, schema=SCHEMA_VERSION))
+    render.say(t("cmd.version.more"), "hint")
     return ExitCode.OK
 
 
@@ -386,11 +378,11 @@ def cmd_print(command: ParsedCommand, settings: Settings) -> int:
     except OSError as exc:
         raise UsageError("error.print_io", path=str(path), detail=exc.strerror) from exc
     if target is not None:
-        print(t("cmd.print.saved", path=path))
+        render.success(t("cmd.print.saved", path=path))
     elif _open_in_browser(path):
-        print(t("cmd.print.opened", path=path))
+        render.success(t("cmd.print.opened", path=path))
     else:
-        print(t("cmd.print.not_opened", path=path))
+        render.say(t("cmd.print.not_opened", path=path))
     return ExitCode.OK
 
 
@@ -436,7 +428,7 @@ def cmd_import(command: ParsedCommand, settings: Settings) -> int:
             raise ValidationError("error.import_item", item=number, detail=err) from err
     with open_service(settings) as service:
         result = service.import_tasks(tasks)
-    print(
+    render.success(
         t(
             "cmd.import.summary",
             added=len(result.added),
@@ -464,15 +456,13 @@ def cmd_alias(command: ParsedCommand, settings: Settings) -> int:
     match command.args:
         case ("install", name):
             result = alias.install(name)
-            print(t("cmd.alias.installed", name=name, path=result.path))
+            render.success(t("cmd.alias.installed", name=name, path=result.path))
             if not result.on_path:
-                print(
-                    t("cmd.alias.not_on_path", name=name, dir=result.path.parent), file=sys.stderr
-                )
+                render.warning(t("cmd.alias.not_on_path", name=name, dir=result.path.parent))
             elif result.shadowed_by is not None:
-                print(t("cmd.alias.shadowed", name=name, path=result.shadowed_by), file=sys.stderr)
+                render.warning(t("cmd.alias.shadowed", name=name, path=result.shadowed_by))
         case ("remove", name):
-            print(t("cmd.alias.removed", name=name, path=alias.remove(name)))
+            render.success(t("cmd.alias.removed", name=name, path=alias.remove(name)))
         case _:
             raise UsageError("error.alias_usage")
     return ExitCode.OK
@@ -491,7 +481,7 @@ def cmd_config(command: ParsedCommand) -> int:
                 line = f"{opt.key} = {format_value(values[opt.key])}"
                 if values[opt.key] != opt.default:
                     line += "  " + t("cmd.config.default", value=format_value(opt.default))
-                print(line)
+                render.say(line)
         case ("get", key):
             value = load_settings().values[option(key).key]
             print(value if isinstance(value, str) else format_value(value))
@@ -502,11 +492,11 @@ def cmd_config(command: ParsedCommand) -> int:
             except ValueError:
                 raise invalid_value(opt, text) from None
             write_value(opt.key, value)
-            print(t("cmd.config.set", name=opt.key, value=format_value(value)))
+            render.success(t("cmd.config.set", name=opt.key, value=format_value(value)))
         case ("unset", key):
             opt = option(key)
             write_value(opt.key, opt.default)
-            print(t("cmd.config.unset", name=opt.key, value=format_value(opt.default)))
+            render.success(t("cmd.config.unset", name=opt.key, value=format_value(opt.default)))
         case ("path",):
             print(config_path())
         case ("edit",):
@@ -549,7 +539,7 @@ HELP_COMMANDS = (
 )
 """Commands shown by ``tk help``, in this order: the implemented ones."""
 
-HELP_TOPICS = ("filters", "dates", "urgency", "settings", "tour", "license", "credits")
+HELP_TOPICS = ("filters", "dates", "urgency", "security", "settings", "tour", "license", "credits")
 """Help topics that are not commands."""
 
 
@@ -557,11 +547,11 @@ def cmd_help(command: ParsedCommand) -> int:
     """``help``: list commands, or show the help of a command or topic."""
     match command.args:
         case ():
-            print(help_overview())
+            render.print_help(help_overview(), commands=HELP_COMMANDS)
         case ("config", key):
-            print(settings_help(key))
+            render.print_help(settings_help(key))
         case (subject,):
-            print(help_text(subject))
+            render.print_help(help_text(subject))
         case _:
             raise UsageError("error.unexpected_argument", arg=command.args[1])
     return ExitCode.OK
@@ -671,10 +661,10 @@ def _sync_completion(settings: Settings, *, explicit: bool = False) -> None:
             )
     except OSError as exc:
         if explicit:
-            print(t("completion.error", detail=str(exc)), file=sys.stderr)
+            render.warning(t("completion.error", detail=str(exc)))
         return
     for message in messages:
-        print(message)
+        render.say(message)
 
 
 HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
@@ -726,5 +716,5 @@ def run(command: ParsedCommand) -> int:
         with open_service(settings) as service:
             word = kindness.draw(service, now) if kindness.is_due(service, now) else None
         if word is not None:
-            kindness.show(word, color=settings.color)
+            kindness.show(word)
     return code

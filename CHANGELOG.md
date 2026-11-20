@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Output that is easier to read at a glance.
+
+### Added
+
+- **`tk help security`** (and a *Data security* page): your tasks are not encrypted by TAME;
+  how to protect them with BitLocker or EFS, and why TAME does not encrypt the file itself.
+- **`NO_COLOR`**: set this environment variable to turn colors off, whatever `color` says.
+
+### Changed
+
+- **Clearer output**: in a terminal, each command's output is framed by blank lines, apart
+  from your prompt; messages start with `✓` (done), `✗` (error), `!` (warning) or `?`
+  (question). Files and pipes still get plain text.
+- **`list` and `next`**: one color per column (project, tags, priority, urgency); only the due
+  date and id of overdue or due-today tasks are red or yellow, no longer the whole row; a last
+  line counts the tasks: `5 tasks · 1 overdue · 1 due today`.
+- **`info`**: a `Task 7  <description>` title, then the fields in blocks (task, dates, notes,
+  uuid), each date followed by how long ago or how soon (`overdue by 2 days`); no more
+  Name/Value header. Scripts should read `tk export` instead.
+- **Help**: section labels, commands and examples stand out.
+
 ## [0.3.3] - 2026-11-20
 
 Tab completion in both PowerShells, and now in Git Bash.

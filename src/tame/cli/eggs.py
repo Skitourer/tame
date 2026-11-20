@@ -85,7 +85,7 @@ def _heart(data: str) -> None:
     with open_service(settings) as service:
         word = kindness.draw(service, utc_now())
     print(_z(data))
-    kindness.show(word, color=settings.color)
+    kindness.show(word)
     print(_r(_HINT))
 
 

@@ -95,7 +95,9 @@ tk version
 Filter syntax and parsing rules: [docs/grammar.md](docs/grammar.md).
 
 Tasks are stored in `%APPDATA%\tame\tasks.db` on Windows and `~/.local/share/tame/tasks.db` on
-Linux (`$XDG_DATA_HOME` is honored). Set `TAME_HOME` to use another directory.
+Linux (`$XDG_DATA_HOME` is honored). Set `TAME_HOME` to use another directory. The file is not
+encrypted: `tk help security` (or [docs/security.md](docs/security.md)) explains how to protect it
+with BitLocker or EFS.
 
 ## Settings
 

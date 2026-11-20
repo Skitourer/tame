@@ -75,11 +75,8 @@ def is_due(service: TaskService, now: datetime) -> bool:
     return _random.random() < CHANCE
 
 
-def show(text: str, *, color: bool) -> None:
+def show(text: str) -> None:
     """Print ``text`` after a blank line, with the heart, in italics when colors are on."""
-    from rich.console import Console
-    from rich.text import Text
+    from tame.cli import render
 
-    Console(highlight=False, no_color=not color).print(
-        Text(f"\n{HEART} {text}", style="italic dim"), soft_wrap=True
-    )
+    render.emit([[], [(f"{HEART} {text}", "kind")]])

@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -121,8 +122,14 @@ def test_welcome_in_french(capsys: Capture) -> None:
     assert "tk config set language en" in out
 
 
+def table_rows(out: str) -> list[str]:
+    """The rows of the task table: after the header and rule, up to the summary line."""
+    lines = out.splitlines()[2:]
+    return lines[: lines.index("")] if "" in lines else lines
+
+
 def listed_ids(out: str) -> list[str]:
-    return [line.split()[0] for line in out.splitlines()[2:] if line.strip()]
+    return [line.split()[0] for line in table_rows(out) if line.strip()]
 
 
 @pytest.fixture
@@ -232,7 +239,7 @@ def descriptions(capsys: Capture, *argv: str) -> list[str]:
     code, out, _ = run(capsys, *argv, "list")
     if code:
         return []
-    return [" ".join((line.split()[0], line.split()[-2])) for line in out.splitlines()[2:] if line]
+    return [" ".join((line.split()[0], line.split()[-2])) for line in table_rows(out) if line]
 
 
 @pytest.fixture
@@ -319,7 +326,7 @@ def test_delete_with_yes(capsys: Capture) -> None:
 def test_done_by_uuid_of_completed_task_names_it_by_uuid(capsys: Capture) -> None:
     run(capsys, "1", "done")
     out = run(capsys, "status:completed", "info")[1]
-    uuid = next(line.split()[1] for line in out.splitlines() if line.startswith("UUID"))
+    uuid = next(line.split()[1] for line in out.splitlines() if line.strip().startswith("UUID"))
     # The full uuid: an 8-char prefix may be all digits, which reads as an id.
     assert run(capsys, uuid, "status:completed", "delete", "--yes")[1] == (
         f"Deleted task {uuid[:8]} 'one'.\n"
@@ -390,21 +397,24 @@ def test_info_spec_example(capsys: Capture) -> None:
     run(capsys, "add", "Call", "bank", "project:home", "+phone", "pri:H")
     code, out, err = run(capsys, "1", "info")
     assert (code, err) == (0, "")
-    labels = [line.split()[0] for line in out.splitlines()[2:] if line.strip()]
+    lines = out.splitlines()
+    assert lines[0] == "Task 1  Call bank"
+    assert set(lines[1]) == {"─"}
+    labels = [line.split()[0] if line else "" for line in lines[2:]]
     assert labels == [
-        "ID",
-        "UUID",
-        "Description",
         "Status",
         "Project",
         "Tags",
-        "Virtual",
         "Priority",
+        "Urgency",
+        "",
         "Entered",
         "Modified",
-        "Urgency",
+        "",
+        "UUID",
     ]
-    assert "PROJECT TAGGED UNBLOCKED" in out
+    assert lines[4].split() == ["Tags", "phone", "PROJECT", "TAGGED", "UNBLOCKED"]
+    assert lines[8].endswith("  today")  # relative form of the date
 
 
 # --- virtual tags (0.3) -------------------------------------------------------------
@@ -678,7 +688,10 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
         ["add", "Create a task"],
         ["export", "Export tasks as Taskwarrior JSON"],
     ]
-    assert "Topics: tk help filters | dates | urgency | settings | tour | license | credits" in out
+    assert (
+        "Topics: tk help filters | dates | urgency | security | settings | tour | license | credits"
+        in out
+    )
 
 
 def test_help_covers_every_implemented_command() -> None:
@@ -1063,7 +1076,7 @@ def test_next_limits_and_tells_how_many_more(capsys: Capture) -> None:
     assert (code, err) == (0, "")
     assert header(out) == ["ID", "Project", "Pri", "Description", "Urg"]  # no Age, no Tags
     assert "high" in out and "mid" in out and "low" not in out
-    assert out.splitlines()[-1] == "2 of 3 tasks. tk list shows them all."
+    assert out.splitlines()[-3:] == ["", "2 of 3 tasks", "tk list shows them all."]
     assert "of" not in run(capsys, "+home", "next")[1]
 
 
@@ -1239,3 +1252,83 @@ def test_settings_page_documents_every_setting() -> None:
 
     page = (Path(__file__).parent.parent / "docs" / "settings.md").read_text(encoding="utf-8")
     assert [o.key for o in OPTIONS if f"| `{o.key}` |" not in page] == []
+
+
+# --- output style (0.3.4) -----------------------------------------------------------
+
+
+class Terminal(io.StringIO):
+    """A stream that says it is a terminal."""
+
+    def isatty(self) -> bool:
+        return True
+
+
+def in_terminal(monkeypatch: pytest.MonkeyPatch, *args: str) -> tuple[int, str, str]:
+    """Run ``tk <args>`` with stdout and stderr as terminals."""
+    out, err = Terminal(), Terminal()
+    monkeypatch.setattr("tame.cli.shellprofile.is_terminal", lambda: False)  # no completion tip
+    real = sys.stdout, sys.stderr
+    sys.stdout, sys.stderr = out, err
+    try:
+        code = main(list(args))
+    finally:  # Restore by hand: monkeypatch.undo() would also drop TAME_HOME.
+        sys.stdout, sys.stderr = real
+    return code, out.getvalue(), err.getvalue()
+
+
+def test_list_ends_with_a_summary_line(capsys: Capture) -> None:
+    run(capsys, "add", "late", "due:yesterday")
+    run(capsys, "add", "now", "due:today")
+    run(capsys, "add", "later")
+    out = run(capsys, "list")[1]
+    assert out.splitlines()[-2:] == ["", "3 tasks · 1 overdue · 1 due today"]
+    assert run(capsys, "3", "list")[1].splitlines()[-1] == "1 task"
+
+
+def test_terminal_output_is_framed_and_symbolized(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
+    assert in_terminal(monkeypatch, "add", "Call", "bank") == (0, "\n✓ Created task 1.\n\n", "")
+    code, out, err = in_terminal(monkeypatch, "9", "done")
+    assert (code, out, err) == (2, "", "\n✗ No matches.\n\n")
+    code, out, _ = in_terminal(monkeypatch, "list")
+    assert out.startswith("\n") and out.endswith("\n1 task\n\n")
+    assert not re.search(r"\x1b\[[0-9;]*3\dm", out)  # NO_COLOR: bold and dim only
+
+
+def test_terminal_colors_by_role(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    run(capsys, "add", "Call", "bank", "project:home", "due:yesterday")
+    out = in_terminal(monkeypatch, "list")[1]
+    assert "\x1b[36mhome" in out  # project cyan
+    assert "\x1b[1;31m" in out  # overdue due date bold red
+    run(capsys, "config", "set", "color", "false")
+    out = in_terminal(monkeypatch, "list")[1]
+    assert "\x1b[36m" not in out and "\x1b[31m" not in out and out.startswith("\n")
+
+
+def test_data_output_is_never_framed(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    run(capsys, "add", "x")
+    assert in_terminal(monkeypatch, "config", "get", "color")[1] == "true\n"
+    assert in_terminal(monkeypatch, "export")[1].startswith("[\n{")
+
+
+def test_question_in_a_terminal(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
+    run(capsys, "add", "x")
+    prompts: list[str] = []
+    monkeypatch.setattr("builtins.input", lambda prompt="": prompts.append(prompt) or "n")
+    out = Terminal()
+    monkeypatch.setattr("tame.cli.shellprofile.is_terminal", lambda: False)  # no completion tip
+    monkeypatch.setattr("sys.stdout", out)
+    assert main(["1", "delete"]) == 0
+    assert prompts == ["? Delete task 1 'x'? (y/N) "]
+    assert out.getvalue() == "\nCancelled: no task changed.\n\n"
+
+
+def test_help_security_topic(capsys: Capture) -> None:
+    code, out, _ = run(capsys, "help", "security")
+    assert code == 0
+    assert "BitLocker" in out and r'cipher /e /s:"%APPDATA%\tame"' in out

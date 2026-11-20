@@ -411,6 +411,21 @@ def configured_language(path: Path | None = None) -> str:
     return value if isinstance(value, str) and _check_language(value) else default
 
 
+def configured_color(path: Path | None = None) -> bool:
+    """Return the ``color`` setting, or the default if it cannot be read.
+
+    Never raises and never creates the file: errors about the file itself are shown
+    with it.
+    """
+    default = bool(OPTIONS_BY_KEY["color"].default)
+    try:
+        data = tomllib.loads((path or config_path()).read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return default
+    value = data.get("color")
+    return value if isinstance(value, bool) else default
+
+
 def _flatten(data: Mapping[str, Any], prefix: str = "") -> list[tuple[str, Any]]:
     items: list[tuple[str, Any]] = []
     for name, value in data.items():

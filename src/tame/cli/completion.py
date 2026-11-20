@@ -48,7 +48,16 @@ _DATE_ATTRS = frozenset({"due", "wait", "due.before", "due.after"})
 _MOD_COMMANDS = frozenset({"add", "modify"})
 _TEXT_COMMANDS = frozenset({"import", "annotate", "denotate"})
 _CONFIG_SUBCOMMANDS = ("get", "set", "unset", "path", "edit")
-_HELP_TOPICS = ("filters", "dates", "urgency", "settings", "tour", "license", "credits")
+_HELP_TOPICS = (
+    "filters",
+    "dates",
+    "urgency",
+    "security",
+    "settings",
+    "tour",
+    "license",
+    "credits",
+)
 
 
 class Data:

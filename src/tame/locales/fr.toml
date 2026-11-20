@@ -62,6 +62,11 @@ more = "Licence MIT. Voir tk help license et tk help credits."
 [list]
 waiting_one = "1 tâche en attente masquée : tk +WAITING l'affiche."
 waiting_many = "{count} tâches en attente masquées : tk +WAITING les affiche."
+summary_one = "1 tâche"
+summary_many = "{count} tâches"
+summary_part = "{shown} tâches sur {total}"
+overdue = "{count} en retard"
+due_today = "{count} pour aujourd'hui"
 
 [list.col]
 id = "ID"
@@ -75,13 +80,11 @@ description = "Description"
 urgency = "Urg"
 
 [info]
-id = "ID"
+title = "Tâche {task}"
 uuid = "UUID"
-description = "Description"
 status = "Statut"
 project = "Projet"
 tags = "Tags"
-virtual = "Tags virtuels"
 priority = "Priorité"
 due = "Échéance"
 entry = "Créée"
@@ -93,11 +96,7 @@ recur = "Récurrence"
 until = "Jusqu'au"
 urgency = "Urgence"
 depends = "Dépend de"
-annotation = "Annotation"
-
-[info.col]
-name = "Nom"
-value = "Valeur"
+notes = "Notes"
 
 [confirm]
 choices = "(o/N)"
@@ -125,13 +124,13 @@ one = "Modifier la tâche {task} « {description} » ?"
 many = "Modifier {count} tâches ?"
 
 [next]
-more = "{shown} tâches sur {total}. tk list les affiche toutes."
+more = "tk list les affiche toutes."
 
 [setting.help]
 language = "Langue de l'interface. Commandes, attributs et mots-clés de date restent en anglais."
 confirm_threshold = "done et modify demandent confirmation au-delà de ce nombre de tâches (delete demande toujours)."
 date_format = "Affichage des dates, en codes strftime : %Y année, %m mois, %d jour."
-color = "Couleurs dans le terminal (jamais dans les fichiers ou les redirections)."
+color = "Couleurs dans le terminal (jamais dans les fichiers ou les redirections). La variable d'environnement NO_COLOR les coupe aussi."
 kindness = "De temps en temps, un mot gentil sur les gens autour de vous, après une commande."
 default_command = "Ce que lance tk seul, ou tk suivi d'un filtre."
 next_limit = "Nombre de tâches affichées par next."
@@ -158,6 +157,15 @@ retention = "forever, ou une durée comme 1w, 3m, 1y"
 number = "un nombre"
 default_command = "list ou next"
 positive = "un nombre entier, 1 ou plus"
+
+[when]
+today = "aujourd'hui"
+yesterday = "hier"
+tomorrow = "demain"
+ago = "il y a {n} jours"
+in = "dans {n} jours"
+overdue_one = "en retard d'1 jour"
+overdue_many = "en retard de {n} jours"
 
 [age]
 seconds = "{n}s"
@@ -338,8 +346,9 @@ usage = "tk [filtre] list"
 body = '''
 Affiche les tâches en cours qui correspondent au filtre (voir tk help filters) ;
 status:completed, status:deleted ou status:all affiche les autres, celles en cours
-d'abord. Les colonnes vides sont masquées. Les tâches en retard sont en rouge, celles dues aujourd'hui en jaune.
-Urg est l'urgence (voir tk help urgency).
+d'abord. Les colonnes vides sont masquées. L'échéance (et l'id) des tâches en retard
+est en rouge, celle des tâches du jour en jaune. Urg est l'urgence (voir
+tk help urgency). Une dernière ligne compte les tâches, en retard et du jour.
 
 Exemples :
   tk                        toutes les tâches en cours
@@ -352,7 +361,8 @@ Exemples :
 summary = "Afficher tous les champs des tâches"
 usage = "tk [filtre] info"
 body = '''
-Affiche tous les champs des tâches trouvées, en heure locale, uuid compris.
+Affiche tous les champs des tâches trouvées, en heure locale : la tâche, ses dates
+(il y a combien de temps, ou dans combien), ses notes, puis son uuid.
 
 Exemples :
   tk 7 info
@@ -613,6 +623,25 @@ Exemples :
   tk add Payer le loyer due:eom
   tk 3 modify due:+2w
   tk due.before:fri list
+'''
+security = '''
+TAME ne chiffre pas vos tâches. Elles sont stockées dans un fichier SQLite en clair,
+tasks.db, dans le dossier de données (%APPDATA%\tame sous Windows) ; les fichiers
+écrits par print --file et export sont en clair aussi. Quiconque peut lire vos
+fichiers peut lire vos tâches.
+
+Pour les protéger, utilisez ce que Windows fournit déjà :
+  BitLocker   chiffre tout le disque ; souvent déjà actif sur les PC de travail
+              (Paramètres > Confidentialité et sécurité > Chiffrement de l'appareil).
+  EFS         chiffre un dossier pour votre seul compte Windows. Une fois :
+                cipher /e /s:"%APPDATA%\tame"
+              Absent des éditions Famille de Windows.
+
+Pourquoi TAME ne chiffre pas le fichier lui-même : le sqlite3 de Python ne sait pas
+lire une base chiffrée. TAME devrait donc écrire une copie déchiffrée sur le disque
+pendant son travail (les tâches y seraient en clair), et demander un mot de passe et
+dériver une clé à chaque commande, ce qui ralentit chaque tk. Un export chiffré, pour
+les sauvegardes et le passage d'un ordinateur à l'autre, est prévu avec la synchro.
 '''
 urgency = '''
 Les tâches sont listées par urgence, la somme de :

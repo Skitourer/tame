@@ -61,6 +61,11 @@ more = "MIT License. See tk help license and tk help credits."
 [list]
 waiting_one = "1 waiting task hidden: tk +WAITING shows it."
 waiting_many = "{count} waiting tasks hidden: tk +WAITING shows them."
+summary_one = "1 task"
+summary_many = "{count} tasks"
+summary_part = "{shown} of {total} tasks"
+overdue = "{count} overdue"
+due_today = "{count} due today"
 
 [list.col]
 id = "ID"
@@ -74,13 +79,11 @@ description = "Description"
 urgency = "Urg"
 
 [info]
-id = "ID"
+title = "Task {task}"
 uuid = "UUID"
-description = "Description"
 status = "Status"
 project = "Project"
 tags = "Tags"
-virtual = "Virtual tags"
 priority = "Priority"
 due = "Due"
 entry = "Entered"
@@ -92,11 +95,7 @@ recur = "Recurrence"
 until = "Until"
 urgency = "Urgency"
 depends = "Depends on"
-annotation = "Annotation"
-
-[info.col]
-name = "Name"
-value = "Value"
+notes = "Notes"
 
 [confirm]
 choices = "(y/N)"
@@ -124,13 +123,13 @@ one = "Modify task {task} '{description}'?"
 many = "Modify {count} tasks?"
 
 [next]
-more = "{shown} of {total} tasks. tk list shows them all."
+more = "tk list shows them all."
 
 [setting.help]
 language = "Interface language. Commands, attributes and date keywords stay in English."
 confirm_threshold = "done and modify ask before changing more tasks than this (delete always asks)."
 date_format = "How dates are shown, in strftime codes: %Y year, %m month, %d day."
-color = "Colors in the terminal (never in files or pipes)."
+color = "Colors in the terminal (never in files or pipes). The NO_COLOR environment variable turns them off too."
 kindness = "Now and then, a kind word about the people around you, after a command."
 default_command = "What tk alone, or tk followed by a filter, runs."
 next_limit = "How many tasks next shows."
@@ -157,6 +156,15 @@ retention = "forever, or a duration such as 1w, 3m, 1y"
 number = "a number"
 default_command = "list or next"
 positive = "a whole number, 1 or more"
+
+[when]
+today = "today"
+yesterday = "yesterday"
+tomorrow = "tomorrow"
+ago = "{n} days ago"
+in = "in {n} days"
+overdue_one = "overdue by 1 day"
+overdue_many = "overdue by {n} days"
 
 [age]
 seconds = "{n}s"
@@ -335,8 +343,9 @@ usage = "tk [filter] list"
 body = '''
 Shows pending tasks matching the filter (see tk help filters); status:completed,
 status:deleted or status:all shows the others, pending ones first. Empty columns are
-hidden. Overdue tasks are red, tasks due today yellow. Urg is the urgency (see
-tk help urgency).
+hidden. The due date (and id) of overdue tasks is red, of tasks due today yellow.
+Urg is the urgency (see tk help urgency). A last line counts the tasks, overdue and
+due today.
 
 Examples:
   tk                        all pending tasks
@@ -349,7 +358,8 @@ Examples:
 summary = "Show every field of tasks"
 usage = "tk [filter] info"
 body = '''
-Shows all fields of the matching tasks, in local time, including the uuid.
+Shows all fields of the matching tasks, in local time: the task, its dates (with
+how long ago, or how soon), its notes, then its uuid.
 
 Examples:
   tk 7 info
@@ -600,6 +610,24 @@ Examples:
   tk add Pay rent due:eom
   tk 3 modify due:+2w
   tk due.before:fri list
+'''
+security = '''
+TAME does not encrypt your tasks. They are stored in a plain SQLite file, tasks.db,
+in the data folder (%APPDATA%\tame on Windows); files written by print --file and
+export are plain too. Anyone who can read your files can read your tasks.
+
+To protect them, use what Windows already provides:
+  BitLocker   encrypts the whole disk; often already on for work computers
+              (Settings > Privacy & security > Device encryption).
+  EFS         encrypts a folder for your Windows account only. Run once:
+                cipher /e /s:"%APPDATA%\tame"
+              Not available on Windows Home editions.
+
+Why TAME does not encrypt the file itself: Python's sqlite3 cannot read an
+encrypted database, so TAME would have to write a decrypted copy to disk while it
+works (the tasks would sit there in plain text), and ask for a password and derive
+a key at every command, which makes each tk slower. An encrypted export, for
+backups and moving between computers, is planned with sync.
 '''
 urgency = '''
 Tasks are listed by urgency, the sum of:

@@ -9,7 +9,7 @@ from datetime import datetime
 from html import escape
 from itertools import groupby
 
-from tame.cli.render import DEFAULT_DATE_FORMAT, row_style
+from tame.cli.render import DEFAULT_DATE_FORMAT, due_state
 from tame.core.models import Task
 from tame.core.urgency import DEFAULT_COEFFICIENTS, Coefficients, by_urgency
 from tame.i18n import current_language, t
@@ -138,10 +138,10 @@ def _due_cell(task: Task, now: datetime, date_format: str) -> str:
     if task.due is None:
         return '<td class="due"></td>'
     text = t("print.due", date=task.due.astimezone().strftime(date_format))
-    match row_style(task, now) if task.end is None else None:
-        case "red":
+    match due_state(task, now) if task.end is None else None:
+        case "overdue":
             return f'<td class="due late">{escape(text)} · {escape(t("print.late"))}</td>'
-        case "yellow":
+        case "today":
             return f'<td class="due">{escape(text)} · {escape(t("print.today"))}</td>'
         case _:
             return f'<td class="due">{escape(text)}</td>'
