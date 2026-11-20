@@ -68,6 +68,8 @@ uv run pytest --cov
 
 ## Git workflow
 
+Security issues: do not open a public issue, see [SECURITY.md](SECURITY.md).
+
 - `main` is protected: work on a branch, one roadmap step per branch and PR. Keep PRs
   small and focused; split a large change into several PRs.
 - **PRs are squash-merged**: each PR becomes one commit on `main`, titled after the PR.
