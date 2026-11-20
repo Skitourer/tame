@@ -10,7 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
-- **Since 0.3.0**: schema 3, annotations, depends, wait, start, recur, until stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5). **Since 0.3.1**: `completion` setting (§7).
+- **Since 0.3.0**: schema 3, annotations, depends, wait, start, recur, until stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5). **Since 0.3.1**: `completion` setting (§7). **Since 0.3.4**: output style (§5), `NO_COLOR` (§7), help topic `security` (§5).
 - **Not yet** (see `docs/ROADMAP.md`): dependency commands, recurrence, start/stop, advanced filters (0.4); contexts, custom reports, `--json`, UDAs, hooks, stats (0.5); sync, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -143,7 +143,7 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
 | list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; a Wait column after Due (hidden when empty); if waiting tasks were left out, a last line `N waiting task(s) hidden: tk +WAITING shows them.`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
-| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, a last line `N of M tasks. tk list shows them all.`; no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
+| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, the summary line says `N of M tasks` (§5 Output style); no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
@@ -156,11 +156,46 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 | import | `tk import f.json` | TW JSON from FILE, or stdin if none or `-` (UTF-8, or UTF-16 with BOM); merge by uuid; prints added/updated/skipped counts; 1 undo step; any invalid task → nothing imported, error names the task number |
 | alias | `tk alias install task` | `install\|remove NAME`: opt-in shim `NAME` (`NAME.cmd` on Windows) running `python -m tame`, in the uv tool bin dir (`UV_TOOL_BIN_DIR`, `XDG_BIN_HOME`, `$XDG_DATA_HOME/../bin`, `~/.local/bin`); marked as tame's: never overwrites/removes other files; warns if the dir is not in PATH or another NAME comes first |
 | config | `tk config set undo.retention 1y` | list / `get` / `set` / `unset` (= default) / `path` / `edit` settings (§7) |
-| help | `tk help [cmd\|topic]` | no arg: implemented cmds + 1-line summaries; cmd (exact or prefix): usage, text, examples; topics `filters` `dates` `urgency` `settings` (every setting: what it does, values, default; `tk help config KEY` = one setting, plus its current value if config.toml reads; since 0.3.2) `tour` (guided tour; its commands run in order are a test) `license` (TAME's license text + installed libraries with versions and licenses, read from package metadata) `credits` (author Skitourer, thanks, libraries, tools). Topics, not commands: no new command names, so prefixes like `tk l` stay unambiguous. `--help` before `--` = `tk help [<cmd on the line>]`. Works with an invalid config |
+| help | `tk help [cmd\|topic]` | no arg: implemented cmds + 1-line summaries; cmd (exact or prefix): usage, text, examples; topics `filters` `dates` `urgency` `security` (since 0.3.4: the database is not encrypted by TAME; how to protect it with BitLocker, whole disk, or EFS, `cipher /e /s:"%APPDATA%\tame"`; that `print` and `export` files are plain too; why TAME does not encrypt: no encryption in stdlib `sqlite3`, a decrypted temp file would leave plaintext on disk, a password and a slow key derivation at every command) `settings` (every setting: what it does, values, default; `tk help config KEY` = one setting, plus its current value if config.toml reads; since 0.3.2) `tour` (guided tour; its commands run in order are a test) `license` (TAME's license text + installed libraries with versions and licenses, read from package metadata) `credits` (author Skitourer, thanks, libraries, tools). Topics, not commands: no new command names, so prefixes like `tk l` stay unambiguous. `--help` before `--` = `tk help [<cmd on the line>]`. Works with an invalid config |
 | completion | `tk completion powershell` | advanced (not in the `tk help` list; `tk help completion` works): `powershell\|bash` prints the completion script for `tk`, `tame` and the aliases installed by `alias`, for shells or profiles TAME does not manage, dotfiles, or the always-current `tk completion powershell \| Out-String \| Invoke-Expression`. Everyday switch: the `completion` setting (§7). No arg (or extra words) → usage error giving the usage and `tk config set completion true`; unknown shell → usage error listing the shells. Since 0.3.0 |
 | version | `tk version` | app + schema version; second line points to `tk help license` / `tk help credits` |
 
-`list` columns: ID Age Project Tags Pri Due Description Urg; hide empty cols; overdue red, due today yellow; `color=false` or non-TTY → plain.
+`list` columns: ID Age Project Tags Pri Due Description Urg; hide empty cols; colors per column (see Output style).
+
+**Output style** (since 0.3.4). One look for every command, so output, questions, errors and the shell prompt never blend.
+
+- *Modes*. **Styled colors**: the stream is a terminal, `color = true`, `NO_COLOR` unset or empty. **Layout** (blank lines, symbols): the stream is a terminal, whatever `color`. Otherwise **plain**: no colors, no blank lines added, no symbols; table and message texts as before 0.3.4, apart from the summary line and the `info` layout below. stdout and stderr are judged separately.
+- *Breathing space*: in a terminal, each command's output starts with a blank line and ends with one, so the next prompt stands apart. Never for data output: `export`, `completion <shell>`, `config get`, `config path`, `_complete`. The kind words line keeps its own blank line before it and moves inside the block (before the closing blank line).
+- *Roles*: every color comes from a named role (one table in `cli/render.py`), groundwork for the 0.5 `theme` setting; no role is configurable yet. ANSI blue is never used (unreadable on black in Windows Terminal).
+
+| Role | Style | Used for |
+|---|---|---|
+| `header` | bold | table headers |
+| `rule` | dim | rule under headers and under the `info` title |
+| `id` | bold | ID column, task numbers in messages |
+| `age` | dim | Age column |
+| `project` | cyan | Project column, project in `info` |
+| `tag` | bright magenta | Tags column, real tags in `info` |
+| `pri.H` / `pri.M` / `pri.L` | bold red / yellow / dim | Pri column, priority in `info` |
+| `due.overdue` | bold red | Due date of overdue tasks, and their ID |
+| `due.today` | bold yellow | Due date of tasks due today, and their ID |
+| `urgency.high` / `urgency.low` | bold (≥ 10) / dim (< 5) | Urg column, urgency in `info` |
+| `note` | dim | annotation count, `info` labels, relative dates, virtual tags, uuid, Wait column |
+| `summary` | dim | summary line (its overdue / due-today counts use `due.*`), hidden-waiting line, `next` hint |
+| `success` | bold green `✓` | prefix of success messages |
+| `error` | bold red | `✗` and text of errors (stderr) |
+| `warning` | bold yellow `!` | prefix of warnings (alias not in PATH or shadowed, completion blocked) |
+| `question` | bold yellow `?` | prefix of y/N prompts; `[y/N]` dim |
+| `hint` | dim | tips (`Tip: …`), `Nothing changed.` |
+| `heading` | bold underline | section labels in help (`Usage`, `Commands`, `Topics`, `Examples`, …): a capitalized label of 3 words at most, at the start of a line, before `:` |
+| `command` | cyan | command names in `tk help`, usage lines, indented `tk …` example lines (up to a two-space gap before a comment) |
+| `kind` | italic dim | kind words |
+
+- *Rows*: whole rows are no longer colored; only the Due date and the ID of an overdue / due-today task carry the alert. The rule under headers spans the table, dim.
+- *Summary line* (`list`, `next`): after the table, a blank line then `N tasks · X overdue · Y due today` (parts with 0 left out; counts over the matching tasks, waiting ones excepted). `next` with more matches than shown: `N of M tasks · …`, then the hint `tk list shows them all.` (replaces the 0.3.0 `next.more` line). The hidden-waiting line follows unchanged.
+- *Messages*: symbols are layout: `✓` success messages of write cmds (`add done delete modify annotate denotate undo import`, `config set/unset`, `alias install/remove`, `print` saved/opened), `✗` errors, `!` warnings, `?` questions; plain mode prints the messages without them, as before.
+- *`info`*: per task, a title `Task <id>  <description>` (bold; uuid prefix if no id), a dim rule, then label/value lines, labels dim and right-aligned, in blocks separated by a blank line: (1) Status, Project, Tags (real tags, then virtual tags dim), Priority, Urgency, Depends, Recur; (2) Due, Wait, Start, Entered, Modified, End, Until, each date followed by a dim relative form (`overdue by 2 days`, `today`, `in 3 days`, `3 days ago`); (3) Notes: one line per annotation, `<date> <text>`, oldest first, label on the first line only; (4) UUID, then Taskwarrior `extra` attributes. Empty fields and empty blocks left out. No `Name`/`Value` header any more. Same layout in plain mode, without colors.
+- *Help*: section labels in `heading`, command names, usage and example lines in `command`, the rest unchanged; plain mode prints the text exactly as before.
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
 
@@ -219,6 +254,8 @@ age = 2.0
 tags = 1.0
 project = 1.0
 ```
+
+`NO_COLOR` (environment, non-empty, since 0.3.4) turns colors off like `color = false`, whatever the file says; layout stays (§5 Output style).
 
 Unknown key, wrong type or invalid value → usage error naming key and file (exit 1); every cmd but `config` stops. Each write cmd purges `undo_log` rows older than `undo.retention`.
 

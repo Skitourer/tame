@@ -5,7 +5,7 @@ import io
 import sys
 from collections.abc import Sequence
 
-from tame.config import configured_language
+from tame.config import configured_color, configured_language
 from tame.errors import ExitCode, TameError
 from tame.i18n import set_language, t
 
@@ -53,19 +53,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args[:1] == ["_complete"]:  # Fast path for shell completion (SPEC §5).
         return _complete(args[1:])
     set_language(configured_language())
-    from tame.cli import commands, eggs  # Imported here, after the completion fast path.
+    from tame.cli import commands, eggs, render  # Imported here, after the completion fast path.
     from tame.cli.parser import parse_command
 
+    render.configure(color=configured_color())
     try:
         if eggs.hatch(args):
             return ExitCode.OK
         return commands.run(parse_command(args))
     except TameError as err:
-        print(error_message(err), file=sys.stderr)
+        render.error(error_message(err))
         return err.exit_code
     except Exception as err:
-        print(t("error.internal", detail=repr(err)), file=sys.stderr)
+        render.error(t("error.internal", detail=repr(err)))
         return ExitCode.INTERNAL
+    finally:
+        render.close_frame()
 
 
 if __name__ == "__main__":

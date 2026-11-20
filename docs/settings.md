@@ -34,7 +34,7 @@ Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
 | `language` | `"en"` | interface language: `en` or `fr`. Commands, attributes and date keywords stay in English |
 | `confirm_threshold` | `3` | `done`, `modify` ask before changing more tasks than this (`delete` always asks) |
 | `date_format` | `"%Y-%m-%d"` | how dates are shown ([strftime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)), e.g. `%d/%m/%Y` |
-| `color` | `true` | colored output in the terminal |
+| `color` | `true` | colored output in the terminal; the `NO_COLOR` environment variable turns it off too (see [Output](commands.md#output)) |
 | `kindness` | `true` | now and then, a kind word about the people around you (see [below](#kind-words)) |
 | `default_command` | `"list"` | what `tk` alone (or `tk <filter>`) runs: `list` or [`next`](commands.md#next) |
 | `next_limit` | `10` | how many tasks [`next`](commands.md#next) shows (1 or more) |

@@ -51,8 +51,10 @@ tk [filter] list
 
 Shows the pending tasks matching the [filter](grammar.md#filter-tokens); `status:completed`,
 `status:deleted` or `status:all` shows the others. Pending tasks come first, then everything
-is sorted by [urgency](urgency.md), highest first. Empty columns are hidden. Overdue tasks are red, tasks due today yellow (no colors when
-the output is not a terminal, or with `color = false`).
+is sorted by [urgency](urgency.md), highest first. Empty columns are hidden. Each column has
+its color (project cyan, tags magenta, priority H red, M yellow, L dim); the due date and id of
+overdue tasks are red, of tasks due today yellow. A last line counts the tasks:
+`5 tasks · 1 overdue · 1 due today`. See [Output](#output) for when colors show.
 
 `list` is the default command: `tk` alone lists all pending tasks. With no task at all, it
 shows a welcome message instead. [Waiting tasks](grammar.md#waiting-tasks) are left out; a
@@ -75,8 +77,8 @@ tk [filter] next
 
 Like `list`, for when you wonder what to do now: only the `next_limit` most urgent tasks
 (10 by default), without the [blocked](grammar.md#virtual-tags) ones (waiting for another
-pending task), and without the Age and Tags columns. If more tasks match, a last line says
-how many: `10 of 34 tasks. tk list shows them all.`
+pending task), and without the Age and Tags columns. If more tasks match, the last lines say
+how many: `10 of 34 tasks`, then `tk list shows them all.`
 
 ```sh
 tk next
@@ -91,8 +93,11 @@ tk config set default_command next   # then tk alone shows next
 tk [filter] info
 ```
 
-Shows all fields of the matching tasks, in local time, including the uuid, the annotations,
-the [virtual tags](grammar.md#virtual-tags) and any attribute kept from a Taskwarrior import.
+Shows all fields of the matching tasks, in local time, under a `Task 7  <description>` title,
+in blocks: the task (status, project, tags then [virtual tags](grammar.md#virtual-tags), dim,
+priority, urgency...), its dates, each followed by how long ago or how soon
+(`overdue by 2 days`, `3 days ago`), its annotations, then its uuid and any attribute kept
+from a Taskwarrior import.
 
 ```sh
 tk 7 info
@@ -322,7 +327,7 @@ tk help config KEY
 ```
 
 Without arguments, lists commands and topics. Topics: `filters`, `dates`, `urgency`,
-`settings` (every setting: what it does, its values and default), `tour` (a two-minute
+`security` (how to protect your tasks, see [Data security](security.md)), `settings` (every setting: what it does, its values and default), `tour` (a two-minute
 guided tour), `license` (TAME's license and the installed libraries'
 licenses) and `credits`. `tk <command> --help` is the same as `tk help <command>`. Works
 even when the settings file is invalid.
@@ -343,3 +348,12 @@ tk version
 
 Shows the tame version and the database schema version, and where to find the license and
 credits.
+
+## Output
+
+In a terminal, every command's output starts and ends with a blank line, so it stands apart
+from your prompt, and messages start with a symbol: `✓` done, `✗` error, `!` warning, `?`
+question. Colors show only in a terminal, with the [`color`](settings.md#all-settings) setting
+on and the `NO_COLOR` environment variable unset or empty. In files and pipes the text is plain,
+without blank lines or symbols; `export`, `completion <shell>`, `config get` and `config path`
+always print plain data.
