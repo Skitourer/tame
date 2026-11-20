@@ -167,6 +167,27 @@ def test_discover_asks_powershell(monkeypatch: pytest.MonkeyPatch) -> None:
     assert asked[0][:2] == ["powershell", "-NoProfile"]
 
 
+def test_discover_drops_inherited_module_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """tk run from pwsh must still find Windows PowerShell's profile, and vice versa."""
+    import subprocess
+
+    monkeypatch.setattr(shellprofile.sys, "platform", "win32")
+    monkeypatch.setattr(shellprofile.shutil, "which", lambda exe: exe)
+    monkeypatch.setenv("PSModulePath", r"C:\Program Files\PowerShell\7\Modules")
+    monkeypatch.setenv("TAME_KEEP", "1")
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        env = kwargs["env"]
+        assert isinstance(env, dict)
+        broken = any(key.upper() == "PSMODULEPATH" for key in env)
+        assert env["TAME_KEEP"] == "1"
+        output = f"C:/me/{argv[0]}.ps1" + chr(10) + ("" if broken else "RemoteSigned")
+        return subprocess.CompletedProcess(argv, 0, output)
+
+    monkeypatch.setattr(shellprofile.subprocess, "run", fake_run)
+    assert [p.path for p in real_discover()] == ["C:/me/powershell.ps1", "C:/me/pwsh.ps1"]
+
+
 def test_discover_bash(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shellprofile.sys, "platform", "linux")
     monkeypatch.setenv("SHELL", "/bin/bash")

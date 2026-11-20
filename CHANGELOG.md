@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Tab completion in both PowerShells**: when TAME was run from PowerShell 7, it missed
+  Windows PowerShell's profile (and the reverse could happen), so completion worked in
+  only one of them. Run `tk config set completion true` once to set up the other.
+
 ## [0.3.2] - 2026-11-20
 
 A face, and help on every setting.
