@@ -307,3 +307,45 @@ def test_undo_log_reads_snapshot_written_before_v2(repo: TaskRepo, tame_home: Pa
         annotations=(Annotation(T0, "first"),), depends=frozenset({OTHER}), extra={"wait": "x"}
     )
     assert entry.before == ((expected.uuid, expected),)
+
+
+def test_wait_start_recur_until_round_trip(repo: TaskRepo) -> None:
+    task = make_task(
+        wait=T0 + timedelta(days=3),
+        start=T0,
+        recur="weekly",
+        until=T0 + timedelta(days=300),
+    )
+    with repo.transaction():
+        repo.insert(task)
+        repo.push_undo(T0, "modify", [(task.uuid, task)])
+    assert repo.get(task.uuid) == task
+    assert repo.last_undo().before == ((task.uuid, task),)  # type: ignore[union-attr]
+
+
+def test_undo_log_reads_snapshot_written_before_v3(repo: TaskRepo, tame_home: Path) -> None:
+    legacy = {
+        "uuid": make_task().uuid,
+        "id": 1,
+        "description": "Call bank",
+        "status": "pending",
+        "project": None,
+        "priority": None,
+        "due": None,
+        "entry": "2026-11-19T09:30:00Z",
+        "modified": "2026-11-19T09:30:00Z",
+        "end": None,
+        "extra": json.dumps({"wait": "20261119T093000Z"}),
+        "tags": [],
+        "annotations": [],
+        "depends": [],
+    }
+    snapshot = json.dumps({"tasks": [{"uuid": legacy["uuid"], "task": legacy}]})
+    conn = sqlite3.connect(tame_home / DB_FILENAME, autocommit=True)
+    conn.execute(
+        "INSERT INTO undo_log(ts, cmd, before) VALUES (?, 'modify', ?)", (to_db(T0), snapshot)
+    )
+    conn.close()
+    entry = repo.last_undo()
+    assert entry is not None
+    assert entry.before == ((legacy["uuid"], make_task(wait=T0)),)

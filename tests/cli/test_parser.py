@@ -399,9 +399,9 @@ def test_parse_filter_status_all() -> None:
 
 
 def test_parse_filter_virtual_tags() -> None:
-    f = parse_filter(["+OVERDUE", "-TAGGED", "+today", "+WAITING"])
+    f = parse_filter(["+OVERDUE", "-TAGGED", "+today", "+ACTIVE"])
     assert (f.virtual_in, f.virtual_out) == ({"OVERDUE"}, {"TAGGED"})
-    assert (f.tags_in, f.tags_out) == ({"today", "WAITING"}, set())
+    assert (f.tags_in, f.tags_out) == ({"today", "ACTIVE"}, set())
 
 
 def test_modify_rejects_virtual_tag_but_allows_removing_it() -> None:
@@ -409,3 +409,10 @@ def test_modify_rejects_virtual_tag_but_allows_removing_it() -> None:
         parse_modify(["+TODAY"])
     assert exc.value.key == "error.virtual_tag"
     assert parse_modify(["-TODAY"]).tags_remove == {"TODAY"}
+
+
+def test_wait_attribute_in_add_and_modify() -> None:
+    now = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)
+    assert parse_add(["x", "wait:+2d"], now).wait == datetime(2026, 11, 21, 9, 30, tzinfo=UTC)
+    assert parse_modify(["wait:"]).wait == NONE
+    assert parse_modify(["wait:+1d"], now).wait == datetime(2026, 11, 20, 9, 30, tzinfo=UTC)

@@ -58,6 +58,10 @@ class Task:
         end: Completion or deletion time.
         annotations: Notes, sorted by entry time.
         depends: Uuids of the tasks this one waits for (never its own).
+        wait: Hidden from filters until then (SPEC §4 waiting tasks).
+        start: When work started (used from 0.4).
+        recur: Taskwarrior recurrence period, stored as is (used from 0.4).
+        until: End of the recurrence (used from 0.4).
         extra: Unknown Taskwarrior attributes, kept for JSON round-trip.
     """
 
@@ -74,6 +78,10 @@ class Task:
     end: datetime | None = None
     annotations: tuple[Annotation, ...] = ()
     depends: frozenset[str] = frozenset()
+    wait: datetime | None = None
+    start: datetime | None = None
+    recur: str | None = None
+    until: datetime | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -86,6 +94,7 @@ class Changes:
         project: New project; ``NONE`` clears it; None keeps it.
         priority: New priority; ``NONE`` clears it; None keeps it.
         due: New due date; ``NONE`` clears it; None keeps it.
+        wait: New wait date; ``NONE`` clears it; None keeps it.
         tags_add: Tags to add.
         tags_remove: Tags to remove.
     """
@@ -94,6 +103,7 @@ class Changes:
     project: str | None = None
     priority: Priority | Literal[""] | None = None
     due: datetime | Literal[""] | None = None
+    wait: datetime | Literal[""] | None = None
     tags_add: frozenset[str] = frozenset()
     tags_remove: frozenset[str] = frozenset()
 
@@ -105,6 +115,7 @@ class Changes:
                 self.project is not None,
                 self.priority is not None,
                 self.due is not None,
+                self.wait is not None,
                 self.tags_add,
                 self.tags_remove,
             )
@@ -118,6 +129,7 @@ class Changes:
             project=task.project if self.project is None else self.project or None,
             priority=task.priority if self.priority is None else self.priority or None,
             due=task.due if self.due is None else self.due or None,
+            wait=task.wait if self.wait is None else self.wait or None,
             tags=(task.tags | self.tags_add) - self.tags_remove,
         )
 
@@ -155,6 +167,7 @@ VIRTUAL_TAGS = frozenset(
         "DUE",
         "BLOCKED",
         "UNBLOCKED",
+        "WAITING",
         "ANNOTATED",
         "PROJECT",
         "TAGGED",

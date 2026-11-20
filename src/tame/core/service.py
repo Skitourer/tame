@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from tame.core.dates import utc_now
-from tame.core.filters import Filter, VirtualTagger
+from tame.core.filters import Filter, VirtualTagger, is_waiting
 from tame.core.models import (
     Annotation,
     Changes,
@@ -77,6 +77,7 @@ class TaskService:
         tags: Iterable[str] = (),
         priority: str | None = None,
         due: datetime | None = None,
+        wait: datetime | None = None,
     ) -> Task:
         """Create a pending task with the next free short id.
 
@@ -86,6 +87,7 @@ class TaskService:
             tags: Tag names, without leading ``+``.
             priority: H, M or L (any case).
             due: Due date (aware).
+            wait: Hidden from filters until then (aware).
 
         Returns:
             The stored task.
@@ -103,6 +105,7 @@ class TaskService:
             tags=frozenset(check_new_tag(tag) for tag in tags),
             priority=parse_priority(priority) if priority is not None else None,
             due=due,
+            wait=wait,
         )
         with self._repo.transaction():
             task = replace(task, id=self._repo.max_pending_id() + 1)
@@ -322,19 +325,34 @@ class TaskService:
         """Store a small piece of app state (``meta`` table); not part of undo."""
         self._repo.set_meta(key, value)
 
-    def query(self, where: Filter | None = None) -> list[Task]:
+    def query(self, where: Filter | None = None, *, include_waiting: bool = False) -> list[Task]:
         """Return the tasks matching ``where`` (default: all pending).
 
-        Ordered by status (pending, completed, deleted), then short id, then entry.
+        Waiting tasks are left out unless ``include_waiting`` or the filter shows them
+        (SPEC §4). Ordered by status (pending, completed, deleted), then short id, then
+        entry.
         """
+        return self.query_hidden(where, include_waiting=include_waiting)[0]
+
+    def query_hidden(
+        self, where: Filter | None = None, *, include_waiting: bool = False
+    ) -> tuple[list[Task], int]:
+        """Like :meth:`query`, also returning how many waiting tasks were left out."""
         where = where or Filter()
+        now = self._clock()
         tagger = self.virtual_tagger() if where.uses_virtual_tags else None
-        return [
-            task
-            for status in where.statuses
-            for task in self._repo.by_status(status)
-            if where.matches(task, tagger(task) if tagger else frozenset())
-        ]
+        hide = not (include_waiting or where.shows_waiting)
+        shown: list[Task] = []
+        hidden = 0
+        for status in where.statuses:
+            for task in self._repo.by_status(status):
+                if not where.matches(task, tagger(task) if tagger else frozenset()):
+                    continue
+                if hide and is_waiting(task, now):
+                    hidden += 1
+                else:
+                    shown.append(task)
+        return shown, hidden
 
     def virtual_tagger(self) -> VirtualTagger:
         """Return a tagger computing virtual tags as of now, in the system time zone."""

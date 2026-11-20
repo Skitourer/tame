@@ -10,7 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
-- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5).
+- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3.
 - **Out V1**: recurrence, depends, annotations, wait, contexts, custom reports, sync, hooks, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -51,6 +51,9 @@ Field names = TW names. Datetimes stored UTC ISO 8601, shown local.
 | entry, modified | datetime | auto |
 | annotations | list[{entry, description}] | timestamped notes, sorted by entry; duplicates allowed (schema v2) |
 | depends | set[uuid] | tasks this one waits for; never itself; target may be absent (schema v2) |
+| wait | datetime? | hidden until then (§4 Waiting tasks) (schema v3) |
+| start, until | datetime? | stored and round-tripped; used from 0.4 (start/stop, recurrence) (schema v3) |
+| recur | str? | TW recurrence period, stored as is; used from 0.4 (schema v3) |
 
 ```sql
 CREATE TABLE tasks(uuid TEXT PRIMARY KEY, id INTEGER, description TEXT NOT NULL,
@@ -67,13 +70,17 @@ CREATE TABLE annotations(id INTEGER PRIMARY KEY, uuid TEXT NOT NULL REFERENCES t
 CREATE INDEX idx_annotations_uuid ON annotations(uuid);
 CREATE TABLE depends(uuid TEXT NOT NULL REFERENCES tasks(uuid) ON DELETE CASCADE, depends_on TEXT NOT NULL,
   PRIMARY KEY(uuid, depends_on), CHECK(uuid <> depends_on)); -- depends_on: no FK, target may be absent
+-- schema v3
+ALTER TABLE tasks ADD COLUMN wait TEXT;   -- also start, recur, "until"
 ```
 
 Each write cmd = 1 transaction + 1 undo_log row. Migrations keyed on `meta.schema_version`: on open, each missing version is applied in its own transaction (all or nothing); a database newer than the code → `error.db_too_new`, nothing changed.
 
 Migration 1 → 2 (0.3.0): creates `annotations` and `depends`, then moves each task's `extra.annotations` / `extra.depends` into them using the TW import rules (§7) and removes the key from `extra`. A key with any invalid item stays in `extra` unchanged. `undo_log` rows are not rewritten.
 
-`before` = `{"tasks": [{uuid, task|null}], "ids"?: {uuid: id}}`: prior state of each changed task (null = created by the cmd, undo removes it); `ids` = pending ids before done/delete renumbering. `task` includes `annotations` and `depends`; a snapshot written before schema v2 has them in `extra` and is read with the TW import rules (§7). Cmds that change nothing log nothing. `undo` pops the last row: repeated `undo` goes further back; undo is not itself undoable; empty log → exit 2.
+Migration 2 → 3 (0.3.0): adds `wait`, `start`, `recur`, `until` to `tasks`, then moves valid `extra.wait`/`start`/`until` (TW dates) and `extra.recur` (string) into them (TW import rules, §7); `extra.tw_status = "waiting"` is dropped once `wait` is set. 0.4 needs no further schema change.
+
+`before` = `{"tasks": [{uuid, task|null}], "ids"?: {uuid: id}}`: prior state of each changed task (null = created by the cmd, undo removes it); `ids` = pending ids before done/delete renumbering. `task` includes `annotations`, `depends`, `wait`, `start`, `recur`, `until`; a snapshot written before schema v3 lacks some of them and has them in `extra` and is read with the TW import rules (§7). Cmds that change nothing log nothing. `undo` pops the last row: repeated `undo` goes further back; undo is not itself undoable; empty log → exit 2.
 
 ## 4. CLI grammar
 
@@ -115,13 +122,16 @@ Filter tokens (AND-combined, except ids and uuid prefixes which together form on
 | `DUE` | pending, now ≤ due < now + 7 days |
 | `BLOCKED` | pending, depends on at least one pending task |
 | `UNBLOCKED` | pending, not `BLOCKED` |
+| `WAITING` | pending, wait > now |
 | `ANNOTATED` | has at least one annotation |
 | `PROJECT` | has a project |
 | `TAGGED` | has at least one (real) tag |
 
-Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. Planned: `WAITING` (with `wait:`) and `ACTIVE` (with `start`) join the list, and become reserved, with their features; until then they are ordinary tags.
+Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. `WAITING` since `wait:` (0.3.0). Planned: `ACTIVE` (with `start`, 0.4) joins the list and becomes reserved; until then it is an ordinary tag.
 
-Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it).
+Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it). Attrs: `project`, `pri`, `due`, `wait` (dates as `due`).
+
+**Waiting tasks** (since 0.3.0): a pending task with `wait` > now is *waiting*. Every filter result leaves waiting tasks out, unless the filter has ids/uuids, `+WAITING` or `status:all`; `export` always includes them. Nothing is stored when the date passes: the task simply shows again (its `wait` stays, shown by `info`). Waiting tasks keep their id and urgency. `wait` in the past or after `due` is accepted.
 
 Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` always prompts unless `--yes`.
 
@@ -132,8 +142,8 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 | Cmd | Example | Behavior |
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
-| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
-| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden; annotation count as for `list`); if more tasks match, a last line `N of M tasks. tk list shows them all.`; no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
+| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; a Wait column after Due (hidden when empty); if waiting tasks were left out, a last line `N waiting task(s) hidden: tk +WAITING shows them.`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
+| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, a last line `N of M tasks. tk list shows them all.`; no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
@@ -142,7 +152,7 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 | info | `tk 7 info` | all fields, local times; one row per annotation; virtual tags (§4) |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
 | print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold), annotations under the task (small italic, `<date> <text>`, oldest first); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
-| export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; no match → `[]`, exit 0 |
+| export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; waiting tasks always included; no match → `[]`, exit 0 |
 | import | `tk import f.json` | TW JSON from FILE, or stdin if none or `-` (UTF-8, or UTF-16 with BOM); merge by uuid; prints added/updated/skipped counts; 1 undo step; any invalid task → nothing imported, error names the task number |
 | alias | `tk alias install task` | `install\|remove NAME`: opt-in shim `NAME` (`NAME.cmd` on Windows) running `python -m tame`, in the uv tool bin dir (`UV_TOOL_BIN_DIR`, `XDG_BIN_HOME`, `$XDG_DATA_HOME/../bin`, `~/.local/bin`); marked as tame's: never overwrites/removes other files; warns if the dir is not in PATH or another NAME comes first |
 | config | `tk config set undo.retention 1y` | list / `get` / `set` / `unset` (= default) / `path` / `edit` settings (§7) |
@@ -215,8 +225,9 @@ Unknown key, wrong type or invalid value → usage error naming key and file (ex
 - `annotations`: array of `{entry, description}`, both required, `entry` a TW date → stored natively. Export: array sorted by entry; omitted when empty.
 - `depends`: array of uuids, or a comma-separated string (TW < 2.6) → stored natively; duplicates and the task's own uuid dropped. Export: array of uuids, sorted; omitted when empty.
 - Invalid `annotations`/`depends` value (wrong type, missing field, bad date or uuid) → whole key kept in `extra` unchanged.
-- Other unsupported TW attrs (recur, wait, UDAs…), and a `priority` other than H/M/L → stored in `extra`, re-exported unchanged (TAME fields win).
-- TW status `waiting`/`recurring` → `pending`, original in `extra.tw_status`; exported back while the task is still pending.
+- `wait`, `start`, `until` (TW dates) and `recur` (string) → stored natively; exported when set. Invalid value → kept in `extra` unchanged.
+- Other unsupported TW attrs (UDAs…), and a `priority` other than H/M/L → stored in `extra`, re-exported unchanged (TAME fields win).
+- TW status `waiting` → `pending` + `wait` (TW 3 style; exported as `pending`); without a valid `wait`, and status `recurring`: `pending`, original in `extra.tw_status`, exported back while the task is still pending.
 
 ## 8. Layout, quality, release
 

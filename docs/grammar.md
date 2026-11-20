@@ -35,8 +35,8 @@ If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`
 
 | Token | Effect |
 |---|---|
-| `project:home` `pri:H` `due:fri` | set the attribute |
-| `project:` `pri:` `due:` | clear it (`modify` only) |
+| `project:home` `pri:H` `due:fri` `wait:mon` | set the attribute (`wait`: see [waiting tasks](#waiting-tasks)) |
+| `project:` `pri:` `due:` `wait:` | clear it (`modify` only) |
 | `+tag` | add the tag (not a [virtual tag](#virtual-tags)) |
 | `-tag` | remove the tag (`modify` only; for `add` it is a plain word) |
 | other words | the description (`modify`: replaces it) |
@@ -98,10 +98,12 @@ uppercase and English, whatever the interface language.
 | `WEEK` / `MONTH` | are due this week (Monday to Sunday) / this month, earlier days included |
 | `DUE` | are due in the next 7 days |
 | `BLOCKED` / `UNBLOCKED` | depend / do not depend on another pending task |
+| `WAITING` | are [waiting](#waiting-tasks) |
 | `ANNOTATED` | have an annotation |
 | `PROJECT` / `TAGGED` | have a project / at least one tag |
 
-The first eight only apply to pending tasks: a completed task is never `OVERDUE`. Days,
+All but `ANNOTATED`, `PROJECT` and `TAGGED` only apply to pending tasks: a completed task
+is never `OVERDUE`. Days,
 weeks and months follow your local calendar. `tk info` lists the virtual tags of a task.
 
 These names are reserved: `tk add x +TODAY` is refused. A real tag with one of these names,
@@ -113,6 +115,23 @@ tk +TODAY print             # today's page
 tk +WEEK -BLOCKED           # due this week, and nothing to wait for
 tk project:home -TAGGED     # home tasks with no tag at all
 ```
+
+## Waiting tasks
+
+`wait:` puts a task aside until a date: *no point thinking about it before Monday*. Unlike
+`due:` (do it *before*), `wait:` means *not before*.
+
+```sh
+tk add Chase the bank wait:mon due:fri
+tk                          # not listed until Monday; a last line says "1 waiting task hidden"
+tk +WAITING                 # the waiting tasks
+tk 4 modify wait:           # stop waiting
+```
+
+Until the date, the task is left out of every filter (`list`, `next`, `print`, `done`,
+`modify`…), unless the filter names it by id or uuid, or uses `+WAITING` or `status:all`.
+`export` always includes it. When the date passes, it simply shows again. It keeps its id,
+and `tk info` shows its `wait` date.
 
 ## Examples
 

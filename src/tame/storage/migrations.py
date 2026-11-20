@@ -3,12 +3,13 @@
 import json
 import sqlite3
 from collections.abc import Callable
+from datetime import datetime
 
 from tame.errors import StorageError
-from tame.io.tw_json import split_extra
+from tame.io.tw_json import ANNOTATIONS, DEPENDS, split_extra
 from tame.storage.codec import to_db
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 """Schema version this code reads and writes."""
 
 type Step = str | Callable[[sqlite3.Connection], None]
@@ -20,20 +21,43 @@ def _promote_annotations_and_depends(conn: sqlite3.Connection) -> None:
     rows = conn.execute("SELECT uuid, extra FROM tasks WHERE extra IS NOT NULL").fetchall()
     for uuid, extra_json in rows:
         extra = json.loads(extra_json)
-        annotations, depends, rest = split_extra(extra, uuid)
+        fields, rest = split_extra(extra, uuid, (ANNOTATIONS, DEPENDS))
         if rest == extra:
             continue
         conn.executemany(
             "INSERT INTO annotations(uuid, entry, description) VALUES (?, ?, ?)",
-            [(uuid, to_db(note.entry), note.description) for note in annotations],
+            [(uuid, to_db(note.entry), note.description) for note in fields.get(ANNOTATIONS, ())],
         )
         conn.executemany(
             "INSERT INTO depends(uuid, depends_on) VALUES (?, ?)",
-            [(uuid, target) for target in sorted(depends)],
+            [(uuid, target) for target in sorted(fields.get(DEPENDS, ()))],
         )
         conn.execute(
             "UPDATE tasks SET extra = ? WHERE uuid = ?",
             (json.dumps(rest, sort_keys=True) if rest else None, uuid),
+        )
+
+
+_V3_FIELDS = ("wait", "start", "recur", "until")
+
+
+def _promote_wait_start_recur_until(conn: sqlite3.Connection) -> None:
+    """Move Taskwarrior ``wait``/``start``/``recur``/``until`` from ``extra`` to columns."""
+    rows = conn.execute("SELECT uuid, extra FROM tasks WHERE extra IS NOT NULL").fetchall()
+    for uuid, extra_json in rows:
+        extra = json.loads(extra_json)
+        fields, rest = split_extra(extra, uuid, _V3_FIELDS)
+        if rest == extra:
+            continue
+        values = [fields.get(name) for name in _V3_FIELDS]
+        conn.execute(
+            'UPDATE tasks SET wait = ?, start = ?, recur = ?, "until" = ?, extra = ? '
+            "WHERE uuid = ?",
+            (
+                *(to_db(v) if isinstance(v, datetime) else v for v in values),
+                json.dumps(rest, sort_keys=True) if rest else None,
+                uuid,
+            ),
         )
 
 
@@ -81,6 +105,13 @@ _MIGRATIONS: dict[int, tuple[Step, ...]] = {
             CHECK(uuid <> depends_on)
         )""",
         _promote_annotations_and_depends,
+    ),
+    3: (
+        "ALTER TABLE tasks ADD COLUMN wait TEXT",
+        "ALTER TABLE tasks ADD COLUMN start TEXT",
+        "ALTER TABLE tasks ADD COLUMN recur TEXT",
+        'ALTER TABLE tasks ADD COLUMN "until" TEXT',
+        _promote_wait_start_recur_until,
     ),
 }
 

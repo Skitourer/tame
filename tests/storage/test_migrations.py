@@ -26,7 +26,7 @@ def test_empty_database_is_version_0(tmp_path: Path) -> None:
 def test_migrate_creates_schema(tmp_path: Path) -> None:
     conn = connect(tmp_path / "x.db")
     migrate(conn)
-    assert schema_version(conn) == SCHEMA_VERSION == 2
+    assert schema_version(conn) == SCHEMA_VERSION == 3
     assert {"meta", "tasks", "task_tags", "undo_log", "annotations", "depends"} <= tables(conn)
 
 
@@ -114,7 +114,7 @@ def test_v1_database_is_upgraded(tmp_path: Path) -> None:
     assert (other.depends, other.extra) == ({UUID}, {})
     assert (third.annotations, third.depends, third.extra) == ((), frozenset(), {})
     conn = connect(path)
-    assert schema_version(conn) == 2
+    assert schema_version(conn) == SCHEMA_VERSION
     assert conn.execute("SELECT extra FROM tasks WHERE uuid = ?", (OTHER,)).fetchone() == (None,)
 
 
@@ -152,3 +152,47 @@ def test_failed_upgrade_changes_nothing(tmp_path: Path) -> None:
     assert schema_version(conn) == 1
     assert "annotations" not in tables(conn)
     assert conn.execute("SELECT extra FROM tasks").fetchone() == (json.dumps({"depends": [OTHER]}),)
+
+
+# --- Migration 2 -> 3 ------------------------------------------------------------------
+
+
+def test_v2_database_gets_wait_start_recur_until(tmp_path: Path) -> None:
+    path = tmp_path / "x.db"
+    conn = connect(path)
+    migrate(conn, target_version=2)
+    extra = {
+        "wait": "20261201T000000Z",
+        "start": "20261102T090000Z",
+        "until": "bad date",
+        "recur": "weekly",
+        "tw_status": "waiting",
+        "x": 1,
+    }
+    conn.execute(
+        "INSERT INTO tasks(uuid, id, description, status, entry, modified, extra) "
+        "VALUES (?, 1, 'd', 'pending', '2026-11-19T09:30:00Z', '2026-11-19T09:30:00Z', ?)",
+        (UUID, json.dumps(extra)),
+    )
+    conn.close()
+    with TaskRepo(path) as repo:
+        task = repo.get(UUID)
+    assert task is not None
+    assert task.wait == from_db("2026-12-01T00:00:00Z")
+    assert task.start == from_db("2026-11-02T09:00:00Z")
+    assert (task.recur, task.until) == ("weekly", None)
+    assert task.extra == {"until": "bad date", "x": 1}  # tw_status dropped: wait is set
+    assert schema_version(connect(path)) == SCHEMA_VERSION
+
+
+def test_v1_wait_is_not_lost_going_to_v3(tmp_path: Path) -> None:
+    path = tmp_path / "x.db"
+    v1_database(path, {UUID: {"wait": "20261201T000000Z", "depends": [OTHER]}})
+    with TaskRepo(path) as repo:
+        task = repo.get(UUID)
+    assert task is not None
+    assert (task.wait, task.depends, task.extra) == (
+        from_db("2026-12-01T00:00:00Z"),
+        {OTHER},
+        {},
+    )

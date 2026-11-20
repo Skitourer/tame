@@ -109,6 +109,7 @@ class AddArgs:
     tags: tuple[str, ...] = ()
     priority: str | None = None
     due: datetime | None = None
+    wait: datetime | None = None
 
 
 def match_command(token: str) -> str | None:
@@ -339,6 +340,7 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
     project: str | None = None
     priority: Priority | Literal[""] | None = None
     due: datetime | Literal[""] | None = None
+    wait: datetime | Literal[""] | None = None
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -355,6 +357,8 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
                 priority = parse_priority(value) if value else NONE
             elif name == "due":
                 due = parse_date(value, now) if value else NONE
+            elif name == "wait":
+                wait = parse_date(value, now) if value else NONE
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
         else:
@@ -364,6 +368,7 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
         project=project,
         priority=priority,
         due=due,
+        wait=wait,
         tags_add=frozenset(tags_add),
         tags_remove=frozenset(tags_remove),
     )
@@ -382,7 +387,7 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
     """
     words: list[str] = []
     tags: list[str] = []
-    attrs: dict[str, str | None] = {"project": None, "priority": None, "due": None}
+    attrs: dict[str, str | None] = {"project": None, "priority": None, "due": None, "wait": None}
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -403,4 +408,5 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
         tags=tuple(tags),
         priority=attrs["priority"],
         due=parse_date(due, now or utc_now()) if (due := attrs["due"]) else None,
+        wait=parse_date(wait, now or utc_now()) if (wait := attrs["wait"]) else None,
     )

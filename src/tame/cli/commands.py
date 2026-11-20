@@ -128,6 +128,7 @@ def cmd_add(command: ParsedCommand, settings: Settings) -> int:
             tags=parsed.tags,
             priority=parsed.priority,
             due=parsed.due,
+            wait=parsed.wait,
         )
     print(t("cmd.add.created", id=task.id))
     return ExitCode.OK
@@ -153,10 +154,13 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
     if limit is not None:
         where = replace(where, virtual_out=where.virtual_out | {"BLOCKED"})
     with open_service(settings) as service:
-        if not (found := service.query(where)):
+        found, hidden = service.query_hidden(where)
+        if not found:
             if not command.filter and not service.query(Filter(status=ALL)):
                 print(t("welcome").rstrip())  # First run: no task at all.
                 return ExitCode.OK
+            if hidden:
+                print(_hidden_line(hidden))
             raise NoMatchError("error.no_matches")
     tasks = by_urgency(found, now, settings.urgency)
     from tame.cli.render import print_task_table
@@ -171,7 +175,14 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
     )
     if limit is not None and len(tasks) > limit:
         print(t("next.more", shown=limit, total=len(tasks)))
+    if hidden:
+        print(_hidden_line(hidden))
     return ExitCode.OK
+
+
+def _hidden_line(count: int) -> str:
+    """Return the line telling how many waiting tasks a report left out."""
+    return t("list.waiting_one") if count == 1 else t("list.waiting_many", count=count)
 
 
 def cmd_done(command: ParsedCommand, settings: Settings) -> int:
@@ -380,7 +391,7 @@ def cmd_export(command: ParsedCommand, settings: Settings) -> int:
     now = utc_now()
     where = parse_filter(command.filter, now)
     with open_service(settings) as service:
-        tasks = service.query(where)
+        tasks = service.query(where, include_waiting=True)
     print(
         tw_json.dumps(
             tw_json.task_to_tw(task, urgency(task, now, settings.urgency)) for task in tasks

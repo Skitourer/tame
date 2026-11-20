@@ -422,3 +422,28 @@ def test_denotate_skips_tasks_without_match(service: TaskService) -> None:
     assert service.denotate([plain, task], "other") == []
     assert service.denotate([plain], "") == []
     assert [t.description for t in service.denotate([plain, task], "note")] == ["x"]
+
+
+# --- wait ---------------------------------------------------------------------------
+
+
+def test_waiting_tasks_are_hidden_until_their_date(
+    repo: TaskRepo, service: TaskService, frozen_now: datetime
+) -> None:
+    waiting = service.add("later", wait=frozen_now + timedelta(days=2))
+    free = service.add("now")
+    assert service.query() == [free]
+    assert service.query_hidden() == ([free], 1)
+    assert service.query(include_waiting=True) == [waiting, free]
+    assert service.query(Filter(ids=frozenset({1}))) == [waiting]
+    assert service.query(Filter(virtual_in=frozenset({"WAITING"}))) == [waiting]
+    in_three_days = TaskService(repo, clock=lambda: frozen_now + timedelta(days=3))
+    assert in_three_days.query() == [waiting, free]
+
+
+def test_modify_sets_and_clears_wait(service: TaskService, frozen_now: datetime) -> None:
+    task = service.add("x")
+    (task,) = service.modify([task], Changes(wait=frozen_now + timedelta(days=1)))
+    assert task.wait == frozen_now + timedelta(days=1)
+    (task,) = service.modify([task], Changes(wait=NONE))
+    assert task.wait is None

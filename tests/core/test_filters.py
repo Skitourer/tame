@@ -195,3 +195,15 @@ def test_filter_on_virtual_tags() -> None:
     assert where.matches(task(), frozenset({"TAGGED"}))
     assert not where.matches(task(), frozenset({"TAGGED", "OVERDUE"}))
     assert not where.matches(task(), frozenset())
+
+
+def test_waiting_tag_and_shows_waiting() -> None:
+    waiting = task(wait=NOW + timedelta(hours=1))
+    assert "WAITING" in tagger()(waiting)
+    assert "WAITING" not in tagger()(task(wait=NOW))
+    assert "WAITING" not in tagger()(task(wait=NOW + timedelta(1), status=Status.COMPLETED))
+    assert not Filter().shows_waiting
+    assert Filter(ids=frozenset({3})).shows_waiting
+    assert Filter(uuid_prefixes=("1a2b3c4d",)).shows_waiting
+    assert Filter(virtual_in=frozenset({"WAITING"})).shows_waiting
+    assert Filter(status=ALL).shows_waiting

@@ -70,10 +70,13 @@ input.
 - **Annotations and dependencies.** Stored with the task, shown by `tk info` and exported
   back. `depends` is accepted as a list of uuids or as a comma-separated string (older
   Taskwarrior) and is exported as a list.
-- **Kept for export.** Other unsupported attributes (recur, wait, UDAs…) and a priority
-  other than H/M/L are stored with the task and exported back.
-- **Statuses.** `waiting` and `recurring` become `pending`; the original status is restored
-  on export while the task is still pending.
+- **wait, start, recur, until.** Stored with the task and exported back. `wait` works as in
+  Taskwarrior; `start`, `recur` and `until` are kept for the features of a later version.
+- **Kept for export.** Other unsupported attributes (UDAs…) and a priority other than H/M/L
+  are stored with the task and exported back.
+- **Statuses.** `waiting` becomes `pending` with its `wait` date, as in Taskwarrior 3; it is
+  exported as `pending`. `recurring` becomes `pending`; the original status is restored on
+  export while the task is still pending.
 - **Ids.** New pending tasks get the next free ids. If the import changes which tasks are
   pending, all pending tasks are renumbered.
 - **All or nothing.** If any task is invalid (bad date, empty description…), nothing is
