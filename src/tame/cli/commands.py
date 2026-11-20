@@ -547,7 +547,6 @@ HELP_COMMANDS = (
     "import",
     "config",
     "alias",
-    "completion",
     "help",
     "version",
 )
@@ -607,11 +606,39 @@ def help_text(subject: str) -> str:
     if subject in HELP_TOPICS:
         return t(f"help.topic.{subject}").rstrip()
     name = match_command(subject)
-    if name not in HELP_COMMANDS:
+    if name not in (*HELP_COMMANDS, "completion"):  # completion: advanced, not listed
         raise UsageError("error.help_unknown", name=subject)
     usage = t("help.usage_label", usage=t(f"help.cmd.{name}.usage"))
     summary = t(f"help.cmd.{name}.summary")
     return f"{usage}\n\n{summary}.\n\n{t(f'help.cmd.{name}.body').rstrip()}"
+
+
+def _touches_completion(args: Sequence[str]) -> bool:
+    """True if a ``config`` command may have changed the ``completion`` setting."""
+    return tuple(args[:2]) in (("set", "completion"), ("unset", "completion")) or tuple(
+        args[:1]
+    ) == ("edit",)
+
+
+def _sync_completion(settings: Settings, *, explicit: bool = False) -> None:
+    """Align the shell profiles with the ``completion`` setting, in a terminal only."""
+    from tame import alias
+    from tame.cli import shellprofile
+
+    if not shellprofile.is_terminal():
+        return
+    names = ["tk", "tame", *alias.installed()]
+    try:
+        with open_service(settings) as service:
+            messages = shellprofile.reconcile(
+                service, settings.completion, names, explicit=explicit
+            )
+    except OSError as exc:
+        if explicit:
+            print(t("completion.error", detail=str(exc)), file=sys.stderr)
+        return
+    for message in messages:
+        print(message)
 
 
 HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
@@ -641,13 +668,18 @@ def run(command: ParsedCommand) -> int:
     when the file is invalid.
     """
     if command.name == "config":
-        return cmd_config(command)
+        code = cmd_config(command)
+        if code == ExitCode.OK and _touches_completion(command.args):
+            _sync_completion(load_settings(), explicit=True)
+        return code
     if command.name == "help":
         return cmd_help(command)
     settings = load_settings()
     if command.implicit:
         command = replace(command, name=settings.default_command)
     code = HANDLERS[command.name](command, settings)
+    if code == ExitCode.OK:
+        _sync_completion(settings)
     if (
         code == ExitCode.OK
         and command.name in kindness.ELIGIBLE

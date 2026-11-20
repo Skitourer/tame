@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Tab completion is a setting**: `tk config set completion true` adds it to your
+  PowerShell (or bash) profile and keeps it up to date; `false` removes it. TAME suggests it
+  once, the first time it runs in a terminal. Nothing is written when PowerShell does not
+  run profile scripts. `tk completion powershell|bash` still prints the script, for other
+  setups; it is no longer in the `tk help` list.
+
 ## [0.3.0] - 2026-11-20
 
 Everyday comfort, nothing new to learn: plain commands work as before, the new things are

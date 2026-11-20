@@ -481,20 +481,26 @@ Examples:
   tk alias remove task
 '''
 
+[completion]
+tip = "Tip: Tab completion is available: tk config set completion true"
+enabled = "Tab completion enabled in {path}. Open a new terminal to use it."
+already = "Tab completion is on in {path}."
+removed = "Tab completion removed from {path}."
+blocked = "Tab completion not enabled in {path}: PowerShell does not run profile scripts here (execution policy {policy}). To allow them: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
+none = "Tab completion: no supported shell found (PowerShell, or bash as your shell). See tk help completion."
+error = "Tab completion: cannot update the shell profile: {detail}"
+
 [help.cmd.completion]
 summary = "Set up Tab completion in your shell"
 usage = "tk completion powershell | bash"
 body = '''
-Prints a script that makes Tab complete commands, attributes, your tags and
-projects, date keywords and help topics, for tk, tame and your aliases. Add it once
-to your shell profile, then open a new terminal. Not available in cmd.exe.
+To turn Tab completion on, you do not need this command:
+  tk config set completion true
+TAME then keeps its block in your PowerShell (or bash) profile up to date; false
+removes it. Not available in cmd.exe.
 
-Examples:
-  tk completion powershell >> $PROFILE     (PowerShell)
-  tk completion bash >> ~/.bashrc          (bash)
-
-Run it again after adding an alias. To stay up to date at the cost of a slower
-start, put this line in $PROFILE instead:
+This command only prints the script, for other setups: shells or profiles TAME does
+not manage, or your own dotfiles. Always current, but a slower terminal start:
   tk completion powershell | Out-String | Invoke-Expression
 '''
 
@@ -612,7 +618,7 @@ A two-minute tour. Type the commands in order.
 6. Make it yours.
      tk config set language fr  French interface
      tk alias install task      also run tame as task
-     tk completion powershell   Tab completion (see tk help completion)
+     tk config set completion true   Tab completion in new terminals
      tk status:all export > backup.json
 
 Every command: tk help. Details: tk help <command>.

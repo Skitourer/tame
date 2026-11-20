@@ -35,7 +35,9 @@ uv run --group docs mkdocs serve       # preview at http://127.0.0.1:8000
 uv run --group docs mkdocs build --strict
 ```
 
-Shell completion: the scripts printed by `tk completion` call the hidden
+Shell completion: `completion = true` makes TAME keep a marked block in the shell profile
+(`src/tame/cli/shellprofile.py`; tests never touch real profiles, see `tests/conftest.py`).
+The scripts printed by `tk completion` call the hidden
 `tk _complete _<current word> [words before it...]`, handled in `main()` before anything
 heavy is imported. Try it directly: `uv run tk _complete _+` lists your tags.
 

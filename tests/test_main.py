@@ -682,7 +682,8 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
 
 
 def test_help_covers_every_implemented_command() -> None:
-    assert set(HELP_COMMANDS) == set(HANDLERS) | {"config", "help"}
+    assert set(HELP_COMMANDS) == (set(HANDLERS) | {"config", "help"}) - {"completion"}
+    assert help_text("completion").startswith("Usage: tk completion")  # advanced, not listed
 
 
 @pytest.mark.parametrize("argv", [["help", "modify"], ["help", "mod"], ["modify", "--help"]])

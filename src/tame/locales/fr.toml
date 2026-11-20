@@ -491,21 +491,27 @@ Exemples :
   tk alias remove task
 '''
 
+[completion]
+tip = "Astuce : la complétion par Tab est disponible : tk config set completion true"
+enabled = "Complétion par Tab activée dans {path}. Ouvrez un nouveau terminal pour l'utiliser."
+already = "La complétion par Tab est active dans {path}."
+removed = "Complétion par Tab retirée de {path}."
+blocked = "Complétion par Tab non activée dans {path} : PowerShell n'exécute pas les scripts de profil ici (stratégie d'exécution {policy}). Pour les autoriser : Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
+none = "Complétion par Tab : aucun shell pris en charge trouvé (PowerShell, ou bash comme shell). Voir tk help completion."
+error = "Complétion par Tab : impossible de mettre à jour le profil du shell : {detail}"
+
 [help.cmd.completion]
 summary = "Activer la complétion par Tab dans votre shell"
 usage = "tk completion powershell | bash"
 body = '''
-Affiche un script qui fait compléter par Tab les commandes, attributs, vos tags et
-projets, les mots-clés de date et les sujets d'aide, pour tk, tame et vos alias.
-Ajoutez-le une fois au profil de votre shell, puis ouvrez un nouveau terminal.
-Indisponible dans cmd.exe.
+Pour activer la complétion par Tab, cette commande n'est pas nécessaire :
+  tk config set completion true
+TAME tient alors à jour son bloc dans votre profil PowerShell (ou bash) ; false le
+retire. Indisponible dans cmd.exe.
 
-Exemples :
-  tk completion powershell >> $PROFILE     (PowerShell)
-  tk completion bash >> ~/.bashrc          (bash)
-
-Relancez-le après avoir ajouté un alias. Pour rester à jour au prix d'un démarrage
-plus lent, mettez plutôt cette ligne dans $PROFILE :
+Cette commande affiche seulement le script, pour d'autres installations : shells ou
+profils que TAME ne gère pas, ou vos propres fichiers de configuration. Toujours à
+jour, mais un démarrage du terminal plus lent :
   tk completion powershell | Out-String | Invoke-Expression
 '''
 
@@ -628,7 +634,7 @@ Une visite de deux minutes. Tapez les commandes dans l'ordre.
 6. Personnalisez.
      tk config set language en  interface en anglais
      tk alias install task      lancer aussi tame avec task
-     tk completion powershell   complétion par Tab (voir tk help completion)
+     tk config set completion true   complétion par Tab (nouveaux terminaux)
      tk status:all export > sauvegarde.json
 
 Toutes les commandes : tk help. Détails : tk help <commande>.
