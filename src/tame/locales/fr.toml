@@ -316,12 +316,12 @@ body = '''
 Les mots forment la description ; project:, pri:, due:, wait: et +tag peuvent être
 n'importe où. wait: cache la tâche de list et des filtres jusqu'à cette date
 (tk +WAITING l'affiche).
-Tout ce qui suit -- est de la description, même des mots comme done ou +x.
+Tout ce qui suit -- est de la description, même des mots comme +1 ou pri:H.
 
 Exemples :
   tk add Appeler la banque project:maison +tel due:fri pri:H
   tk add Relancer la banque wait:mon due:fri
-  tk add -- done le rapport
+  tk add -- +1 pour le nouveau logo
 '''
 
 [help.cmd.next]
@@ -395,7 +395,7 @@ confirm_threshold tâches ; --yes l'évite.
 
 Exemples :
   tk 3 annotate Rappeler lundi, demander Mme Martin
-  tk 3 annotate -- done par mail     (après --, les mots sont du texte)
+  tk 3 annotate -- Répondre --yes par mail   (après --, les mots sont du texte)
 '''
 
 [help.cmd.denotate]

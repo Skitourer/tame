@@ -262,7 +262,11 @@ def test_parse_add_mods_anywhere() -> None:
 
 
 def test_parse_add_double_dash_ends_parsing() -> None:
-    # SPEC §4 rule 5: `tk add -- done the report`.
+    # SPEC §4 rule 5: `tk add -- +1 vote for the new logo`.
+    assert parse_add(["--", "+1", "vote", "for", "the", "new", "logo"]) == AddArgs(
+        "+1 vote for the new logo"
+    )
+    assert parse_add(["+1", "vote"]) == AddArgs("vote", tags=("1",))
     assert parse_add(["--", "done", "the", "report"]) == AddArgs("done the report")
     assert parse_add(["+x", "--", "+y", "pri:H"]) == AddArgs("+y pri:H", tags=("x",))
 

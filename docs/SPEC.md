@@ -96,7 +96,7 @@ Parse rules (in order):
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
 4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
-5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
+5. `--` ends parsing: rest = description words (`tk add -- +1 vote for the new logo`: `+1` is text, not a tag; `tk 3 annotate -- Answer --yes by mail`: `--yes` is text); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias completion config help import undo version`) → usage error (exit 1).
 
