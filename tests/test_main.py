@@ -1268,6 +1268,7 @@ def in_terminal(monkeypatch: pytest.MonkeyPatch, *args: str) -> tuple[int, str, 
     """Run ``tk <args>`` with stdout and stderr as terminals."""
     out, err = Terminal(), Terminal()
     monkeypatch.setattr("tame.cli.shellprofile.is_terminal", lambda: False)  # no completion tip
+    monkeypatch.setattr("tame.cli.kindness.is_terminal", lambda: False)  # no random kind word
     real = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = out, err
     try:
@@ -1322,6 +1323,7 @@ def test_question_in_a_terminal(capsys: Capture, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr("builtins.input", lambda prompt="": prompts.append(prompt) or "n")
     out = Terminal()
     monkeypatch.setattr("tame.cli.shellprofile.is_terminal", lambda: False)  # no completion tip
+    monkeypatch.setattr("tame.cli.kindness.is_terminal", lambda: False)  # no random kind word
     monkeypatch.setattr("sys.stdout", out)
     assert main(["1", "delete"]) == 0
     assert prompts == ["? Delete task 1 'x'? (y/N) "]
