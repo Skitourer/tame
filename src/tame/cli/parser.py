@@ -363,10 +363,14 @@ def parse_depends(value: str) -> DependsChange:
         removing = item.startswith("-")
         ids, uuids = refs[removing]
         token = item[1:] if removing else item
-        if re.fullmatch(r"\d+(?:-\d+)?", token):
-            ids |= _parse_ids(token)
-        elif _UUID_DASHED_RE.fullmatch(token) or _UUID_HEX_RE.fullmatch(token):
+        # Same order as filters: a dashed uuid prefix first (12345678-1234 is no id range),
+        # then ids, then 8+ hex digits.
+        if _UUID_DASHED_RE.fullmatch(token):
             uuids.append(token.lower().replace("-", ""))
+        elif re.fullmatch(r"\d+(?:-\d+)?", token):
+            ids |= _parse_ids(token)
+        elif _UUID_HEX_RE.fullmatch(token):
+            uuids.append(token.lower())
         else:
             raise ValidationError("error.invalid_depends", value=item)
     return DependsChange(
