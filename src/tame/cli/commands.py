@@ -1,6 +1,7 @@
 """Command handlers: one function per command, each returning an exit code."""
 
 import codecs
+import io
 import os
 import shlex
 import subprocess
@@ -233,7 +234,7 @@ def cmd_purge(command: ParsedCommand, settings: Settings) -> int:
     everything = command.args == (ALL_FLAG,)
     if everything and command.filter:
         raise UsageError("error.purge_all_filter")
-    if everything and not sys.stdin.isatty():
+    if everything and not keyboard_input():
         raise UsageError("error.purge_all_terminal")
     where = None if everything else _purge_filter(command.filter)
     with open_service(settings) as service:
@@ -260,6 +261,27 @@ def cmd_purge(command: ParsedCommand, settings: Settings) -> int:
     render.say(t("cmd.purge.backup", path=str(result.backup)))
     render.hint(t("cmd.purge.no_undo"))
     return ExitCode.OK
+
+
+def keyboard_input() -> bool:
+    """True if stdin is a keyboard: a terminal, and on Windows a real console.
+
+    Windows reports ``NUL`` (``< NUL``, ``< /dev/null``) as a tty; only a console
+    handle has a console mode.
+    """
+    if not render.is_terminal(sys.stdin):
+        return False
+    if sys.platform != "win32":
+        return True
+    import ctypes
+    import msvcrt
+
+    try:
+        handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    except (OSError, ValueError, io.UnsupportedOperation):
+        return True  # no OS handle (replaced stream): trust isatty()
+    mode = ctypes.c_ulong()
+    return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
 
 
 def _purge_filter(tokens: tuple[str, ...]) -> Filter:

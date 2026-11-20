@@ -2,11 +2,14 @@
 
 import io
 import json
+import os
+import sys
 from pathlib import Path
 
 import pytest
 
 from tame.__main__ import main
+from tame.cli.commands import keyboard_input
 
 Capture = pytest.CaptureFixture[str]
 
@@ -191,3 +194,22 @@ def test_backup_failure_purges_nothing(
     assert code != 0
     assert "disk full. Nothing was purged." in err
     assert descriptions(capsys) == ["done", "gone", "keep", "old"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows NUL device")
+def test_nul_is_no_keyboard(monkeypatch: pytest.MonkeyPatch) -> None:
+    with open(os.devnull, encoding="utf-8") as nul:  # noqa: PTH123 - text stream on NUL
+        assert nul.isatty()  # what Windows claims
+        monkeypatch.setattr("sys.stdin", nul)
+        assert not keyboard_input()
+
+
+def test_purge_all_from_nul_is_a_usage_error(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run(capsys, "add", "keep")
+    with open(os.devnull, encoding="utf-8") as nul:  # noqa: PTH123 - text stream on NUL
+        monkeypatch.setattr("sys.stdin", nul)
+        code, _, err = run(capsys, "purge", "--all", "--yes")
+    assert code == 1
+    assert "must be confirmed in a terminal" in err
