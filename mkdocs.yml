@@ -8,6 +8,8 @@ copyright: MIT License
 
 theme:
   name: material
+  logo: assets/logo-header.svg
+  favicon: assets/favicon.svg
   features:
     - content.code.copy
     - navigation.footer

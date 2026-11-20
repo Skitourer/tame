@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- TAME favicon: follows the browser's light or dark theme. MIT License, part of TAME. -->
+  <style>
+    .ink { stroke: #1f2a30; }
+    .heart { fill: #d84315; }
+    @media (prefers-color-scheme: dark) {
+      .ink { stroke: #eceff1; }
+      .heart { fill: #ff7a50; }
+    }
+  </style>
+  <defs>
+    <path id="heart" d="M5 9.2C1.2 6.6 0 4.8 0 3.2 0 1.4 1.4.2 2.9.2 3.9.2 4.6.8 5 1.5 5.4.8 6.1.2 7.1.2 8.6.2 10 1.4 10 3.2 10 4.8 8.8 6.6 5 9.2Z" transform="translate(44.5 2.5) scale(1.55)"/>
+    <mask id="gap">
+      <rect width="64" height="64" fill="#fff"/>
+      <use href="#heart" fill="#000" stroke="#000" stroke-width="2.6"/>
+    </mask>
+  </defs>
+  <g class="ink" fill="none" mask="url(#gap)">
+    <rect x="7" y="9" width="46" height="46" rx="12" stroke-width="6"/>
+    <path d="M18 32.5 27 41.5 43 23" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <use class="heart" href="#heart"/>
+</svg>

@@ -667,6 +667,7 @@ Built with:
   tomlkit           settings file that keeps your comments
 
 Made with uv, ruff, mypy, pytest and MkDocs Material.
+Logo: a ticked box with a small heart, part of TAME (MIT License).
 
 Licenses: tk help license.
 '''

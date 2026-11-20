@@ -10,6 +10,12 @@ exact versions installed on your machine.
 TAME is released under the [MIT License](https://github.com/Skitourer/tame/blob/main/LICENSE):
 use it, change it, share it, as long as the copyright notice comes along.
 
+## Logo
+
+The ticked box, with a small heart on its corner, is part of TAME and shares its MIT
+License: `docs/assets/` holds it for light and dark backgrounds, the site header and the
+favicon.
+
 ## Thanks
 
 To the [Taskwarrior](https://taskwarrior.org) team and community: TAME exists because

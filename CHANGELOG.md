@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A logo**: a ticked box with a small heart on its corner, on the README, the
+  documentation site and its browser tab.
 - **Help on settings**: `tk help settings` lists every setting with what it does, its
   possible values and its default; `tk help config date_format` shows one, with its current
   value. In English and French; Tab completes the setting names.
