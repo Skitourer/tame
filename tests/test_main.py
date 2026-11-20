@@ -1334,3 +1334,13 @@ def test_help_security_topic(capsys: Capture) -> None:
     code, out, _ = run(capsys, "help", "security")
     assert code == 0
     assert "BitLocker" in out and r'cipher /e /s:"%APPDATA%\tame"' in out
+
+
+def test_double_dash_spec_examples(capsys: Capture) -> None:
+    run(capsys, "add", "--", "+1", "vote", "for", "the", "new", "logo")
+    out = run(capsys, "1", "info")[1]
+    assert out.splitlines()[0] == "Task 1  +1 vote for the new logo"
+    tags = next(line for line in out.splitlines() if line.strip().startswith("Tags"))
+    assert tags.split() == ["Tags", "UNBLOCKED"]  # +1 is no tag: virtual tags only
+    assert run(capsys, "1", "annotate", "--", "Answer", "--yes", "by", "mail")[0] == 0
+    assert "Answer --yes by mail" in run(capsys, "1", "info")[1]

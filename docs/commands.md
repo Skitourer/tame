@@ -39,7 +39,7 @@ after `--` is description, even words like `done` or `+x`. Prints the new task's
 
 ```sh
 tk add Call bank project:home +phone due:fri pri:H
-tk add -- done the report
+tk add -- +1 vote for the new logo   # after --, +1 is text, not a tag
 tk add Chase the bank wait:mon due:fri
 ```
 
@@ -135,7 +135,7 @@ After `--`, words are text even if they look like a command. `tk undo` removes t
 ```sh
 tk 3 annotate Call back Monday, ask for Ann
 tk annotate 3 Call back Monday      # also works: ids right after the command are the filter
-tk 3 annotate -- done by mail
+tk 3 annotate -- Answer --yes by mail   # after --, --yes is text
 tk +ANNOTATED                       # tasks with notes (a virtual tag)
 ```
 

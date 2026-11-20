@@ -314,12 +314,12 @@ usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+t
 body = '''
 Words make the description; project:, pri:, due:, wait: and +tag can be anywhere.
 wait: hides the task from list and filters until that date (tk +WAITING shows it).
-Everything after -- is description, even words like done or +x.
+Everything after -- is description, even words like +1 or pri:H.
 
 Examples:
   tk add Call bank project:home +phone due:fri pri:H
   tk add Chase the bank wait:mon due:fri
-  tk add -- done the report
+  tk add -- +1 vote for the new logo
 '''
 
 [help.cmd.next]
@@ -390,7 +390,7 @@ required. Asks before changing more than confirm_threshold tasks; --yes skips it
 
 Examples:
   tk 3 annotate Call back Monday, ask for Ann
-  tk 3 annotate -- done by mail      (after --, words are text)
+  tk 3 annotate -- Answer --yes by mail   (after --, words are text)
 '''
 
 [help.cmd.denotate]

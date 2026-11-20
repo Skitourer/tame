@@ -22,7 +22,7 @@ tk [filter]                # = tk [filter] list
    their tokens as filter, so `tk list +phone bank` works (`print` first takes out its
    `--file PATH` option).
 5. `--` stops parsing: it is never a command, and everything after it is plain words
-   (`tk add -- done the report`). Before it, `--help` turns the line into
+   (`tk add -- +1 vote for the new logo`: `+1` is text, not a tag). Before it, `--help` turns the line into
    `tk help <command>` (`tk 3 done --help`), or `tk help` if there is no command.
 6. An unknown `attr:` is an error (exit code 1).
 7. Commands that take no filter (`add`, `alias`, `config`, `help`, `import`, `undo`, `version`)

@@ -35,7 +35,7 @@ anywhere:
 ```sh
 tk add Call the bank project:home pri:H due:fri +phone
 tk add Buy milk +shopping due:tomorrow
-tk add -- done the report       # after --, everything is description
+tk add -- +1 vote for the new logo   # after --, +1 is text, not a tag
 ```
 
 Dates are English keywords or ISO dates: `today`, `tomorrow`, `fri`, `eow` (end of week),
