@@ -62,9 +62,17 @@ uv run pytest --cov
 
 ## Git workflow
 
-- `main` is protected: work on a branch, one roadmap step per branch and PR.
-- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
-  (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `ci:`…).
+- `main` is protected: work on a branch, one roadmap step per branch and PR. Keep PRs
+  small and focused; split a large change into several PRs.
+- **PRs are squash-merged**: each PR becomes one commit on `main`, titled after the PR.
+  Your branch history does not matter ("wip", "fix review" are fine); no need to rebase
+  or force-push to tidy it up.
+- The **PR title** follows [Conventional Commits](https://www.conventionalcommits.org/)
+  (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `ci:`…), e.g.
+  `feat: virtual tags`. It becomes the commit message on `main`.
+- Co-authors are credited with `Co-authored-by` trailers in the squash commit.
+- Avoid branches based on another unmerged branch: after the squash merge, the second
+  branch must be rebased onto `main` (`git rebase --onto origin/main <old base>`).
 - Update [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]` for user-visible changes.
 
 ## Releases
