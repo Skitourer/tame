@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Easter eggs in color**: the hidden extras now have colors of their own, and the same
+  blank lines around them as every other output.
+
 ## [0.3.4] - 2026-11-20
 
 Output that is easier to read at a glance.
