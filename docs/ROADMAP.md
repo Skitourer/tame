@@ -1,13 +1,13 @@
 # Roadmap
 
-Planned features after 0.2.0. Guiding rule: **simple by default, powerful on demand**. Every
+Planned features, release by release. Guiding rule: **simple by default, powerful on demand**. Every
 new feature is invisible until used: plain commands keep working unchanged, power comes from
 extra attributes or options, never from mandatory syntax.
 
 Status: proposal. Items move into `SPEC.md` (with tests and docs) in the PR that builds them.
 Order within a release = suggested PR order. TW = Taskwarrior.
 
-## 0.3 – everyday comfort, nothing new to learn
+## 0.3 – everyday comfort, nothing new to learn (released: 0.3.0)
 
 | Feature | Example | Notes |
 |---|---|---|

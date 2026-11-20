@@ -7,45 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-20
+
+Everyday comfort, nothing new to learn: plain commands work as before, the new things are
+there when you type them.
+
 ### Added
 
-- **Tab completion** in PowerShell and bash: `tk completion powershell >> $PROFILE` once,
-  then Tab completes commands, attributes, your tags and projects, date keywords, help
-  topics and settings. Not available in cmd.exe.
-- **`wait:`**: `tk add Chase the bank wait:mon` puts a task aside until a date. It is left
-  out of `list`, `next`, `print` and filters until then (a last line says how many are
-  hidden), and shows again by itself. `tk +WAITING` lists them; `export` keeps them.
-- **Annotations**: `tk 3 annotate Call back Monday` adds a dated note to a task;
-  `tk 3 denotate Call` removes it (or, without text, the most recent one). `tk info` shows
-  the notes, `tk print` prints them under the task, and `list`/`next` show how many:
-  `Call bank [2]`. Taskwarrior annotations are imported and exported as before.
 - **`tk next`**: the 10 most urgent tasks you can do now, in a compact table; blocked tasks
   are left out. Works with filters: `tk +home next`. `next_limit` sets how many;
   `tk config set default_command next` makes it what `tk` alone shows.
 - **Virtual tags**: filter on what TAME computes, without tagging anything yourself.
   `tk +OVERDUE` lists late tasks, `tk +TODAY print` prints today's page, `tk -TAGGED` shows
   tasks without tags. Also `TOMORROW`, `WEEK`, `MONTH`, `DUE` (next 7 days), `BLOCKED`,
-  `UNBLOCKED`, `ANNOTATED` and `PROJECT`. See `tk help filters`. `tk info` lists them.
+  `UNBLOCKED`, `WAITING`, `ANNOTATED` and `PROJECT`. See `tk help filters`; `tk info` lists
+  a task's virtual tags.
+- **Annotations**: `tk 3 annotate Call back Monday` adds a dated note to a task;
+  `tk 3 denotate Call` removes it (or, without text, the most recent one). `tk info` shows
+  the notes, `tk print` prints them under the task, and `list`/`next` show how many:
+  `Call bank [2]`.
+- **`wait:`**: `tk add Chase the bank wait:mon` puts a task aside until a date. It is left
+  out of `list`, `next`, `print` and filters until then (a last line says how many are
+  hidden), and shows again by itself. `tk +WAITING` lists them; `export` keeps them.
+- **Tab completion** in PowerShell and bash: `tk completion powershell >> $PROFILE` once,
+  then Tab completes commands, attributes, your tags and projects, date keywords, help
+  topics and settings. Not available in cmd.exe.
 
 ### Changed
 
-- `tk c` and `tk co` are now ambiguous (`completion`, `config`): type `con` or more.
-- **Database schema 3**: `wait`, plus `start`, `recur` and `until` for the next version,
-  become real fields (Taskwarrior values are moved out of the kept attributes). Upgraded
-  automatically, like schema 2.
-- Taskwarrior `waiting` tasks are imported as pending with their `wait` date, and exported
-  as `pending` (Taskwarrior 3 style).
-- `tk de` is now ambiguous (`delete`, `denotate`): type `del` or more.
+- **Database schema 3**: annotations and dependencies get their own tables; `wait`, and
+  `start`, `recur`, `until` for the next version, become real fields. Taskwarrior values
+  kept from an import are moved into them. Your database is upgraded automatically the
+  first time you run `tk`; nothing to do. An older TAME cannot open it afterwards.
+- Taskwarrior import/export: annotations, dependencies, `wait`, `start`, `recur` and `until`
+  round-trip natively; `depends` is exported as a list of uuids; `waiting` tasks are
+  imported as pending with their `wait` date and exported as `pending` (Taskwarrior 3
+  style).
+- `tk info` shows annotations, dependencies, `wait`, `start`, `recur` and `until`.
 - The virtual tag names (`OVERDUE`, `TODAY`…) are reserved: `add` and `modify` refuse to set
   them. Such tags imported from Taskwarrior are kept, and `modify -NAME` removes them.
+- New commands make some short prefixes ambiguous: `tk de` (`delete`, `denotate`), `tk c`
+  and `tk co` (`completion`, `config`). Type `del` or `con`.
 
-- **Database schema 2**: annotations and dependencies imported from Taskwarrior now have
-  their own tables, ready for the commands that will use them. Your database is upgraded
-  automatically the first time you run `tk`; nothing to do. An older TAME cannot open it
-  afterwards.
-- `tk info` shows annotations and dependencies.
-- `tk export` writes `depends` as a list of uuids, even if it was imported as a
-  comma-separated string.
+### Fixed
+
+- A description containing `[...]` is no longer read as color markup in tables.
 
 ## [0.2.0] - 2026-11-20
 

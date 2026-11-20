@@ -45,6 +45,7 @@ Dates are English keywords or ISO dates: `today`, `tomorrow`, `fri`, `eow` (end 
 
 ```sh
 tk                  # pending tasks, most urgent first (same as: tk list)
+tk next             # only the most urgent ones you can do now
 tk 1 info           # every field of task 1
 ```
 
@@ -57,6 +58,8 @@ On paper? `tk print` opens a printable page, grouped by project, in your browser
 ```sh
 tk 2 modify pri:M -shopping     # set, untag
 tk 2 modify due:                # clear the due date
+tk 2 modify wait:mon            # hide it until Monday (tk +WAITING shows it)
+tk 1 annotate Ask for Ann       # a dated note, shown by tk 1 info
 tk 1 done                       # complete task 1
 tk 3,5 done                     # several at once
 tk 4 delete                     # asks first; --yes skips the question
@@ -76,6 +79,7 @@ tk +phone                       # tagged phone
 tk project:home due.before:eow  # home project, due before the end of the week
 tk bank                         # description contains "bank"
 tk status:completed list        # completed tasks
+tk +OVERDUE                     # late tasks (more virtual tags: tk help filters)
 ```
 
 All filters: [Filters & grammar](grammar.md).
@@ -86,6 +90,7 @@ All filters: [Filters & grammar](grammar.md).
 tk config set language fr       # French interface
 tk config set date_format %d/%m/%Y
 tk alias install task           # also run tame as `task`
+tk completion powershell >> $PROFILE   # Tab completion (new terminal needed)
 ```
 
 More in [Settings](settings.md). Coming from Taskwarrior? See

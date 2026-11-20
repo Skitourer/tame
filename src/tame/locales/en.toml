@@ -589,11 +589,14 @@ A two-minute tour. Type the commands in order.
 
 2. List them, most urgent first (priority, due date, age, tags, project add up).
      tk
+     tk next                    only the most urgent you can do now
      tk 1 info                  every field of task 1
 
 3. Change them: attr:value sets, attr: clears, +tag/-tag, other words = description.
      tk 2 modify pri:M -shopping
      tk 3 modify due:+2w
+     tk 1 annotate Ask for Ann  a dated note
+     tk 3 modify wait:+1w       hidden for a week (tk +WAITING shows it)
 
 4. Complete one (pending tasks are then renumbered). Changed your mind? undo reverts
    any change.
@@ -609,6 +612,7 @@ A two-minute tour. Type the commands in order.
 6. Make it yours.
      tk config set language fr  French interface
      tk alias install task      also run tame as task
+     tk completion powershell   Tab completion (see tk help completion)
      tk status:all export > backup.json
 
 Every command: tk help. Details: tk help <command>.
