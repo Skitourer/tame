@@ -48,7 +48,7 @@ _DATE_ATTRS = frozenset({"due", "wait", "due.before", "due.after"})
 _MOD_COMMANDS = frozenset({"add", "modify"})
 _TEXT_COMMANDS = frozenset({"import", "annotate", "denotate"})
 _CONFIG_SUBCOMMANDS = ("get", "set", "unset", "path", "edit")
-_HELP_TOPICS = ("filters", "dates", "urgency", "tour", "license", "credits")
+_HELP_TOPICS = ("filters", "dates", "urgency", "settings", "tour", "license", "credits")
 
 
 class Data:
@@ -106,7 +106,7 @@ def candidates(before: Sequence[str], current: str, data: Data) -> list[str]:
     args = list(before[position + 1 :]) if name else []
     match name:
         case "help":
-            options: Iterable[str] = () if args else (*COMMANDS, *_HELP_TOPICS)
+            options: Iterable[str] = _help(args)
         case "config":
             options = _config(args)
         case "alias":
@@ -136,6 +136,16 @@ def _command(before: Sequence[str]) -> tuple[int, str | None]:
         except UsageError:
             continue
     return -1, None
+
+
+def _help(args: Sequence[str]) -> Iterable[str]:
+    if not args:
+        return (*COMMANDS, *_HELP_TOPICS)
+    if list(args) == ["config"]:
+        from tame.config import OPTIONS
+
+        return [option.key for option in OPTIONS]
+    return ()
 
 
 def _config(args: Sequence[str]) -> Iterable[str]:

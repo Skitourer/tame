@@ -126,6 +126,28 @@ many = "Modify {count} tasks?"
 [next]
 more = "{shown} of {total} tasks. tk list shows them all."
 
+[setting.help]
+language = "Interface language. Commands, attributes and date keywords stay in English."
+confirm_threshold = "done and modify ask before changing more tasks than this (delete always asks)."
+date_format = "How dates are shown, in strftime codes: %Y year, %m month, %d day."
+color = "Colors in the terminal (never in files or pipes)."
+kindness = "Now and then, a kind word about the people around you, after a command."
+default_command = "What tk alone, or tk followed by a filter, runs."
+next_limit = "How many tasks next shows."
+completion = "Tab completion: true adds it to your PowerShell (or bash) profile, false removes it."
+
+[setting.help.undo]
+retention = "How long tk undo can go back; older history is purged."
+
+[setting.help.urgency]
+pri_H = "Urgency added by priority H."
+pri_M = "Urgency added by priority M."
+pri_L = "Urgency added by priority L."
+due = "Weight of the due date: x0.2 when due in 14+ days, up to x1.0 when 7+ days late."
+age = "Weight of age: x0 for a new task, up to x1.0 at one year old."
+tags = "Urgency added when a task has tags."
+project = "Urgency added when a task has a project."
+
 [setting.expected]
 language = "one of: {languages}"
 count = "a whole number, 0 or more"
@@ -271,6 +293,12 @@ usage_label = "Usage: {usage}"
 commands = "Commands:"
 topics = "Topics: tk help {topics}"
 more = "Details: tk help <command>, or tk <command> --help. Commands can be shortened: tk mod."
+
+[help.settings]
+intro = "Settings, in config.toml (tk config path). Change one with tk config set KEY VALUE,\nback to its default with tk config unset KEY."
+values = "Values: {values}. Default: {default}."
+current = "Current value: {value}."
+more = "One setting: tk help config KEY. All current values: tk config."
 
 [help.cmd.add]
 summary = "Create a task"
@@ -456,11 +484,11 @@ Settings live in config.toml; edit it by hand or with this command. Without
 arguments, lists all settings; changed ones show their default. unset restores the
 default; edit opens the file in $EDITOR (Notepad on Windows).
 
-Settings: language, confirm_threshold, date_format, color, kindness, undo.retention,
-urgency.pri_H, urgency.pri_M, urgency.pri_L, urgency.due, urgency.age,
-urgency.tags, urgency.project.
+Every setting, what it does and its values: tk help settings
+One setting: tk help config KEY (for example tk help config date_format)
 
 Examples:
+  tk help settings                     what each setting does, and its values
   tk config set language fr            French interface
   tk config set undo.retention 1y      keep undo history 1 year (or: forever)
   tk config set date_format %d/%m/%Y

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Help on settings**: `tk help settings` lists every setting with what it does, its
+  possible values and its default; `tk help config date_format` shows one, with its current
+  value. In English and French; Tab completes the setting names.
+
 ## [0.3.1] - 2026-11-20
 
 Tab completion, now a simple setting.

@@ -317,16 +317,20 @@ tk config unset date_format
 
 ```text
 tk help [command | topic]
+tk help config KEY
 ```
 
-Without arguments, lists commands and topics. Topics: `filters`, `dates`, `urgency`, `tour`
-(a two-minute guided tour), `license` (TAME's license and the installed libraries'
+Without arguments, lists commands and topics. Topics: `filters`, `dates`, `urgency`,
+`settings` (every setting: what it does, its values and default), `tour` (a two-minute
+guided tour), `license` (TAME's license and the installed libraries'
 licenses) and `credits`. `tk <command> --help` is the same as `tk help <command>`. Works
 even when the settings file is invalid.
 
 ```sh
 tk help modify
 tk help tour
+tk help settings
+tk help config date_format    # one setting, with its current value
 tk 3 done --help
 ```
 

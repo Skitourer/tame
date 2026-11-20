@@ -678,7 +678,7 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
         ["add", "Create a task"],
         ["export", "Export tasks as Taskwarrior JSON"],
     ]
-    assert "Topics: tk help filters | dates | urgency | tour | license | credits" in out
+    assert "Topics: tk help filters | dates | urgency | settings | tour | license | credits" in out
 
 
 def test_help_covers_every_implemented_command() -> None:
@@ -1178,3 +1178,64 @@ def test_only_waiting_tasks_left(capsys: Capture) -> None:
         "1 waiting task hidden: tk +WAITING shows it.\n",
         "No matches.\n",
     )
+
+
+# --- help on settings (0.3.2) --------------------------------------------------------
+
+
+def test_help_settings_lists_every_setting(capsys: Capture) -> None:
+    from tame.config import OPTIONS
+
+    code, out, err = run(capsys, "help", "settings")
+    assert (code, err) == (0, "")
+    keys = [
+        line.strip()
+        for line in out.splitlines()
+        if line.startswith("  ") and not line.startswith("    ")
+    ]
+    assert keys == [opt.key for opt in OPTIONS]
+    assert '      Values: one of: en, fr. Default: "en".' in out.splitlines()
+    assert out.rstrip().endswith("One setting: tk help config KEY. All current values: tk config.")
+
+
+def test_help_config_key_shows_current_value(capsys: Capture) -> None:
+    run(capsys, "config", "set", "next_limit", "5")
+    assert run(capsys, "help", "config", "next_limit") == (
+        0,
+        "Usage: tk config set next_limit VALUE\n\n"
+        "How many tasks next shows.\n"
+        "Values: a whole number, 1 or more. Default: 10.\n"
+        "Current value: 5.\n",
+        "",
+    )
+    assert run(capsys, "help", "config", "nope")[0] == 1
+
+
+def test_help_config_key_with_a_broken_config(capsys: Capture, tame_home: Path) -> None:
+    tame_home.mkdir(parents=True, exist_ok=True)
+    (tame_home / "config.toml").write_text("color = 3\n", encoding="utf-8")
+    out = run(capsys, "help", "config", "color")[1]
+    assert "Default: true." in out and "Current value" not in out
+
+
+def test_every_setting_has_help_in_every_language() -> None:
+    from tame.config import OPTIONS
+    from tame.i18n import available_languages, lookup
+
+    for lang in available_languages():
+        missing = [o.key for o in OPTIONS if lookup(f"setting.help.{o.key}", lang) is None]
+        assert missing == [], lang
+        if lang != "en":
+            same = [
+                o.key
+                for o in OPTIONS
+                if lookup(f"setting.help.{o.key}", lang) == lookup(f"setting.help.{o.key}", "en")
+            ]
+            assert same == [], lang
+
+
+def test_settings_page_documents_every_setting() -> None:
+    from tame.config import OPTIONS
+
+    page = (Path(__file__).parent.parent / "docs" / "settings.md").read_text(encoding="utf-8")
+    assert [o.key for o in OPTIONS if f"| `{o.key}` |" not in page] == []

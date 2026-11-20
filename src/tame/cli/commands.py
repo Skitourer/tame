@@ -23,6 +23,7 @@ from tame.cli.parser import (
 from tame.config import (
     OPTIONS,
     ConfigError,
+    Option,
     Settings,
     config_path,
     data_dir,
@@ -40,7 +41,7 @@ from tame.core.models import Task
 from tame.core.service import TaskService
 from tame.core.urgency import by_urgency, urgency
 from tame.errors import ExitCode, NoMatchError, UsageError, ValidationError
-from tame.i18n import t
+from tame.i18n import available_languages, t
 from tame.io import tw_json
 from tame.storage.migrations import SCHEMA_VERSION
 from tame.storage.repo import DB_FILENAME, TaskRepo
@@ -548,7 +549,7 @@ HELP_COMMANDS = (
 )
 """Commands shown by ``tk help``, in this order: the implemented ones."""
 
-HELP_TOPICS = ("filters", "dates", "urgency", "tour", "license", "credits")
+HELP_TOPICS = ("filters", "dates", "urgency", "settings", "tour", "license", "credits")
 """Help topics that are not commands."""
 
 
@@ -557,6 +558,8 @@ def cmd_help(command: ParsedCommand) -> int:
     match command.args:
         case ():
             print(help_overview())
+        case ("config", key):
+            print(settings_help(key))
         case (subject,):
             print(help_text(subject))
         case _:
@@ -591,6 +594,41 @@ def license_help() -> str:
     return "\n\n".join(parts)
 
 
+def settings_help(key: str | None = None) -> str:
+    """Return ``tk help settings`` (every setting), or ``tk help config KEY`` (one).
+
+    Each setting shows what it does, its possible values and its default; one setting
+    also shows its current value, if ``config.toml`` can be read.
+
+    Raises:
+        ConfigError: If ``key`` names no setting.
+    """
+    languages = ", ".join(available_languages())
+
+    def describe(opt: Option) -> list[str]:
+        values = t(
+            "help.settings.values",
+            values=t(opt.expected, languages=languages),
+            default=format_value(opt.default),
+        )
+        return [t(f"setting.help.{opt.key}"), values]
+
+    if key is None:
+        lines = [t("help.settings.intro")]
+        for opt in OPTIONS:
+            lines += ["", f"  {opt.key}", *(f"      {line}" for line in describe(opt))]
+        return "\n".join([*lines, "", t("help.settings.more")])
+    opt = option(key)
+    lines = [t("help.usage_label", usage=f"tk config set {opt.key} VALUE"), "", *describe(opt)]
+    try:
+        current = load_settings().values[opt.key]
+    except ConfigError:
+        pass
+    else:
+        lines.append(t("help.settings.current", value=format_value(current)))
+    return "\n".join(lines)
+
+
 def help_text(subject: str) -> str:
     """Return the help of a topic, or of a command (exact name or unique prefix).
 
@@ -599,6 +637,8 @@ def help_text(subject: str) -> str:
     """
     if subject == "license":
         return license_help()
+    if subject == "settings":
+        return settings_help()
     if subject in HELP_TOPICS:
         return t(f"help.topic.{subject}").rstrip()
     name = match_command(subject)
