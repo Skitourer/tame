@@ -48,30 +48,50 @@ COMMANDS = (
     "modify",
     "next",
     "print",
+    "purge",
     "undo",
     "version",
 )
-"""V1 command names (never translated)."""
+"""Command names (never translated)."""
+
+EXACT_COMMANDS = frozenset({"purge"})
+"""Commands run only when typed in full, never by prefix: ``tk p`` stays ``print``."""
 
 FILTER_COMMANDS = frozenset(
-    {"list", "next", "done", "delete", "modify", "annotate", "denotate", "info", "export", "print"}
+    {
+        "list",
+        "next",
+        "done",
+        "delete",
+        "modify",
+        "annotate",
+        "denotate",
+        "info",
+        "export",
+        "print",
+        "purge",
+    }
 )
 """Commands that accept a filter."""
 
-_ARGLESS_COMMANDS = frozenset({"list", "next", "done", "delete", "info", "export", "print"})
+_ARGLESS_COMMANDS = frozenset(
+    {"list", "next", "done", "delete", "info", "export", "print", "purge"}
+)
 """Filter commands without arguments: their trailing tokens extend the filter.
 
-``print`` has one option, ``--file PATH``, taken out before the filter is split.
+``print`` has one option, ``--file PATH``, and ``purge`` one flag, ``--all``: both are
+taken out before the filter is split.
 """
 
 _TEXT_COMMANDS = frozenset({"modify", "annotate", "denotate"})
 """Commands whose arguments are free text: in classic order only ids/uuids are filter."""
 
-CONFIRM_COMMANDS = frozenset({"done", "delete", "modify", "annotate", "denotate"})
+CONFIRM_COMMANDS = frozenset({"done", "delete", "modify", "annotate", "denotate", "purge"})
 """Commands that may ask for confirmation, and so accept ``--yes``."""
 
 YES_FLAG = "--yes"
 FILE_FLAG = "--file"
+ALL_FLAG = "--all"
 HELP_FLAG = "--help"
 
 _ATTR_ALIASES = {"pri": "priority"}
@@ -116,12 +136,16 @@ class AddArgs:
 def match_command(token: str) -> str | None:
     """Return the command named by ``token`` (exact name or unique prefix), else None.
 
+    Commands in :data:`EXACT_COMMANDS` match their full name only.
+
     Raises:
         UsageError: If ``token`` is a prefix of several commands.
     """
     if token in COMMANDS:
         return token
-    matches = [name for name in COMMANDS if token and name.startswith(token)]
+    matches = [
+        name for name in COMMANDS if token and name.startswith(token) and name not in EXACT_COMMANDS
+    ]
     if len(matches) > 1:
         raise UsageError("error.ambiguous_command", name=token, candidates=", ".join(matches))
     return matches[0] if matches else None
@@ -130,7 +154,8 @@ def match_command(token: str) -> str | None:
 def parse_command(argv: Sequence[str]) -> ParsedCommand:
     """Split ``argv`` into command, filter tokens and argument tokens.
 
-    ``--yes`` (before any ``--``) is taken out for ``done``/``delete``/``modify``.
+    ``--yes`` (before any ``--``) is taken out for the commands that ask for confirmation,
+    ``--all`` for ``purge``.
     ``--help`` (before any ``--``) turns the line into ``help [<command>]``.
 
     Raises:
@@ -161,11 +186,14 @@ def parse_command(argv: Sequence[str]) -> ParsedCommand:
     options: tuple[str, ...] = ()
     if name == "print":
         after, options = _take_file_option(after)
+    if name == "purge" and (ALL_FLAG in before or ALL_FLAG in _until_double_dash(after)):
+        before, after = _drop_flag(before, ALL_FLAG), _drop_flag(after, ALL_FLAG)
+        options = (ALL_FLAG,)
     yes = YES_FLAG in before or YES_FLAG in _until_double_dash(after)
     if yes:
         if name not in CONFIRM_COMMANDS:
             raise UsageError("error.unexpected_argument", arg=YES_FLAG)
-        before, after = _drop_yes(before), _drop_yes(after)
+        before, after = _drop_flag(before, YES_FLAG), _drop_flag(after, YES_FLAG)
     if before:  # Rule 2: tokens before the command are the filter.
         filter_tokens, args = before, after
     else:  # Rule 4: classic order; leading filter-like tokens are the filter.
@@ -201,9 +229,9 @@ def _until_double_dash(tokens: tuple[str, ...]) -> tuple[str, ...]:
     return tokens[: tokens.index("--")] if "--" in tokens else tokens
 
 
-def _drop_yes(tokens: tuple[str, ...]) -> tuple[str, ...]:
+def _drop_flag(tokens: tuple[str, ...], flag: str) -> tuple[str, ...]:
     head = _until_double_dash(tokens)
-    return tuple(tok for tok in head if tok != YES_FLAG) + tokens[len(head) :]
+    return tuple(tok for tok in head if tok != flag) + tokens[len(head) :]
 
 
 def _check_no_filter(name: str, filter_tokens: tuple[str, ...]) -> None:

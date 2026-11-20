@@ -20,6 +20,12 @@ task = "Completed task {task} '{description}'."
 [cmd.delete]
 task = "Deleted task {task} '{description}'."
 
+[cmd.purge]
+done_one = "Purged 1 task for good."
+done_many = "Purged {count} tasks for good."
+backup = "Backup of the database before the purge: {path}"
+no_undo = "A purge cannot be undone: tk undo has nothing left to revert."
+
 [cmd.modify]
 task = "Modified task {task} '{description}'."
 unchanged = "No task changed."
@@ -109,6 +115,12 @@ many = "Complete {count} tasks?"
 [confirm.delete]
 one = "Delete task {task} '{description}'?"
 many = "Delete {count} tasks?"
+
+[confirm.purge]
+one = "Erase deleted task {task} '{description}' for good?"
+many = "Erase {count} deleted tasks for good?"
+all = "Erase ALL {count} tasks (pending, completed, deleted) for good?"
+word = "Type {word} to confirm:"
 
 [confirm.annotate]
 one = "Annotate task {task} '{description}'?"
@@ -200,6 +212,11 @@ invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
 invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "No matches."
 nothing_to_undo = "Nothing to undo."
+nothing_to_purge = "Nothing to purge."
+purge_status = "purge only erases deleted tasks: leave status: out of the filter."
+purge_all_filter = "purge --all erases every task: it takes no filter."
+purge_all_terminal = "purge --all must be confirmed in a terminal: the word purge has to be typed."
+backup = "Cannot write the backup {path}: {detail}. Nothing was purged."
 config_io = "Cannot read or write {path}: {detail}"
 config_syntax = "Invalid settings file {path}: {detail}"
 config_unknown_key = "Unknown setting '{name}' in {path}. Run 'tk config' to list them."
@@ -425,6 +442,7 @@ usage = "tk <filter> delete [--yes]"
 body = '''
 A filter is required. Always asks first; --yes skips it. Deleted tasks are kept with
 status:deleted, and tk undo brings them back. Pending tasks are then renumbered 1..n.
+tk purge erases deleted tasks for good.
 
 Examples:
   tk 4 delete
@@ -437,7 +455,29 @@ usage = "tk undo"
 body = '''
 Reverts the last add, done, delete, modify, annotate, denotate or import, ids included. Run it again to go
 further back. History older than undo.retention (default 3 months) is purged; see
-tk help config.
+tk help config. tk purge clears the whole history.
+'''
+
+[help.cmd.purge]
+summary = "Erase deleted tasks for good"
+usage = "tk [filter] purge [--yes] | tk purge --all"
+body = '''
+Erases deleted tasks (status:deleted) for good, with their notes and the links other
+tasks have to them. A filter picks some of them (project:old, a uuid); without one,
+every deleted task goes. Always asks first; --yes skips it.
+
+--all erases every task, whatever its status: after the y/N question, type the word
+purge to confirm (--yes never skips this step; a terminal is required).
+
+Before any purge, a copy of the database is saved next to it, as
+tame-YYYYMMDD-HHMMSS.db.bak, and its path is shown: copy it back over tasks.db to
+recover. TAME never removes these copies. A purge cannot be undone: it clears the
+tk undo history. Type the full name: tk p is still print.
+
+Examples:
+  tk purge
+  tk project:old purge --yes
+  tk purge --all
 '''
 
 [help.cmd.export]

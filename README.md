@@ -93,6 +93,7 @@ tk 3 annotate Call back Monday               # a dated note on the task
 tk 3 modify wait:mon                         # hide it until Monday
 tk 7 info                                    # every field
 tk undo                                      # revert the last change (repeat to go back)
+tk purge                                     # erase deleted tasks for good (backup first)
 tk +shopping print                           # printable page, by project (or PDF)
 tk status:all export > backup.json           # Taskwarrior JSON; status:all = every task
 tk import tw.json                            # from Taskwarrior (task export > tw.json)

@@ -312,6 +312,34 @@ def test_yes_flag_rejected_for_commands_without_confirmation(line: str) -> None:
     assert (exc.value.key, exc.value.params) == ("error.unexpected_argument", {"arg": "--yes"})
 
 
+# --- purge (0.4) ----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("token", "name"), [("p", "print"), ("pr", "print"), ("purge", "purge")])
+def test_purge_matches_its_full_name_only(token: str, name: str) -> None:
+    assert match_command(token) == name
+
+
+@pytest.mark.parametrize("token", ["pu", "pur", "purg"])
+def test_purge_prefix_is_no_command(token: str) -> None:
+    assert match_command(token) is None
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("purge", ParsedCommand("purge")),
+        ("project:old purge --yes", ParsedCommand("purge", ("project:old",), yes=True)),
+        ("purge project:old", ParsedCommand("purge", ("project:old",))),
+        ("purge --all", ParsedCommand("purge", args=("--all",))),
+        ("--all purge --yes", ParsedCommand("purge", args=("--all",), yes=True)),
+        ("x purge --all", ParsedCommand("purge", ("x",), ("--all",))),
+    ],
+)
+def test_purge_flags(line: str, expected: ParsedCommand) -> None:
+    assert cmd(line) == expected
+
+
 # --- Mods (modify) --------------------------------------------------------------
 
 

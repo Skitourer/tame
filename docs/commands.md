@@ -16,6 +16,7 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 | [`done`](#done) | mark tasks completed |
 | [`delete`](#delete) | delete tasks |
 | [`undo`](#undo) | revert the last change |
+| [`purge`](#purge) | erase deleted tasks for good |
 | [`print`](#print) | print tasks, grouped by project |
 | [`export`](#export) | export tasks as Taskwarrior JSON |
 | [`import`](#import) | import Taskwarrior JSON |
@@ -26,7 +27,7 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 | [`version`](#version) | show the version |
 
 **Exit codes**: 0 success, 1 usage error (bad command line or value), 2 no matching task (or
-nothing to undo), 3 internal error. Errors go to stderr.
+nothing to undo or purge), 3 internal error. Errors go to stderr.
 
 ## add
 
@@ -178,6 +179,7 @@ tk <filter> delete [--yes]
 
 A filter is required. Always asks first; `--yes` skips it. Deleted tasks are kept with
 `status:deleted`, and `tk undo` brings them back. Pending tasks are then renumbered 1..n.
+[`tk purge`](#purge) erases deleted tasks for good.
 
 ```text
 tk 4 delete
@@ -192,7 +194,35 @@ tk undo
 
 Reverts the last `add`, `done`, `delete`, `modify` or `import`, ids included. Run it again to
 go further back. History older than `undo.retention` (default 3 months) is purged; see
-[Settings](settings.md).
+[Settings](settings.md). [`tk purge`](#purge) clears the whole history.
+
+## purge
+
+```text
+tk [filter] purge [--yes]
+tk purge --all
+```
+
+Erases deleted tasks (`status:deleted`) for good, with their notes and the links other tasks
+have to them. A filter picks some of them (`project:old`, a uuid); without one, every deleted
+task goes. Always asks first; `--yes` skips it. Another `status:` in the filter is an error.
+
+`--all` erases every task, whatever its status: after the *y/N* question, type the word
+`purge` to confirm, in any interface language. `--yes` never skips this step, and it needs a
+terminal (from a script or a pipe: usage error). `--all` takes no filter.
+
+Before any purge, a copy of the database is saved next to it, as
+`tame-YYYYMMDD-HHMMSS.db.bak` (local time), and its path is shown: copy it back over
+`tasks.db` to recover. TAME never removes these copies. A purge cannot be undone: it clears the
+`tk undo` history. Nothing to purge: exit code 2, no question, no copy.
+
+Type the full name: `purge` is never reached by a prefix, so `tk p` is still `print`.
+
+```text
+tk purge
+tk project:old purge --yes
+tk purge --all
+```
 
 ## print
 

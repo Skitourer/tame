@@ -38,6 +38,8 @@ _FIELDS = (
     "until",
 )
 _V3_FIELDS = ("wait", "start", "recur", "until")
+_BATCH = 500
+"""Most uuids bound in one statement (SQLite allows 999 parameters at least)."""
 _COLUMNS = ", ".join(f'"{name}"' for name in _FIELDS)
 
 
@@ -74,6 +76,7 @@ class TaskRepo:
     """
 
     def __init__(self, path: Path) -> None:
+        self.path = path
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(path, autocommit=True)
@@ -155,6 +158,36 @@ class TaskRepo:
     def remove(self, uuid: str) -> None:
         """Delete the task row for good (undo of ``add`` only; ``delete`` is soft)."""
         self._conn.execute("DELETE FROM tasks WHERE uuid = ?", (uuid,))
+
+    def purge(self, uuids: Sequence[str]) -> None:
+        """Delete these tasks for good, with their side-table rows and the links to them."""
+        for start in range(0, len(uuids), _BATCH):
+            chunk = tuple(uuids[start : start + _BATCH])
+            marks = ", ".join("?" * len(chunk))
+            self._conn.execute(f"DELETE FROM depends WHERE depends_on IN ({marks})", chunk)
+            self._conn.execute(f"DELETE FROM tasks WHERE uuid IN ({marks})", chunk)
+
+    def purge_all(self) -> None:
+        """Delete every task; ``meta`` (app state, schema version) is kept."""
+        for table in ("depends", "annotations", "task_tags", "tasks"):
+            self._conn.execute(f"DELETE FROM {table}")
+
+    def clear_undo(self) -> None:
+        """Delete the whole ``undo_log``."""
+        self._conn.execute("DELETE FROM undo_log")
+
+    def backup(self, target: Path) -> None:
+        """Copy the database to ``target`` (SQLite backup API: a consistent snapshot).
+
+        Raises:
+            StorageError: If the copy cannot be written.
+        """
+        try:
+            with sqlite3.connect(target) as copy:
+                self._conn.backup(copy)
+            copy.close()
+        except (OSError, sqlite3.Error) as exc:
+            raise StorageError("error.backup", path=str(target), detail=str(exc)) from exc
 
     def pending_ids(self) -> dict[str, int]:
         """Return ``{uuid: short id}`` for all pending tasks."""

@@ -92,10 +92,10 @@ tk [filter]                # = tk [filter] list (so `tk` = tk list), or `next` (
 
 Parse rules (in order):
 
-1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/denotate/done.
+1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/denotate/done. `purge` (since 0.4) matches its full name only, never a prefix: `p` stays `print`, `pu` is no cmd.
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
-4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
+4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print purge`): all tokens after cmd = filter (`print` first takes out `--file PATH`, `purge` its `--all` flag, anywhere before `--`).
 5. `--` ends parsing: rest = description words (`tk add -- +1 vote for the new logo`: `+1` is text, not a tag; `tk 3 annotate -- Answer --yes by mail`: `--yes` is text); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias completion config help import undo version`) → usage error (exit 1).
@@ -133,9 +133,9 @@ Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove t
 
 **Waiting tasks** (since 0.3.0): a pending task with `wait` > now is *waiting*. Every filter result leaves waiting tasks out, unless the filter has ids/uuids, `+WAITING` or `status:all`; `export` always includes them. Nothing is stored when the date passes: the task simply shows again (its `wait` stays, shown by `info`). Waiting tasks keep their id and urgency. `wait` in the past or after `due` is accepted.
 
-Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` always prompts unless `--yes`.
+Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` and `purge` always prompt unless `--yes`.
 
-`modify/done/delete/annotate/denotate` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 5 cmds. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
+`modify/done/delete/annotate/denotate` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 5 cmds and `purge`. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
 
 ## 5. Commands
 
@@ -151,6 +151,7 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 | denotate | `tk 3 denotate Call` | remove one annotation per matching task: the one whose text equals the arg (case-insensitive), else the only one containing it, else (no arg) the most recent; several contain it → validation error listing them (exit 1, nothing changed); tasks with no match are skipped; none changed → exit 2; `modified` = now; undoable. Since 0.3.0 |
 | info | `tk 7 info` | all fields, local times; one row per annotation; virtual tags (§4) |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
+| purge | `tk purge`, `tk project:old purge --yes`, `tk purge --all` | erase tasks for good (TW semantics). Without `--all`: the matching *deleted* tasks (filter optional, applied with `status:deleted`; any other `status:` → usage error; no filter = every deleted task); y/N prompt `Erase deleted task <ref> '<description>' for good?` / `Erase N deleted tasks for good?`, `--yes` skips it. Removed with them: their tags, annotations, `depends` rows, and other tasks' `depends` rows pointing to them (those tasks' `modified` unchanged). `--all`: every task, any status; with a filter → usage error; stdin not a terminal → usage error (even with `--yes`); y/N `Erase ALL N tasks (pending, completed, deleted) for good?` (`--yes` skips it), then `Type purge to confirm:`, answer must be exactly `purge` (trimmed; same word in every language), never skipped; `meta` kept. Before any change, a copy of the database by the SQLite backup API, `tame-YYYYMMDD-HHMMSS.db.bak` (local time; `-2`, `-3`… if taken) next to `tasks.db`; copy fails → error, nothing purged. Prints `Purged N task(s) for good.`, the backup path, and that undo is gone. Not undoable: clears `undo_log`. Nothing to purge → exit 2, no prompt, no backup. Backups are never removed by TAME. Since 0.4 |
 | print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold), annotations under the task (small italic, `<date> <text>`, oldest first); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
 | export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; waiting tasks always included; no match → `[]`, exit 0 |
 | import | `tk import f.json` | TW JSON from FILE, or stdin if none or `-` (UTF-8, or UTF-16 with BOM); merge by uuid; prints added/updated/skipped counts; 1 undo step; any invalid task → nothing imported, error names the task number |

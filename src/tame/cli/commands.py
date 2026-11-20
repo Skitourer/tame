@@ -1,6 +1,7 @@
 """Command handlers: one function per command, each returning an exit code."""
 
 import codecs
+import io
 import os
 import shlex
 import subprocess
@@ -14,6 +15,7 @@ from pathlib import Path
 from tame import __version__
 from tame.cli import eggs, kindness, render
 from tame.cli.parser import (
+    ALL_FLAG,
     ParsedCommand,
     match_command,
     parse_add,
@@ -38,7 +40,7 @@ from tame.config import (
 )
 from tame.core.dates import utc_now
 from tame.core.filters import ALL, Filter
-from tame.core.models import Task
+from tame.core.models import Status, Task
 from tame.core.service import TaskService
 from tame.core.urgency import by_urgency, urgency
 from tame.errors import ExitCode, NoMatchError, UsageError, ValidationError
@@ -218,6 +220,88 @@ def cmd_delete(command: ParsedCommand, settings: Settings) -> int:
         changed = service.delete(tasks)
     _report("cmd.delete.task", tasks, changed)
     return ExitCode.OK
+
+
+PURGE_WORD = "purge"
+"""Word to type to confirm ``purge --all``, the same in every language."""
+
+
+def cmd_purge(command: ParsedCommand, settings: Settings) -> int:
+    """``purge``: remove deleted tasks for good, or every task with ``--all``.
+
+    A backup of the database is written first; the undo history is cleared.
+    """
+    everything = command.args == (ALL_FLAG,)
+    if everything and command.filter:
+        raise UsageError("error.purge_all_filter")
+    if everything and not keyboard_input():
+        raise UsageError("error.purge_all_terminal")
+    where = None if everything else _purge_filter(command.filter)
+    with open_service(settings) as service:
+        if where is None:
+            count = len(service.query(Filter(status=ALL), include_waiting=True))
+            if not count:
+                raise NoMatchError("error.nothing_to_purge")
+            if not _purge_all_confirmed(command, count):
+                render.hint(t("confirm.cancelled"))
+                return ExitCode.OK
+            result = service.purge_all()
+        else:
+            tasks = service.query(where)
+            if not tasks:
+                raise NoMatchError("error.nothing_to_purge")
+            if not _confirmed(
+                command, tasks, "confirm.purge.one", "confirm.purge.many", threshold=None
+            ):
+                return ExitCode.OK
+            result = service.purge(tasks)
+    count = len(result.purged)
+    key = "cmd.purge.done_one" if count == 1 else "cmd.purge.done_many"
+    render.success(t(key, count=count))
+    render.say(t("cmd.purge.backup", path=str(result.backup)))
+    render.hint(t("cmd.purge.no_undo"))
+    return ExitCode.OK
+
+
+def keyboard_input() -> bool:
+    """True if stdin is a keyboard: a terminal, and on Windows a real console.
+
+    Windows reports ``NUL`` (``< NUL``, ``< /dev/null``) as a tty; only a console
+    handle has a console mode.
+    """
+    if not render.is_terminal(sys.stdin):
+        return False
+    if sys.platform != "win32":
+        return True
+    import ctypes
+    import msvcrt
+
+    try:
+        handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    except (OSError, ValueError, io.UnsupportedOperation):
+        return True  # no OS handle (replaced stream): trust isatty()
+    mode = ctypes.c_ulong()
+    return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
+
+
+def _purge_filter(tokens: tuple[str, ...]) -> Filter:
+    """The filter of ``purge``: always on deleted tasks; another ``status:`` is an error."""
+    where = parse_filter(tokens)
+    if where.status not in (None, Status.DELETED):
+        raise UsageError("error.purge_status")
+    return replace(where, status=Status.DELETED)
+
+
+def _purge_all_confirmed(command: ParsedCommand, count: int) -> bool:
+    """y/N (``--yes`` skips it), then the word ``purge`` typed in full (never skipped)."""
+    if not command.yes and not confirm(t("confirm.purge.all", count=count)):
+        return False
+    try:
+        answer = render.ask(t("confirm.purge.word", word=PURGE_WORD), yes_no=False)
+    except EOFError:
+        print()
+        return False
+    return answer.strip() == PURGE_WORD
 
 
 def cmd_modify(command: ParsedCommand, settings: Settings) -> int:
@@ -529,6 +613,7 @@ HELP_COMMANDS = (
     "done",
     "delete",
     "undo",
+    "purge",
     "print",
     "export",
     "import",
@@ -682,6 +767,7 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "modify": cmd_modify,
     "next": cmd_next,
     "print": cmd_print,
+    "purge": cmd_purge,
     "undo": cmd_undo,
     "version": cmd_version,
 }

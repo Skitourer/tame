@@ -4,9 +4,10 @@ import uuid as uuid_lib
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from tame.core.dates import utc_now
-from tame.core.filters import Filter, VirtualTagger, is_waiting
+from tame.core.filters import ALL, Filter, VirtualTagger, is_waiting
 from tame.core.models import (
     Annotation,
     Changes,
@@ -51,6 +52,19 @@ class ImportResult:
     added: tuple[Task, ...]
     updated: tuple[Task, ...]
     skipped: tuple[Task, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PurgeResult:
+    """What :meth:`TaskService.purge` or :meth:`TaskService.purge_all` removed.
+
+    Attributes:
+        backup: Copy of the database written just before.
+        purged: The tasks removed for good.
+    """
+
+    backup: Path
+    purged: tuple[Task, ...]
 
 
 class TaskService:
@@ -300,6 +314,53 @@ class TaskService:
             self._repo.drop_undo(entry.seq)
             tasks = tuple(task for uuid in restored if (task := self._repo.get(uuid)))
         return UndoResult(cmd=entry.cmd, restored=tasks, removed=tuple(removed))
+
+    def purge(self, tasks: Iterable[Task]) -> PurgeResult:
+        """Remove the deleted ones of ``tasks`` for good, after a backup of the database.
+
+        Their annotations and dependencies go too, and so do other tasks' dependencies
+        on them. Not undoable: the undo history is cleared.
+
+        Raises:
+            NoMatchError: If none of ``tasks`` is deleted (nothing written, no backup).
+            StorageError: If the backup cannot be written (nothing removed).
+        """
+        doomed = tuple(task for task in tasks if task.status is Status.DELETED)
+        if not doomed:
+            raise NoMatchError("error.nothing_to_purge")
+        backup = self._backup()
+        with self._repo.transaction():
+            self._repo.purge([task.uuid for task in doomed])
+            self._repo.clear_undo()
+        return PurgeResult(backup=backup, purged=doomed)
+
+    def purge_all(self) -> PurgeResult:
+        """Remove every task for good, after a backup; app state (``meta``) is kept.
+
+        Raises:
+            NoMatchError: If there is no task at all (nothing written, no backup).
+            StorageError: If the backup cannot be written (nothing removed).
+        """
+        doomed = tuple(self.query(Filter(status=ALL), include_waiting=True))
+        if not doomed:
+            raise NoMatchError("error.nothing_to_purge")
+        backup = self._backup()
+        with self._repo.transaction():
+            self._repo.purge_all()
+            self._repo.clear_undo()
+        return PurgeResult(backup=backup, purged=doomed)
+
+    def _backup(self) -> Path:
+        """Copy the database to ``tame-YYYYMMDD-HHMMSS.db.bak`` (local time) next to it."""
+        folder = self._repo.path.parent
+        stem = f"tame-{self._clock().astimezone():%Y%m%d-%H%M%S}"
+        target = folder / f"{stem}.db.bak"
+        number = 1
+        while target.exists():
+            number += 1
+            target = folder / f"{stem}-{number}.db.bak"
+        self._repo.backup(target)
+        return target
 
     def _log(
         self,
