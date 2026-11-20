@@ -101,6 +101,9 @@ many = "Supprimer {count} tâches ?"
 one = "Modifier la tâche {task} « {description} » ?"
 many = "Modifier {count} tâches ?"
 
+[next]
+more = "{shown} tâches sur {total}. tk list les affiche toutes."
+
 [setting.expected]
 language = "une valeur parmi : {languages}"
 count = "un nombre entier, 0 ou plus"
@@ -108,6 +111,8 @@ date_format = "un format de date comme %Y-%m-%d ou %d/%m/%Y"
 bool = "true ou false"
 retention = "forever, ou une durée comme 1w, 3m, 1y"
 number = "un nombre"
+default_command = "list ou next"
+positive = "un nombre entier, 1 ou plus"
 
 [age]
 seconds = "{n}s"
@@ -249,6 +254,22 @@ Tout ce qui suit -- est de la description, même des mots comme done ou +x.
 Exemples :
   tk add Appeler la banque project:maison +tel due:fri pri:H
   tk add -- done le rapport
+'''
+
+[help.cmd.next]
+summary = "Afficher les tâches les plus urgentes à faire maintenant"
+usage = "tk [filtre] next"
+body = '''
+Comme list, mais n'affiche que les next_limit tâches les plus urgentes (10 par
+défaut), sans les tâches bloquées (+BLOCKED : en attente d'une autre tâche en cours)
+ni les colonnes Âge et Tags. Une dernière ligne indique combien d'autres tâches
+correspondent.
+
+Pour que tk tout seul l'affiche : tk config set default_command next
+
+Exemples :
+  tk next
+  tk +maison next
 '''
 
 [help.cmd.list]

@@ -61,6 +61,7 @@ def print_task_table(
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
     color: bool = True,
+    compact: bool = False,
 ) -> None:
     """Print ``tasks`` as a table on stdout; columns empty for every task are hidden.
 
@@ -70,6 +71,7 @@ def print_task_table(
         coefficients: Urgency weights.
         date_format: strftime format of the Due column.
         color: False to print without colors.
+        compact: True to leave out the Age and Tags columns (``next``).
     """
     from rich import box
     from rich.console import Console
@@ -97,6 +99,8 @@ def print_task_table(
             [format_urgency(urgency(task, now, coefficients)) for task in tasks],
         ),
     ]
+    if compact:
+        del columns[3], columns[1]  # Tags, Age.
     shown = [col for col in columns if any(col[2])]
 
     table = Table(box=box.SIMPLE_HEAD, show_edge=False, pad_edge=False, header_style="bold")

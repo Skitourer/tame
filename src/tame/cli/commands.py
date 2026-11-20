@@ -8,6 +8,7 @@ import sys
 import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from tame import __version__
@@ -137,8 +138,20 @@ def cmd_list(command: ParsedCommand, settings: Settings) -> int:
 
     Without a filter and without any task at all, print a welcome message instead.
     """
+    return _show_tasks(command, settings, limit=None)
+
+
+def cmd_next(command: ParsedCommand, settings: Settings) -> int:
+    """``next``: like ``list``, without blocked tasks, ``next_limit`` tasks, compact columns."""
+    return _show_tasks(command, settings, limit=settings.next_limit)
+
+
+def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -> int:
+    """Print ``list`` (``limit`` None) or ``next`` (the ``limit`` first unblocked tasks)."""
     now = utc_now()
     where = parse_filter(command.filter, now)
+    if limit is not None:
+        where = replace(where, virtual_out=where.virtual_out | {"BLOCKED"})
     with open_service(settings) as service:
         if not (found := service.query(where)):
             if not command.filter and not service.query(Filter(status=ALL)):
@@ -149,12 +162,15 @@ def cmd_list(command: ParsedCommand, settings: Settings) -> int:
     from tame.cli.render import print_task_table
 
     print_task_table(
-        tasks,
+        tasks[:limit],
         now,
         coefficients=settings.urgency,
         date_format=settings.date_format,
         color=settings.color,
+        compact=limit is not None,
     )
+    if limit is not None and len(tasks) > limit:
+        print(t("next.more", shown=limit, total=len(tasks)))
     return ExitCode.OK
 
 
@@ -441,6 +457,7 @@ def _edit_file(path: Path) -> None:
 HELP_COMMANDS = (
     "add",
     "list",
+    "next",
     "info",
     "modify",
     "done",
@@ -527,6 +544,7 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "info": cmd_info,
     "list": cmd_list,
     "modify": cmd_modify,
+    "next": cmd_next,
     "print": cmd_print,
     "undo": cmd_undo,
     "version": cmd_version,
@@ -544,6 +562,8 @@ def run(command: ParsedCommand) -> int:
     if command.name == "help":
         return cmd_help(command)
     settings = load_settings()
+    if command.implicit:
+        command = replace(command, name=settings.default_command)
     code = HANDLERS[command.name](command, settings)
     if (
         code == ExitCode.OK

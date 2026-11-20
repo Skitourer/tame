@@ -158,6 +158,20 @@ OPTIONS: tuple[Option, ...] = (
         "setting.expected.bool",
     ),
     Option(
+        "default_command",
+        "list",
+        "What tk alone (or tk <filter>) runs: list or next.",
+        "setting.expected.default_command",
+        lambda value: value in ("list", "next"),
+    ),
+    Option(
+        "next_limit",
+        10,
+        "How many tasks next shows.",
+        "setting.expected.positive",
+        lambda value: value >= 1,
+    ),
+    Option(
         "undo.retention",
         "3m",
         "Keep undo history this long: forever, or <n>d/w/m/y (m = 30 days, y = 365 days).",
@@ -222,6 +236,16 @@ class Settings:
     def kindness(self) -> bool:
         """Whether kind words may appear now and then."""
         return bool(self.values["kindness"])
+
+    @property
+    def default_command(self) -> str:
+        """Command run when none is typed: ``list`` or ``next``."""
+        return str(self.values["default_command"])
+
+    @property
+    def next_limit(self) -> int:
+        """How many tasks ``next`` shows."""
+        return int(self.values["next_limit"])
 
     @property
     def undo_retention(self) -> timedelta | None:

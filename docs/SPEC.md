@@ -10,7 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
-- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4).
+- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7).
 - **Out V1**: recurrence, depends, annotations, wait, contexts, custom reports, sync, hooks, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -80,7 +80,7 @@ Migration 1 → 2 (0.3.0): creates `annotations` and `depends`, then moves each 
 ```
 tk [filter] <cmd> [args]   # TW order (canonical)
 tk <cmd> [filter] [args]   # classic order (tolerated)
-tk [filter]                # = tk [filter] list (so `tk` = tk list)
+tk [filter]                # = tk [filter] list (so `tk` = tk list), or `next` (default_command, §7)
 ```
 
 Parse rules (in order):
@@ -88,7 +88,7 @@ Parse rules (in order):
 1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/done.
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
-4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
+4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
 5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias config help import undo version`) → usage error (exit 1).
@@ -133,6 +133,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
 | list | `tk project:home list` | table, pending tasks first, then by urgency desc; no filter and no task at all (any status) → welcome with first commands, exit 0 |
+| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden); if more tasks match, a last line `N of M tasks. tk list shows them all.`; no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
@@ -150,7 +151,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
 
-**Kind words**: 50 phrases (`kindness.p01`..`p50`, EN + FR) about friends, family, colleagues, free time, nature and not fearing others, each shown as `♥ <phrase>` on its own line after a blank line (italic, dim when colors are on). Shuffled order, all 50 before any repeat; state (`kindness_last`, `kindness_order`) in `meta`, outside undo. They appear: (1) after a successful `list add done delete modify info undo`, only if stdout is a terminal, at most once every 3 days, then with a 1-in-10 chance per command; (2) when `done` leaves no pending task (terminal only); (3) at the foot of a `print` page opened in the browser (not with `--file`); (4) in an easter egg. Every appearance restarts the 3-day cooldown. Setting `kindness = false` turns off (1)-(3).
+**Kind words**: 50 phrases (`kindness.p01`..`p50`, EN + FR) about friends, family, colleagues, free time, nature and not fearing others, each shown as `♥ <phrase>` on its own line after a blank line (italic, dim when colors are on). Shuffled order, all 50 before any repeat; state (`kindness_last`, `kindness_order`) in `meta`, outside undo. They appear: (1) after a successful `list next add done delete modify info undo`, only if stdout is a terminal, at most once every 3 days, then with a 1-in-10 chance per command; (2) when `done` leaves no pending task (terminal only); (3) at the foot of a `print` page opened in the browser (not with `--file`); (4) in an easter egg. Every appearance restarts the 3-day cooldown. Setting `kindness = false` turns off (1)-(3).
 
 Hidden easter eggs exist: English only, exempt from i18n, kept unreadable in the code (hashed triggers, ROT13/compressed replies); see `tests/cli/test_eggs.py`.
 
@@ -187,6 +188,8 @@ confirm_threshold = 3
 date_format = "%Y-%m-%d"
 color = true
 kindness = true
+default_command = "list"   # list | next: what `tk` alone, or `tk <filter>`, runs
+next_limit = 10            # tasks shown by `next`, 1 or more
 [undo]
 retention = "3m"   # forever | <n>d/w/m/y (m = 30 d, y = 365 d)
 [urgency]

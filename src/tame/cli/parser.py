@@ -43,16 +43,17 @@ COMMANDS = (
     "info",
     "list",
     "modify",
+    "next",
     "print",
     "undo",
     "version",
 )
 """V1 command names (never translated)."""
 
-FILTER_COMMANDS = frozenset({"list", "done", "delete", "modify", "info", "export", "print"})
+FILTER_COMMANDS = frozenset({"list", "next", "done", "delete", "modify", "info", "export", "print"})
 """Commands that accept a filter."""
 
-_ARGLESS_COMMANDS = frozenset({"list", "done", "delete", "info", "export", "print"})
+_ARGLESS_COMMANDS = frozenset({"list", "next", "done", "delete", "info", "export", "print"})
 """Filter commands without arguments: their trailing tokens extend the filter.
 
 ``print`` has one option, ``--file PATH``, taken out before the filter is split.
@@ -81,12 +82,15 @@ class ParsedCommand:
         filter: Filter tokens.
         args: Argument tokens.
         yes: True if ``--yes`` was given: skip confirmation prompts.
+        implicit: True if no command was typed (``tk [filter]``): the default command
+            (``default_command`` setting) runs instead of ``list``.
     """
 
     name: str
     filter: tuple[str, ...] = ()
     args: tuple[str, ...] = ()
     yes: bool = False
+    implicit: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,8 +140,8 @@ def parse_command(argv: Sequence[str]) -> ParsedCommand:
         if (name := match_command(token)) is not None:
             found = index, name
             break
-    if found is None:  # No command: `tk [filter]` = list.
-        return ParsedCommand("list", filter=tokens)
+    if found is None:  # No command: `tk [filter]` = list, or the default command.
+        return ParsedCommand("list", filter=tokens, implicit=True)
 
     position, name = found
 

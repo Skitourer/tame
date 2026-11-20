@@ -48,15 +48,17 @@ def test_match_command_ambiguous(token: str, candidates: str) -> None:
 
 
 def test_no_args_means_list() -> None:
-    assert parse_command([]) == ParsedCommand("list")
+    assert parse_command([]) == ParsedCommand("list", implicit=True)
 
 
 def test_filter_without_command_means_list() -> None:
-    assert cmd("project:home +phone") == ParsedCommand("list", filter=("project:home", "+phone"))
+    assert cmd("project:home +phone") == ParsedCommand(
+        "list", filter=("project:home", "+phone"), implicit=True
+    )
 
 
 def test_double_dash_stops_command_search() -> None:
-    assert cmd("-- list") == ParsedCommand("list", filter=("--", "list"))
+    assert cmd("-- list") == ParsedCommand("list", filter=("--", "list"), implicit=True)
 
 
 # --- Spec examples (§4, §5) ---------------------------------------------------

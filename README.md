@@ -67,6 +67,7 @@ the two-minute tour: `tk help tour`. Full documentation: **https://skitourer.git
 tk add Call bank project:home +phone due:fri pri:H  # Created task 1.
 tk add -- done the report                    # everything after -- is description
 tk list                                      # most urgent first; or just: tk
+tk next                                      # the 10 most urgent you can do now
 tk due.before:eow                            # due before the end of the week
 tk +OVERDUE                                  # late tasks (virtual tags: +TODAY, +WEEK…)
 tk project:home list                         # filter first (or: tk list project:home)
