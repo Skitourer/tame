@@ -100,6 +100,9 @@ many = "Delete {count} tasks?"
 one = "Modify task {task} '{description}'?"
 many = "Modify {count} tasks?"
 
+[next]
+more = "{shown} of {total} tasks. tk list shows them all."
+
 [setting.expected]
 language = "one of: {languages}"
 count = "a whole number, 0 or more"
@@ -107,6 +110,8 @@ date_format = "a date format such as %Y-%m-%d or %d/%m/%Y"
 bool = "true or false"
 retention = "forever, or a duration such as 1w, 3m, 1y"
 number = "a number"
+default_command = "list or next"
+positive = "a whole number, 1 or more"
 
 [age]
 seconds = "{n}s"
@@ -248,6 +253,21 @@ Everything after -- is description, even words like done or +x.
 Examples:
   tk add Call bank project:home +phone due:fri pri:H
   tk add -- done the report
+'''
+
+[help.cmd.next]
+summary = "Show the most urgent tasks you can do now"
+usage = "tk [filter] next"
+body = '''
+Like list, but shows only the next_limit most urgent tasks (10 by default), leaves
+out blocked tasks (+BLOCKED: waiting for another pending task) and the Age and Tags
+columns. A last line tells how many more tasks match.
+
+Make it what tk alone runs: tk config set default_command next
+
+Examples:
+  tk next
+  tk +home next
 '''
 
 [help.cmd.list]

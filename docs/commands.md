@@ -8,6 +8,7 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 |---|---|
 | [`add`](#add) | create a task |
 | [`list`](#list) | list tasks, most urgent first (the default command) |
+| [`next`](#next) | the most urgent tasks you can do now |
 | [`info`](#info) | show every field of tasks |
 | [`modify`](#modify) | change tasks |
 | [`done`](#done) | mark tasks completed |
@@ -50,13 +51,32 @@ is sorted by [urgency](urgency.md), highest first. Empty columns are hidden. Ove
 the output is not a terminal, or with `color = false`).
 
 `list` is the default command: `tk` alone lists all pending tasks. With no task at all, it
-shows a welcome message instead.
+shows a welcome message instead. To make `next` the default, see
+[`default_command`](settings.md#all-settings).
 
 ```sh
 tk
 tk project:home             # also: tk list project:home
 tk +phone -work bank
 tk status:completed list
+```
+
+## next
+
+```text
+tk [filter] next
+```
+
+Like `list`, for when you wonder what to do now: only the `next_limit` most urgent tasks
+(10 by default), without the [blocked](grammar.md#virtual-tags) ones (waiting for another
+pending task), and without the Age and Tags columns. If more tasks match, a last line says
+how many: `10 of 34 tasks. tk list shows them all.`
+
+```sh
+tk next
+tk +home next               # also: tk next +home
+tk n                        # unique prefix
+tk config set default_command next   # then tk alone shows next
 ```
 
 ## info

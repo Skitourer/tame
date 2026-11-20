@@ -537,7 +537,7 @@ def test_config_lists_settings_and_marks_changes(capsys: Capture) -> None:
     ]
     assert 'undo.retention = "3m"' in out
     assert "urgency.pri_H = 6.0" in out
-    assert "default" not in out
+    assert "# default" not in out
     run(capsys, "config", "set", "confirm_threshold", "5")
     assert "confirm_threshold = 5  # default: 3" in run(capsys, "config")[1]
 
@@ -1038,3 +1038,58 @@ def test_print_errors(capsys: Capture, tmp_path: Path) -> None:
     code, _, err = run(capsys, "print", "--file", str(tmp_path / "missing" / "x.html"))
     assert code == 1
     assert err.startswith("Cannot write ")
+
+
+# --- next (0.3) ---------------------------------------------------------------------
+
+
+def header(out: str) -> list[str]:
+    return out.splitlines()[0].split()
+
+
+def test_next_limits_and_tells_how_many_more(capsys: Capture) -> None:
+    run(capsys, "config", "set", "next_limit", "2")
+    run(capsys, "add", "low")
+    run(capsys, "add", "high", "pri:H", "+x")
+    run(capsys, "add", "mid", "pri:M", "project:home")
+    code, out, err = run(capsys, "next")
+    assert (code, err) == (0, "")
+    assert header(out) == ["ID", "Project", "Pri", "Description", "Urg"]  # no Age, no Tags
+    assert "high" in out and "mid" in out and "low" not in out
+    assert out.splitlines()[-1] == "2 of 3 tasks. tk list shows them all."
+    assert "of" not in run(capsys, "+home", "next")[1]
+
+
+def test_next_leaves_out_blocked_tasks(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    first = "a1b2c3d4-0000-4000-8000-000000000001"
+    data = [
+        {"description": "first", "uuid": first},
+        {"description": "blocked", "depends": [first]},
+    ]
+    stdin_bytes(monkeypatch, json.dumps(data).encode())
+    run(capsys, "import")
+    out = run(capsys, "next")[1]
+    assert "first" in out and "blocked" not in out
+    assert "blocked" in run(capsys, "list")[1]
+    run(capsys, "1", "done")
+    assert "blocked" in run(capsys, "n")[1]  # unique prefix; unblocked once first is done
+
+
+def test_next_no_match_and_welcome(capsys: Capture) -> None:
+    assert run(capsys, "next")[1].startswith("Welcome")
+    run(capsys, "add", "x")
+    assert run(capsys, "+nope", "next")[0] == 2
+
+
+def test_default_command_next(capsys: Capture) -> None:
+    run(capsys, "add", "x", "+tag")
+    assert "Age" in header(run(capsys)[1])
+    run(capsys, "config", "set", "default_command", "next")
+    assert "Age" not in header(run(capsys)[1])
+    assert "Age" not in header(run(capsys, "+tag")[1])
+    assert "Age" in header(run(capsys, "list")[1])
+
+
+@pytest.mark.parametrize(("key", "value"), [("default_command", "info"), ("next_limit", "0")])
+def test_next_settings_validated(capsys: Capture, key: str, value: str) -> None:
+    assert run(capsys, "config", "set", key, value)[0] == 1

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`tk next`**: the 10 most urgent tasks you can do now, in a compact table; blocked tasks
+  are left out. Works with filters: `tk +home next`. `next_limit` sets how many;
+  `tk config set default_command next` makes it what `tk` alone shows.
 - **Virtual tags**: filter on what TAME computes, without tagging anything yourself.
   `tk +OVERDUE` lists late tasks, `tk +TODAY print` prints today's page, `tk -TAGGED` shows
   tasks without tags. Also `TOMORROW`, `WEEK`, `MONTH`, `DUE` (next 7 days), `BLOCKED`,

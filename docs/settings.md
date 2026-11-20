@@ -34,6 +34,8 @@ Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
 | `date_format` | `"%Y-%m-%d"` | how dates are shown ([strftime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)), e.g. `%d/%m/%Y` |
 | `color` | `true` | colored output in the terminal |
 | `kindness` | `true` | now and then, a kind word about the people around you (see [below](#kind-words)) |
+| `default_command` | `"list"` | what `tk` alone (or `tk <filter>`) runs: `list` or [`next`](commands.md#next) |
+| `next_limit` | `10` | how many tasks [`next`](commands.md#next) shows (1 or more) |
 | `undo.retention` | `"3m"` | how long undo history is kept: `forever`, or `<n>d`/`w`/`m`/`y` (m = 30 days, y = 365 days) |
 | `urgency.pri_H` | `6.0` | [urgency](urgency.md) weight of priority H |
 | `urgency.pri_M` | `3.9` | weight of priority M |
@@ -51,6 +53,8 @@ confirm_threshold = 3
 date_format = "%Y-%m-%d"
 color = true
 kindness = true
+default_command = "list"
+next_limit = 10
 
 [undo]
 retention = "3m"
