@@ -826,6 +826,35 @@ def test_import_taskwarrior_file(capsys: Capture, tmp_path: Path) -> None:
     assert (task["status"], task["wait"]) == ("waiting", "20261201T000000Z")
 
 
+def test_import_annotations_and_depends_survive_modify_and_undo(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    other = "a1b2c3d4-0000-4000-8000-000000000002"
+    stdin_bytes(
+        monkeypatch,
+        json.dumps(
+            [
+                {
+                    "description": "Call bank",
+                    "uuid": "a1b2c3d4-0000-4000-8000-000000000001",
+                    "annotations": [{"entry": "20261102T080000Z", "description": "ask Ann"}],
+                    "depends": other,
+                },
+                {"description": "Find IBAN", "uuid": other},
+            ]
+        ).encode(),
+    )
+    assert run(capsys, "import")[0] == 0
+    info = run(capsys, "1", "info")[1]
+    assert "ask Ann" in info and other in info
+    run(capsys, "1", "modify", "+phone")
+    run(capsys, "undo")
+    (task, _) = json.loads(run(capsys, "export")[1])
+    assert task["annotations"] == [{"entry": "20261102T080000Z", "description": "ask Ann"}]
+    assert task["depends"] == [other]
+    assert "tags" not in task
+
+
 def test_import_from_stdin_and_utf16(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
     stdin_bytes(monkeypatch, b'[{"description": "from stdin"}]')
     assert run(capsys, "import")[1].startswith("Imported: 1 added")

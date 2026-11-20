@@ -48,6 +48,8 @@ Field names = TW names. Datetimes stored UTC ISO 8601, shown local.
 | priority | H/M/L? | |
 | due, end | datetime? | |
 | entry, modified | datetime | auto |
+| annotations | list[{entry, description}] | timestamped notes, sorted by entry; duplicates allowed (schema v2) |
+| depends | set[uuid] | tasks this one waits for; never itself; target may be absent (schema v2) |
 
 ```sql
 CREATE TABLE tasks(uuid TEXT PRIMARY KEY, id INTEGER, description TEXT NOT NULL,
@@ -58,11 +60,19 @@ CREATE TABLE tasks(uuid TEXT PRIMARY KEY, id INTEGER, description TEXT NOT NULL,
 CREATE TABLE task_tags(uuid TEXT REFERENCES tasks(uuid) ON DELETE CASCADE, tag TEXT, PRIMARY KEY(uuid,tag));
 CREATE TABLE undo_log(seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, cmd TEXT NOT NULL, before TEXT NOT NULL); -- JSON snapshot
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT); -- schema_version
+-- schema v2
+CREATE TABLE annotations(id INTEGER PRIMARY KEY, uuid TEXT NOT NULL REFERENCES tasks(uuid) ON DELETE CASCADE,
+  entry TEXT NOT NULL, description TEXT NOT NULL);
+CREATE INDEX idx_annotations_uuid ON annotations(uuid);
+CREATE TABLE depends(uuid TEXT NOT NULL REFERENCES tasks(uuid) ON DELETE CASCADE, depends_on TEXT NOT NULL,
+  PRIMARY KEY(uuid, depends_on), CHECK(uuid <> depends_on)); -- depends_on: no FK, target may be absent
 ```
 
-Each write cmd = 1 transaction + 1 undo_log row. Migrations keyed on `meta.schema_version`.
+Each write cmd = 1 transaction + 1 undo_log row. Migrations keyed on `meta.schema_version`: on open, each missing version is applied in its own transaction (all or nothing); a database newer than the code → `error.db_too_new`, nothing changed.
 
-`before` = `{"tasks": [{uuid, task|null}], "ids"?: {uuid: id}}`: prior state of each changed task (null = created by the cmd, undo removes it); `ids` = pending ids before done/delete renumbering. Cmds that change nothing log nothing. `undo` pops the last row: repeated `undo` goes further back; undo is not itself undoable; empty log → exit 2.
+Migration 1 → 2 (0.3.0): creates `annotations` and `depends`, then moves each task's `extra.annotations` / `extra.depends` into them using the TW import rules (§7) and removes the key from `extra`. A key with any invalid item stays in `extra` unchanged. `undo_log` rows are not rewritten.
+
+`before` = `{"tasks": [{uuid, task|null}], "ids"?: {uuid: id}}`: prior state of each changed task (null = created by the cmd, undo removes it); `ids` = pending ids before done/delete renumbering. `task` includes `annotations` and `depends`; a snapshot written before schema v2 has them in `extra` and is read with the TW import rules (§7). Cmds that change nothing log nothing. `undo` pops the last row: repeated `undo` goes further back; undo is not itself undoable; empty log → exit 2.
 
 ## 4. CLI grammar
 
@@ -180,7 +190,10 @@ Unknown key, wrong type or invalid value → usage error naming key and file (ex
 
 - Export: JSON array, TW field names, dates `YYYYMMDDTHHMMSSZ`, `extra` keys merged back.
 - Import: JSON array or one object per line. Same uuid → update if incoming `modified` newer, else skip. Missing `uuid` → new one; `entry` → now; `modified` → `entry`; `status` → pending. `id`, `urgency` ignored. New pending tasks get the next ids (by entry); if an update changes which tasks are pending, all are renumbered.
-- Unsupported TW attrs (annotations, depends, recur, wait, UDAs…), and a `priority` other than H/M/L → stored in `extra`, re-exported unchanged (TAME fields win).
+- `annotations`: array of `{entry, description}`, both required, `entry` a TW date → stored natively. Export: array sorted by entry; omitted when empty.
+- `depends`: array of uuids, or a comma-separated string (TW < 2.6) → stored natively; duplicates and the task's own uuid dropped. Export: array of uuids, sorted; omitted when empty.
+- Invalid `annotations`/`depends` value (wrong type, missing field, bad date or uuid) → whole key kept in `extra` unchanged.
+- Other unsupported TW attrs (recur, wait, UDAs…), and a `priority` other than H/M/L → stored in `extra`, re-exported unchanged (TAME fields win).
 - TW status `waiting`/`recurring` → `pending`, original in `extra.tw_status`; exported back while the task is still pending.
 
 ## 8. Layout, quality, release
@@ -202,6 +215,7 @@ src/tame/
   core/service.py  # TaskService: add/modify/complete/delete/query/undo/import
   storage/repo.py  # SQLite repo
   storage/migrations.py
+  storage/codec.py # datetime <-> DB text
   io/tw_json.py    # Taskwarrior JSON (§7)
   alias.py         # opt-in command aliases
   i18n.py  config.py  errors.py

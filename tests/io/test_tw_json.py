@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from tame.core.models import Priority, Status, Task
+from tame.core.models import Annotation, Priority, Status, Task
 from tame.errors import ValidationError
 from tame.io.tw_json import (
     TW_STATUS,
@@ -13,6 +13,7 @@ from tame.io.tw_json import (
     format_date,
     loads,
     parse_date,
+    split_extra,
     task_from_tw,
     task_to_tw,
 )
@@ -157,7 +158,7 @@ def test_task_from_tw_full() -> None:
         tags=frozenset({"phone", "next"}),
         priority=Priority.H,
         due=datetime(2026, 12, 15, 14, 0, tzinfo=UTC),
-        extra={"annotations": TW_TASK["annotations"]},
+        annotations=(Annotation(datetime(2026, 11, 2, 8, 0, tzinfo=UTC), "ask for Ann"),),
     )
 
 
@@ -227,3 +228,90 @@ def test_round_trip() -> None:
     exported = task_to_tw(task)
     assert exported == {**data, "id": 0, "tags": ["next", "phone"]}
     assert task_from_tw(exported, NOW) == task
+
+
+# --- Annotations and dependencies ------------------------------------------------------
+
+OTHER = "a1b2c3d4-0000-4000-8000-000000000002"
+THIRD = "a1b2c3d4-0000-4000-8000-000000000003"
+
+
+def test_annotations_imported_sorted_by_entry() -> None:
+    notes = [
+        {"entry": "20261103T080000Z", "description": "second"},
+        {"entry": "20261102T080000Z", "description": "first"},
+        {"entry": "20261102T080000Z", "description": "first"},
+    ]
+    task = task_from_tw({"description": "x", "annotations": notes}, NOW)
+    assert [note.description for note in task.annotations] == ["first", "first", "second"]
+    assert task.extra == {}
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        [{"entry": "20261102T080000Z", "description": "ok"}, {"description": "no entry"}],
+        [{"entry": "garbage", "description": "x"}],
+        [{"entry": "20261102T080000Z", "description": 3}],
+        ["text"],
+        "text",
+    ],
+)
+def test_invalid_annotations_stay_in_extra(value: Any) -> None:
+    task = task_from_tw({"description": "x", "annotations": value}, NOW)
+    assert task.annotations == ()
+    assert task.extra == {"annotations": value}
+    assert task_to_tw(task)["annotations"] == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    [[OTHER, THIRD, OTHER, UUID], f"{THIRD}, {OTHER},{UUID}", [OTHER.upper(), THIRD]],
+)
+def test_depends_list_or_string_imported(value: Any) -> None:
+    task = task_from_tw({"uuid": UUID, "description": "x", "depends": value}, NOW)
+    assert task.depends == {OTHER, THIRD}
+    assert task.extra == {}
+
+
+@pytest.mark.parametrize("value", [[OTHER, "not-a-uuid"], 3, [OTHER, 4]])
+def test_invalid_depends_stay_in_extra(value: Any) -> None:
+    task = task_from_tw({"description": "x", "depends": value}, NOW)
+    assert task.depends == frozenset()
+    assert task.extra == {"depends": value}
+
+
+def test_split_extra_keeps_other_keys() -> None:
+    annotations, depends, rest = split_extra({"depends": OTHER, "wait": "w"}, UUID)
+    assert (annotations, depends, rest) == ((), frozenset({OTHER}), {"wait": "w"})
+
+
+def test_task_to_tw_annotations_and_depends() -> None:
+    task = make_task(
+        annotations=(
+            Annotation(NOW, "later"),
+            Annotation(NOW - timedelta(hours=1), "earlier"),
+        ),
+        depends=frozenset({THIRD, OTHER}),
+    )
+    data = task_to_tw(task)
+    assert data["annotations"] == [
+        {"entry": "20261119T083000Z", "description": "earlier"},
+        {"entry": "20261119T093000Z", "description": "later"},
+    ]
+    assert data["depends"] == [OTHER, THIRD]
+    assert "annotations" not in task_to_tw(make_task())
+    assert "depends" not in task_to_tw(make_task())
+
+
+def test_annotations_and_depends_round_trip() -> None:
+    data = {
+        "uuid": UUID,
+        "description": "x",
+        "entry": "20261101T080000Z",
+        "modified": "20261102T080000Z",
+        "status": "pending",
+        "annotations": [{"entry": "20261102T080000Z", "description": "note"}],
+        "depends": [OTHER, THIRD],
+    }
+    assert {k: v for k, v in task_to_tw(task_from_tw(data, NOW)).items() if k != "id"} == data

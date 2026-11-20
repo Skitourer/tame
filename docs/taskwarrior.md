@@ -67,8 +67,11 @@ input.
   skipped tasks.
 - **Defaults.** Missing `uuid`: a new one. Missing `entry`: now. Missing `modified`: `entry`.
   Missing `status`: `pending`. `id` and `urgency` are ignored.
-- **Kept for export.** Unsupported attributes (annotations, depends, recur, wait, UDAs…) and a
-  priority other than H/M/L are stored with the task and exported back.
+- **Annotations and dependencies.** Stored with the task, shown by `tk info` and exported
+  back. `depends` is accepted as a list of uuids or as a comma-separated string (older
+  Taskwarrior) and is exported as a list.
+- **Kept for export.** Other unsupported attributes (recur, wait, UDAs…) and a priority
+  other than H/M/L are stored with the task and exported back.
 - **Statuses.** `waiting` and `recurring` become `pending`; the original status is restored
   on export while the task is still pending.
 - **Ids.** New pending tasks get the next free ids. If the import changes which tasks are

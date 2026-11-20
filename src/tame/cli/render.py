@@ -122,7 +122,8 @@ def info_rows(
 ) -> list[tuple[str, str]]:
     """Return the (label, value) rows of ``task`` for ``info``; unset fields are left out.
 
-    Unknown Taskwarrior attributes (``extra``) follow, under their own names.
+    One row per annotation follows, then unknown Taskwarrior attributes (``extra``)
+    under their own names.
     """
 
     def local(value: datetime | None) -> str:
@@ -140,7 +141,12 @@ def info_rows(
         (t("info.entry"), local(task.entry)),
         (t("info.modified"), local(task.modified)),
         (t("info.end"), local(task.end)),
+        (t("info.depends"), " ".join(sorted(task.depends))),
         (t("info.urgency"), format_urgency(urgency(task, now, coefficients))),
+    ]
+    rows += [
+        (t("info.annotation"), f"{local(note.entry)} {note.description}")
+        for note in task.annotations
     ]
     rows += [
         (name, value if isinstance(value, str) else json.dumps(value, ensure_ascii=False))
