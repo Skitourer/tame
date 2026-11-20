@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -5,8 +7,9 @@ import pytest
 
 from tame.__main__ import main
 from tame.cli import kindness
+from tame.cli.parser import parse_add
 from tame.core.service import TaskService
-from tame.i18n import lookup
+from tame.i18n import phrases
 
 Capture = pytest.CaptureFixture[str]
 NOW = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)
@@ -44,22 +47,87 @@ def terminal(monkeypatch: pytest.MonkeyPatch) -> None:
 # --- Phrases and their order -----------------------------------------------------------
 
 
-def test_fifty_phrases_in_both_languages() -> None:
+@pytest.mark.parametrize(("name", "size"), [("empty", 15), ("general", 50), ("reminders", 50)])
+def test_pools_in_both_languages(name: kindness.Pool, size: int) -> None:
     for lang in ("en", "fr"):
-        texts = [lookup(f"kindness.p{i:02d}", lang) for i in range(1, kindness.COUNT + 1)]
-        assert all(texts)
-        assert len(set(texts)) == kindness.COUNT
-        assert all(len(text) <= 110 for text in texts if text)  # about one terminal line
+        texts = phrases(f"kindness.{name}", lang)
+        assert len(texts) >= size
+        assert len(set(texts)) == len(texts)
+        assert all(text and len(text) <= 110 for text in texts)  # about one terminal line
 
 
-def test_all_phrases_before_any_repeat(service: TaskService) -> None:
-    first = [kindness.draw(service, NOW) for _ in range(kindness.COUNT)]
-    assert len(set(first)) == kindness.COUNT
-    assert kindness.draw(service, NOW) in first  # a new order starts
+def test_pools_do_not_overlap() -> None:
+    for lang in ("en", "fr"):
+        empty, general = phrases("kindness.empty", lang), phrases("kindness.general", lang)
+        assert set(empty).isdisjoint(general)
+
+
+_RELATIVES = {
+    "en": re.compile(
+        r"\b(mum|mom|dad|mother|father|parents?|brothers?|sisters?|sons?|daughters?|"
+        r"child|children|kids?|grand\w+|cousins?|aunts?|uncles?|godchild|wife|husband|"
+        r"partner|my love)\b",
+        re.IGNORECASE,
+    ),
+    "fr": re.compile(
+        r"\b(maman|papa|mère|père|parents|frères?|sœurs?|fils|filles?|enfants?|mamie|"
+        r"papi|grands?-\w+|cousine?s?|tantes?|oncles?|filleule?s?|épou\w+|mari|"
+        r"conjoint\w*|mon amour)\b",
+        re.IGNORECASE,
+    ),
+}
+
+
+@pytest.mark.parametrize("name", kindness.POOLS)
+@pytest.mark.parametrize("lang", ["en", "fr"])
+def test_no_specific_relative(name: kindness.Pool, lang: str) -> None:
+    """General relations only: no one who lost a relative should be hurt."""
+    texts = phrases(f"kindness.{name}", lang)
+    assert [text for text in texts if _RELATIVES[lang].search(text)] == []
+
+
+@pytest.mark.parametrize("lang", ["en", "fr"])
+def test_reminders_are_safe_tk_add_lines(lang: str) -> None:
+    for line in phrases("kindness.reminders", lang):
+        assert not set(line) & set("'\",;&()$|<>`@#"), line  # pastes into any shell
+        words = line.split()
+        assert words[:2] == ["tk", "add"], line
+        parsed = parse_add(words[2:], NOW)
+        assert parsed.tags == ("love",), line
+        assert parsed.due is not None, line
+        assert parsed.description, line
+
+
+@pytest.mark.parametrize("name", kindness.POOLS)
+def test_all_phrases_before_any_repeat(service: TaskService, name: kindness.Pool) -> None:
+    size = len(kindness.pool(name))
+    first = [kindness._next(service, name) for _ in range(size)]
+    assert len(set(first)) == size
+    assert kindness._next(service, name) in first  # a new order starts
+
+
+def test_pools_keep_their_own_order(service: TaskService) -> None:
+    kindness.draw(service, NOW, "empty")
+    assert len(json.loads(service.state("kindness_order.empty") or "")) == 14
+    assert service.state("kindness_order.general") is None
+
+
+def test_order_survives_a_change_of_pool_size(
+    service: TaskService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service.set_state("kindness_order.general", json.dumps([0, 99, 1]))  # 99: removed phrase
+    monkeypatch.setattr(kindness, "pool", lambda name: ("a", "b"))
+    assert kindness._next(service, "general") == "b"
+    assert kindness._next(service, "general") == "a"
+
+
+def test_reminder_keeps_the_cooldown(service: TaskService) -> None:
+    kindness.reminder(service)
+    assert service.state("kindness_last") is None
 
 
 def test_corrupt_state_starts_a_new_order(service: TaskService) -> None:
-    service.set_state("kindness_order", "not json")
+    service.set_state("kindness_order.general", "not json")
     assert kindness.draw(service, NOW)
 
 
@@ -132,8 +200,7 @@ def test_in_french(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(kindness, "_random", _Fixed(0.0))
     run(capsys, "config", "set", "language", "fr")
     (line,) = kind_lines(run(capsys, "add", "x")[1])
-    texts = {lookup(f"kindness.p{i:02d}", "fr") for i in range(1, kindness.COUNT + 1)}
-    assert line.removeprefix(f"{HEART} ") in texts
+    assert line.removeprefix(f"{HEART} ") in phrases("kindness.general", "fr")
 
 
 def test_at_the_foot_of_a_printed_page(

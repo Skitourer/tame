@@ -241,58 +241,140 @@ print_io = "Cannot write {path}: {detail}"
 help_unknown = "No help for '{name}'. Run 'tk help' for the list."
 
 # --- Kind words (SPEC §5): shown now and then; tk config set kindness false turns them off. ----
+# Each list is a pool. To add phrases: append them at the end of the list, in every
+# language, in the same order (tests check the lengths match). Name only general
+# relations (friend, loved one, neighbour, colleague, family), never a specific relative.
+# Reminders: a valid `tk add` line with +love and due:, no ' " , ; & ( ) $ | < > ` @ #.
 
 [kindness]
-p01 = "Nothing left on your list. Maybe call someone who'd love to hear from you."
-p02 = "All done. Go hug someone you love."
-p03 = "Empty list, full heart: tell someone they matter to you."
-p04 = "Done for today. Be kind to someone, starting with yourself."
-p05 = "The errands can wait. The people you love shouldn't have to."
-p06 = "The time you just saved is yours. Give a little of it to someone."
-p07 = "An empty list is an afternoon full of possibilities."
-p08 = "Nothing to do is not nothing: it is room to live."
-p09 = "The best moment of the day is on no list."
-p10 = "Take time to do nothing. That matters too."
-p11 = "Nobody ever regrets an hour spent with the people they love."
-p12 = "One task less, one more moment for your loved ones."
-p13 = "Time spent laughing is never wasted."
-p14 = "There is a friend you think of without ever telling them. Tell them."
-p15 = "A two-line message can brighten a friend's day."
-p16 = "True friends don't count the days without news. But they are glad when it ends."
-p17 = "Invite someone you haven't seen in a long time for a coffee."
-p18 = "Friendship is like a plant: a little water now and then is enough."
-p19 = "Who made you laugh this week? Thank them."
-p20 = "Call your parents, your children, your brothers and sisters: just to hear their voices."
-p21 = "One more \"I love you\" is never one too many."
-p22 = "A family meal is worth more than a perfect task."
-p23 = "Tell a story, listen to one. That is how we pass things on."
-p24 = "Those who taught you to walk would surely love to hear from you."
-p25 = "Family can be chosen too. Think of yours, whatever it looks like."
-p26 = "Did a colleague help you lately? A sincere thank-you costs nothing."
-p27 = "Behind every email there is someone having their own hard day."
-p28 = "Ask a colleague how they are, and really wait for the answer."
-p29 = "Work well done matters. The people you do it with matter more."
-p30 = "A smile at the coffee machine can change someone's day."
-p31 = "It might be lovely outside. Go and check."
-p32 = "Look up: the sky changes every day, and it's free."
-p33 = "A tree ticks no boxes, yet it makes everything grow."
-p34 = "Walk a little, with no goal. Ideas like that."
-p35 = "Listen to the birds for five minutes. They sing for everyone."
-p36 = "Nature is never in a hurry, yet everything gets done."
-p37 = "An open window, some fresh air: the simplest of breaks."
-p38 = "Today's stranger may be tomorrow's friend."
-p39 = "Saying hello to a neighbour is already building something."
-p40 = "What brings us together is bigger than what sets us apart."
-p41 = "Listening to someone who thinks differently is growing a little."
-p42 = "Kindness is a language everyone understands."
-p43 = "Reach out first. It is often what the other was waiting for."
-p44 = "Everyone is fighting a battle you know nothing about. Be kind."
-p45 = "Fear builds walls, curiosity builds bridges."
-p46 = "You have done enough for today. Be proud of yourself."
-p47 = "The world is hard right now. Let's be gentle with one another."
-p48 = "A small act of kindness doesn't change the world, but it changes someone's world."
-p49 = "Loving is not a task. But it is the most important one of all."
-p50 = "Thank you for being here. Someone, somewhere, is glad you exist."
+reminder_intro = "Want a reminder?"
+
+# Shown only when done leaves no pending task.
+empty = [
+  "Nothing left on your list. Maybe call someone who'd love to hear from you.",
+  "All done. Go hug someone you love.",
+  "Empty list, full heart: tell someone they matter to you.",
+  "Done for today. Be kind to someone, starting with yourself.",
+  "The time you just saved is yours. Give a little of it to someone.",
+  "An empty list is an afternoon full of possibilities.",
+  "Nothing to do is not nothing: it is room to live.",
+  "One task less, one more moment for your loved ones.",
+  "You have done enough for today. Be proud of yourself.",
+  "List cleared. Who will you spend the time you just won with?",
+  "Nothing pending. Tonight belongs to you and yours.",
+  "Last box ticked. Tell someone about your day.",
+  "Your list is resting. You can too.",
+  "All clear. Send a word to someone having a hard week.",
+  "Zero tasks left: the perfect score for a walk with a friend.",
+]
+
+# Shown everywhere else: now and then after a command, under print, in love.
+general = [
+  "The errands can wait. The people you love shouldn't have to.",
+  "The best moment of the day is on no list.",
+  "Take time to do nothing. That matters too.",
+  "Nobody ever regrets an hour spent with the people they love.",
+  "Time spent laughing is never wasted.",
+  "There is a friend you think of without ever telling them. Tell them.",
+  "A two-line message can brighten a friend's day.",
+  "True friends don't count the days without news. But they are glad when it ends.",
+  "Invite someone you haven't seen in a long time for a coffee.",
+  "Friendship is like a plant: a little water now and then is enough.",
+  "Who made you laugh this week? Thank them.",
+  "Call someone dear to you, just to hear their voice.",
+  "One more \"I love you\" is never one too many.",
+  "A family meal is worth more than a perfect task.",
+  "Tell a story, listen to one. That is how we pass things on.",
+  "Someone who once helped you would surely love to hear from you.",
+  "Family can be chosen too. Think of yours, whatever it looks like.",
+  "Did a colleague help you lately? A sincere thank-you costs nothing.",
+  "Behind every email there is someone having their own hard day.",
+  "Ask a colleague how they are, and really wait for the answer.",
+  "Work well done matters. The people you do it with matter more.",
+  "A smile at the coffee machine can change someone's day.",
+  "It might be lovely outside. Go and check.",
+  "Look up: the sky changes every day, and it's free.",
+  "A tree ticks no boxes, yet it makes everything grow.",
+  "Walk a little, with no goal. Ideas like that.",
+  "Listen to the birds for five minutes. They sing for everyone.",
+  "Nature is never in a hurry, yet everything gets done.",
+  "An open window, some fresh air: the simplest of breaks.",
+  "Today's stranger may be tomorrow's friend.",
+  "Saying hello to a neighbour is already building something.",
+  "What brings us together is bigger than what sets us apart.",
+  "Listening to someone who thinks differently is growing a little.",
+  "Kindness is a language everyone understands.",
+  "Reach out first. It is often what the other was waiting for.",
+  "Everyone is fighting a battle you know nothing about. Be kind.",
+  "Fear builds walls, curiosity builds bridges.",
+  "The world is hard right now. Let's be gentle with one another.",
+  "A small act of kindness doesn't change the world, but it changes someone's world.",
+  "Loving is not a task. But it is the most important one of all.",
+  "Thank you for being here. Someone, somewhere, is glad you exist.",
+  "Write a postcard. Someone will keep it for years.",
+  "Cook for someone tonight, even something simple.",
+  "Ask an older person about their youth. Then listen.",
+  "Lend a book you loved, and talk about it afterwards.",
+  "A compliment you think but never say is a gift you keep for yourself.",
+  "Put the phone away at the next meal. Look at the faces instead.",
+  "Plant something, even a single seed in a pot.",
+  "Forgive someone a small thing today. It lightens two people.",
+  "Welcome the new colleague the way you would have liked to be welcomed.",
+]
+
+# Suggested after the kind word of love.
+reminders = [
+  "tk add Call someone I love +love due:today",
+  "tk add Write to an old friend +love due:sun",
+  "tk add Call a friend just to say hello +love due:today",
+  "tk add Ask a loved one how they really are +love due:today",
+  "tk add Invite a neighbour for coffee +love due:sat",
+  "tk add Send a photo to a loved one +love due:tomorrow",
+  "tk add Call a loved one I have not heard from +love due:sun",
+  "tk add Have lunch with a colleague +love due:fri",
+  "tk add Thank someone for their help +love due:today",
+  "tk add Plan a dinner with friends +love due:eow",
+  "tk add Write a birthday card +love due:+3d",
+  "tk add Take a walk with a friend +love due:sat",
+  "tk add Ask a neighbour how they are +love due:tomorrow",
+  "tk add Ask a colleague how they are +love due:tomorrow",
+  "tk add Play a board game with family +love due:sun",
+  "tk add Cook for someone dear +love due:sat",
+  "tk add Send a message to a loved one +love due:+3d",
+  "tk add Visit someone who lives alone +love due:eow",
+  "tk add Call a friend I miss +love due:today",
+  "tk add Say something kind to someone close +love due:today",
+  "tk add Share a breakfast with loved ones +love due:tomorrow",
+  "tk add Lend a book to a friend +love due:+3d",
+  "tk add Thank a former teacher +love due:+1w",
+  "tk add Bring flowers to someone dear +love due:fri",
+  "tk add Call a former colleague +love due:+1w",
+  "tk add Plan a weekend with friends +love due:eom",
+  "tk add Share a dessert with a neighbour +love due:sun",
+  "tk add Ask a friend about their family +love due:+3d",
+  "tk add Make a playlist for a friend +love due:sat",
+  "tk add Watch a film with family +love due:fri",
+  "tk add Send a postcard +love due:+1w",
+  "tk add Call a friend from long ago +love due:sun",
+  "tk add Have coffee with a colleague +love due:tomorrow",
+  "tk add Write to a friend far away +love due:+3d",
+  "tk add Print a photo for a loved one +love due:eow",
+  "tk add Help a neighbour out +love due:sat",
+  "tk add Plan a family picnic +love due:sun",
+  "tk add Send a funny picture to a friend +love due:+3d",
+  "tk add Bake a cake for a friend +love due:sat",
+  "tk add Take a lonely colleague to lunch +love due:fri",
+  "tk add Send a voice message to a friend +love due:today",
+  "tk add Visit a loved one +love due:eom",
+  "tk add Make a video call with family +love due:sun",
+  "tk add Congratulate a friend on good news +love due:today",
+  "tk add Hug someone I love +love due:today",
+  "tk add Tell a friend three things I like about them +love due:+3d",
+  "tk add Leave a kind note at home +love due:tomorrow",
+  "tk add Call someone who just moved +love due:+3d",
+  "tk add Plan a trip with someone I love +love due:eom",
+  "tk add Spend a screen-free evening with family +love due:fri",
+]
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
 

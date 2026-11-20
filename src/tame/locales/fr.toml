@@ -242,58 +242,140 @@ print_io = "Impossible d'écrire {path} : {detail}"
 help_unknown = "Pas d'aide pour « {name} ». Lancez « tk help » pour la liste."
 
 # --- Kind words (SPEC §5): shown now and then; tk config set kindness false turns them off. ----
+# Each list is a pool. To add phrases: append them at the end of the list, in every
+# language, in the same order (tests check the lengths match). Name only general
+# relations (friend, loved one, neighbour, colleague, family), never a specific relative.
+# Reminders: a valid `tk add` line with +love and due:, no ' " , ; & ( ) $ | < > ` @ #.
 
 [kindness]
-p01 = "Plus rien sur votre liste. Et si vous appeliez quelqu'un qui serait content d'avoir de vos nouvelles ?"
-p02 = "Tout est fait. Allez serrer dans vos bras quelqu'un que vous aimez."
-p03 = "Liste vide, cœur plein : dites à quelqu'un qu'il compte pour vous."
-p04 = "Fini pour aujourd'hui. Soyez doux avec quelqu'un, à commencer par vous-même."
-p05 = "Les courses peuvent attendre. Les gens que vous aimez ne devraient pas avoir à le faire."
-p06 = "Le temps que vous venez de gagner vous appartient. Offrez-en un peu à quelqu'un."
-p07 = "Une liste vide, c'est une après-midi pleine de possibles."
-p08 = "Rien à faire n'est pas rien : c'est de la place pour vivre."
-p09 = "Le meilleur moment de la journée n'est sur aucune liste."
-p10 = "Prenez le temps de ne rien faire. Ça aussi, c'est important."
-p11 = "On ne regrette jamais une heure passée avec ceux qu'on aime."
-p12 = "Une tâche de moins, un moment de plus pour les vôtres."
-p13 = "Le temps passé à rire n'est jamais perdu."
-p14 = "Il y a un ami à qui vous pensez sans jamais lui dire. Dites-le-lui."
-p15 = "Un message de deux lignes peut illuminer la journée d'un ami."
-p16 = "Les vrais amis ne comptent pas les jours sans nouvelles. Mais ils sont contents quand ça s'arrête."
-p17 = "Proposez un café à quelqu'un que vous n'avez pas vu depuis longtemps."
-p18 = "L'amitié, c'est comme une plante : un peu d'eau de temps en temps suffit."
-p19 = "Qui vous a fait rire cette semaine ? Remerciez-le."
-p20 = "Appelez vos parents, vos enfants, vos frères et sœurs : juste pour entendre leur voix."
-p21 = "Un « je t'aime » de plus n'est jamais de trop."
-p22 = "Le repas de famille vaut mieux que la tâche parfaite."
-p23 = "Racontez une histoire, écoutez-en une. C'est comme ça qu'on se transmet."
-p24 = "Ceux qui vous ont appris à marcher aimeraient sûrement de vos nouvelles."
-p25 = "Une famille, ça se choisit aussi. Pensez à la vôtre, quelle qu'elle soit."
-p26 = "Un collègue vous a aidé récemment ? Un merci sincère, ça ne coûte rien."
-p27 = "Derrière chaque e-mail, il y a quelqu'un qui a sa propre journée difficile."
-p28 = "Demandez à un collègue comment il va, et attendez vraiment la réponse."
-p29 = "Le travail bien fait compte. Les gens avec qui on le fait comptent plus."
-p30 = "Un sourire à la machine à café peut changer la journée de quelqu'un."
-p31 = "Il fait peut-être beau dehors. Allez vérifier."
-p32 = "Levez les yeux : le ciel change tous les jours, et c'est gratuit."
-p33 = "Un arbre ne coche aucune case et pourtant il fait tout pousser."
-p34 = "Marchez un peu, sans but. Les idées aiment ça."
-p35 = "Écoutez les oiseaux cinq minutes. Ils chantent pour tout le monde."
-p36 = "La nature n'est jamais pressée, et pourtant tout s'accomplit."
-p37 = "Une fenêtre ouverte, de l'air frais : la plus simple des pauses."
-p38 = "L'inconnu d'aujourd'hui est peut-être l'ami de demain."
-p39 = "Dire bonjour à un voisin, c'est déjà construire quelque chose."
-p40 = "Ce qui nous rassemble est plus grand que ce qui nous sépare."
-p41 = "Écouter quelqu'un qui pense autrement, c'est grandir un peu."
-p42 = "La gentillesse est une langue que tout le monde comprend."
-p43 = "Tendez la main en premier. C'est souvent ce que l'autre attendait."
-p44 = "Chacun mène un combat dont vous ne savez rien. Soyez bienveillant."
-p45 = "La peur construit des murs, la curiosité construit des ponts."
-p46 = "Vous en avez fait assez pour aujourd'hui. Soyez fier de vous."
-p47 = "Le monde est dur en ce moment. Soyons doux les uns avec les autres."
-p48 = "Un petit geste de gentillesse ne change pas le monde, mais il change le monde de quelqu'un."
-p49 = "Aimer, ce n'est pas une tâche. Mais c'est la plus importante de toutes."
-p50 = "Merci d'être là. Quelqu'un, quelque part, est content que vous existiez."
+reminder_intro = "Envie d'un rappel ?"
+
+# Shown only when done leaves no pending task.
+empty = [
+  "Plus rien sur votre liste. Et si vous appeliez quelqu'un qui serait content d'avoir de vos nouvelles ?",
+  "Tout est fait. Allez serrer dans vos bras quelqu'un que vous aimez.",
+  "Liste vide, cœur plein : dites à quelqu'un qu'il compte pour vous.",
+  "Fini pour aujourd'hui. Soyez doux avec quelqu'un, à commencer par vous-même.",
+  "Le temps que vous venez de gagner vous appartient. Offrez-en un peu à quelqu'un.",
+  "Une liste vide, c'est une après-midi pleine de possibles.",
+  "Rien à faire n'est pas rien : c'est de la place pour vivre.",
+  "Une tâche de moins, un moment de plus pour les vôtres.",
+  "Vous en avez fait assez pour aujourd'hui. Soyez fier de vous.",
+  "Liste vidée. Avec qui allez-vous passer le temps gagné ?",
+  "Plus rien en attente. Ce soir est à vous et aux vôtres.",
+  "Dernière case cochée. Racontez votre journée à quelqu'un.",
+  "Votre liste se repose. Vous pouvez en faire autant.",
+  "Tout est fait. Envoyez un mot à quelqu'un qui passe une semaine difficile.",
+  "Zéro tâche restante : le score parfait pour une balade avec un ami.",
+]
+
+# Shown everywhere else: now and then after a command, under print, in love.
+general = [
+  "Les courses peuvent attendre. Les gens que vous aimez ne devraient pas avoir à le faire.",
+  "Le meilleur moment de la journée n'est sur aucune liste.",
+  "Prenez le temps de ne rien faire. Ça aussi, c'est important.",
+  "On ne regrette jamais une heure passée avec ceux qu'on aime.",
+  "Le temps passé à rire n'est jamais perdu.",
+  "Il y a un ami à qui vous pensez sans jamais lui dire. Dites-le-lui.",
+  "Un message de deux lignes peut illuminer la journée d'un ami.",
+  "Les vrais amis ne comptent pas les jours sans nouvelles. Mais ils sont contents quand ça s'arrête.",
+  "Proposez un café à quelqu'un que vous n'avez pas vu depuis longtemps.",
+  "L'amitié, c'est comme une plante : un peu d'eau de temps en temps suffit.",
+  "Qui vous a fait rire cette semaine ? Remerciez-le.",
+  "Appelez un proche, juste pour entendre sa voix.",
+  "Un « je t'aime » de plus n'est jamais de trop.",
+  "Le repas de famille vaut mieux que la tâche parfaite.",
+  "Racontez une histoire, écoutez-en une. C'est comme ça qu'on se transmet.",
+  "Quelqu'un qui vous a aidé un jour serait sûrement content d'avoir de vos nouvelles.",
+  "Une famille, ça se choisit aussi. Pensez à la vôtre, quelle qu'elle soit.",
+  "Un collègue vous a aidé récemment ? Un merci sincère, ça ne coûte rien.",
+  "Derrière chaque e-mail, il y a quelqu'un qui a sa propre journée difficile.",
+  "Demandez à un collègue comment il va, et attendez vraiment la réponse.",
+  "Le travail bien fait compte. Les gens avec qui on le fait comptent plus.",
+  "Un sourire à la machine à café peut changer la journée de quelqu'un.",
+  "Il fait peut-être beau dehors. Allez vérifier.",
+  "Levez les yeux : le ciel change tous les jours, et c'est gratuit.",
+  "Un arbre ne coche aucune case et pourtant il fait tout pousser.",
+  "Marchez un peu, sans but. Les idées aiment ça.",
+  "Écoutez les oiseaux cinq minutes. Ils chantent pour tout le monde.",
+  "La nature n'est jamais pressée, et pourtant tout s'accomplit.",
+  "Une fenêtre ouverte, de l'air frais : la plus simple des pauses.",
+  "L'inconnu d'aujourd'hui est peut-être l'ami de demain.",
+  "Dire bonjour à un voisin, c'est déjà construire quelque chose.",
+  "Ce qui nous rassemble est plus grand que ce qui nous sépare.",
+  "Écouter quelqu'un qui pense autrement, c'est grandir un peu.",
+  "La gentillesse est une langue que tout le monde comprend.",
+  "Tendez la main en premier. C'est souvent ce que l'autre attendait.",
+  "Chacun mène un combat dont vous ne savez rien. Soyez bienveillant.",
+  "La peur construit des murs, la curiosité construit des ponts.",
+  "Le monde est dur en ce moment. Soyons doux les uns avec les autres.",
+  "Un petit geste de gentillesse ne change pas le monde, mais il change le monde de quelqu'un.",
+  "Aimer, ce n'est pas une tâche. Mais c'est la plus importante de toutes.",
+  "Merci d'être là. Quelqu'un, quelque part, est content que vous existiez.",
+  "Écrivez une carte postale. Quelqu'un la gardera des années.",
+  "Cuisinez pour quelqu'un ce soir, même quelque chose de simple.",
+  "Demandez à une personne âgée de raconter sa jeunesse. Puis écoutez.",
+  "Prêtez un livre que vous avez aimé, et parlez-en ensuite.",
+  "Un compliment pensé mais jamais dit, c'est un cadeau qu'on garde pour soi.",
+  "Rangez le téléphone au prochain repas. Regardez plutôt les visages.",
+  "Plantez quelque chose, même une seule graine dans un pot.",
+  "Pardonnez une petite chose à quelqu'un aujourd'hui. Ça allège deux personnes.",
+  "Accueillez le nouveau collègue comme vous auriez aimé être accueilli.",
+]
+
+# Suggested after the kind word of love.
+reminders = [
+  "tk add Appeler une personne chère +love due:today",
+  "tk add Écrire à un vieil ami +love due:sun",
+  "tk add Appeler un ami juste pour dire bonjour +love due:today",
+  "tk add Demander à un proche comment il va vraiment +love due:today",
+  "tk add Inviter un voisin pour un café +love due:sat",
+  "tk add Envoyer une photo à un proche +love due:tomorrow",
+  "tk add Appeler un proche sans nouvelles depuis longtemps +love due:sun",
+  "tk add Déjeuner avec un collègue +love due:fri",
+  "tk add Remercier une personne pour son aide +love due:today",
+  "tk add Organiser un dîner entre amis +love due:eow",
+  "tk add Préparer une carte pour un anniversaire +love due:+3d",
+  "tk add Marcher avec un ami +love due:sat",
+  "tk add Prendre des nouvelles du voisin +love due:tomorrow",
+  "tk add Demander à un collègue comment il va +love due:tomorrow",
+  "tk add Jouer à un jeu de société en famille +love due:sun",
+  "tk add Cuisiner pour une personne chère +love due:sat",
+  "tk add Envoyer un message à un proche +love due:+3d",
+  "tk add Rendre visite à une personne seule +love due:eow",
+  "tk add Appeler un ami qui me manque +love due:today",
+  "tk add Dire un mot doux à un proche +love due:today",
+  "tk add Partager un petit déjeuner avec des proches +love due:tomorrow",
+  "tk add Prêter un livre à un ami +love due:+3d",
+  "tk add Remercier un ancien professeur +love due:+1w",
+  "tk add Apporter des fleurs à une personne chère +love due:fri",
+  "tk add Appeler un ancien collègue +love due:+1w",
+  "tk add Préparer un week-end entre amis +love due:eom",
+  "tk add Partager un dessert avec un voisin +love due:sun",
+  "tk add Demander à un ami des nouvelles de sa famille +love due:+3d",
+  "tk add Faire une playlist pour un ami +love due:sat",
+  "tk add Regarder un film en famille +love due:fri",
+  "tk add Envoyer une carte postale +love due:+1w",
+  "tk add Appeler un ami de longue date +love due:sun",
+  "tk add Prendre un café avec un collègue +love due:tomorrow",
+  "tk add Écrire à un ami qui vit loin +love due:+3d",
+  "tk add Imprimer une photo pour un proche +love due:eow",
+  "tk add Rendre service à un voisin +love due:sat",
+  "tk add Organiser un pique-nique en famille +love due:sun",
+  "tk add Envoyer une image drôle à un ami +love due:+3d",
+  "tk add Faire un gâteau pour un ami +love due:sat",
+  "tk add Inviter à déjeuner un collègue un peu seul +love due:fri",
+  "tk add Envoyer un message vocal à un ami +love due:today",
+  "tk add Rendre visite à un proche +love due:eom",
+  "tk add Faire un appel vidéo en famille +love due:sun",
+  "tk add Féliciter un ami pour une bonne nouvelle +love due:today",
+  "tk add Serrer dans mes bras une personne chère +love due:today",
+  "tk add Dire à un ami trois qualités qui le rendent unique +love due:+3d",
+  "tk add Laisser un mot gentil à la maison +love due:tomorrow",
+  "tk add Appeler une personne qui vient de déménager +love due:+3d",
+  "tk add Préparer un voyage avec une personne chère +love due:eom",
+  "tk add Passer une soirée sans écrans en famille +love due:fri",
+]
 
 # --- Help (tk help). No braces in bodies: they go through str.format. ----------------
 

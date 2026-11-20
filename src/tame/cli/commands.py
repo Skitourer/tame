@@ -199,7 +199,7 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
         changed = service.complete(tasks)
         word = None
         if changed and settings.kindness and kindness.is_terminal() and not service.query():
-            word = kindness.draw(service, utc_now())
+            word = kindness.draw(service, utc_now(), "empty")
     _report("cmd.done.task", tasks, changed)
     if word is not None:
         kindness.show(word)

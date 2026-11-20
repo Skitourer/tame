@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from tame.cli import render
 from tame.cli.render import Line, Segment
 from tame.core.models import Task
+from tame.i18n import t
 
 _TABLE: dict[str, tuple[int, str]] = {
     "5b875159ff617ff8": (0, "Jung? Znxr vg lbhefrys."),
@@ -33,7 +34,6 @@ _TABLE: dict[str, tuple[int, str]] = {
 _FORTY_TWO = "Gur Nafjre. Abj, jung jnf gur Dhrfgvba?"
 _TOO_FAR = "Terng Fpbgg! Lbh'q arrq 1.21 tvtnjnggf gb tb onpx shegure."
 _ITEM = "Znxr n fnaqjvpu"
-_HINT = "Jnag n erzvaqre?  gx nqq Pnyy fbzrbar V ybir +ybir qhr:gbqnl"
 
 _random = random.Random()
 
@@ -149,10 +149,11 @@ def _heart(data: str) -> None:
     settings = load_settings()
     with open_service(settings) as service:
         word = kindness.draw(service, utc_now())
+        command = kindness.reminder(service)
     render.emit(_gradient(_z(data).split("\n")))
     kindness.show(word)
-    text, _, command = _r(_HINT).partition("  ")
-    render.emit([[], [(f"{text}  ", None), (command, "command")]])
+    intro = t("kindness.reminder_intro")
+    render.emit([[], [(f"{intro}  ", None), (command, "command")]])
 
 
 def after_done(tasks: Sequence[Task]) -> None:

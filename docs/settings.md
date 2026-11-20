@@ -81,7 +81,7 @@ Completed task 3 'Water the plants'.
 ```
 
 They are rare: at most one every three days, then by chance. One also appears when you
-complete your last task, and at the foot of a printed list. They never go into files, pipes
+complete your last task (a phrase made for that moment), and at the foot of a printed list. They never go into files, pipes
 or error messages. Don't want them? `tk config set kindness false`.
 
 ## Mistakes in the file

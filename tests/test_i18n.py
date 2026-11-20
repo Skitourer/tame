@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import tame
-from tame.i18n import available_languages, current_language, lookup, set_language, t
+from tame.i18n import available_languages, current_language, lookup, phrases, set_language, t
 
 SRC = Path(tame.__file__).parent
 # Any dotted string literal ("cmd.add.created") whose first part is a catalog section:
@@ -55,6 +55,8 @@ def catalog_keys(node: dict[str, Any], prefix: str = "") -> dict[str, str]:
     for name, value in node.items():
         if isinstance(value, dict):
             keys |= catalog_keys(value, f"{prefix}{name}.")
+        elif isinstance(value, list):  # pools: same length in every language
+            keys |= {f"{prefix}{name}[{i}]": item for i, item in enumerate(value)}
         else:
             keys[f"{prefix}{name}"] = value
     return keys
@@ -108,3 +110,13 @@ def test_missing_translation_falls_back_to_english(monkeypatch: pytest.MonkeyPat
     assert lookup("a.b", "fr") == "English"
     assert lookup("c", "fr") == "Ç"
     assert lookup("x", "fr") is None
+
+
+def test_phrases_fall_back_to_english_item_by_item(monkeypatch: pytest.MonkeyPatch) -> None:
+    catalogs = {"en": {"k": {"p": ["a", "b", "c"]}}, "fr": {"k": {"p": ["à", "bé", "cé", "dé"]}}}
+    monkeypatch.setattr("tame.i18n._catalog", catalogs.__getitem__)
+    assert phrases("k.p", "en") == ("a", "b", "c")
+    assert phrases("k.p", "fr") == ("à", "bé", "cé")  # English sets the length
+    catalogs["fr"] = {"k": {"p": ["à"]}}
+    assert phrases("k.p", "fr") == ("à", "b", "c")
+    assert phrases("k.missing", "fr") == ()

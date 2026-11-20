@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Kind words fit the moment**: finishing your last task now brings a phrase about a
+  finished list (15 of them); the others (50) appear the rest of the time, so a phrase about
+  an empty list no longer follows `tk add`. Phrases name friends, loved ones, neighbours or
+  colleagues, never a specific relative.
+- **`tk love` in your language**: its reminder is translated and changes each time (50 of
+  them), always a `tk add` line you can paste as is.
+
 ### Added
 
 - **`tk purge`**: erases deleted tasks for good (all of them, or those a filter picks), with

@@ -11,6 +11,7 @@ import pytest
 from tame.__main__ import main
 from tame.cli import eggs
 from tame.core.models import Status
+from tame.i18n import phrases
 from tame.storage.repo import DB_FILENAME, TaskRepo
 
 Capture = pytest.CaptureFixture[str]
@@ -95,7 +96,12 @@ def test_seven(capsys: Capture) -> None:
     lines = out.splitlines()
     assert len(lines) == 11  # 7 lines of art, blank line, kind word, blank line, hint
     assert lines[8].startswith("\u2665 ")
-    assert lines[10] == r("Jnag n erzvaqre?  gx nqq Pnyy fbzrbar V ybir +ybir qhr:gbqnl")
+    intro, _, command = lines[10].partition("  ")
+    assert intro == "Want a reminder?"
+    assert command in phrases("kindness.reminders")
+    run(capsys, "pbasvt frg ynathntr se")
+    assert run(capsys, "ybir")[1].splitlines()[10].startswith("Envie d'un rappel ?  tk add ")
+    run(capsys, "pbasvt frg ynathntr ra")
     run(capsys, "pbasvt frg xvaqarff snyfr")
     assert run(capsys, "ybir")[1].splitlines()[8].startswith("\u2665 ")  # asked for: always
 
