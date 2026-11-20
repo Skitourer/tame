@@ -1,9 +1,9 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from tame.core.filters import ALL, Filter
-from tame.core.models import NONE, Priority, Status, Task
+from tame.core.filters import ALL, Filter, VirtualTagger
+from tame.core.models import NONE, Annotation, Priority, Status, Task
 
 T0 = datetime(2026, 11, 19, tzinfo=UTC)
 
@@ -130,3 +130,68 @@ def test_due_before_and_after() -> None:
 def test_due_filters_exclude_tasks_without_due() -> None:
     assert not Filter(due_before=T0).matches(task())
     assert not Filter(due_after=T0).matches(task())
+
+
+# --- Virtual tags (SPEC §4) -------------------------------------------------------------
+
+TZ = timezone(timedelta(hours=1))
+NOW = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)  # Thursday 10:30 local
+OTHER = "2a2b3c4d-0000-4000-8000-000000000000"
+DATE_TAGS = {"OVERDUE", "TODAY", "TOMORROW", "WEEK", "MONTH", "DUE"}
+
+
+def local(*args: int) -> datetime:
+    return datetime(*args, tzinfo=TZ).astimezone(UTC)  # type: ignore[misc]
+
+
+def tagger(pending: frozenset[str] = frozenset()) -> VirtualTagger:
+    return VirtualTagger(NOW, pending, TZ)
+
+
+@pytest.mark.parametrize(
+    ("due", "expected"),
+    [
+        (local(2026, 11, 19, 8), {"OVERDUE", "TODAY", "WEEK", "MONTH"}),
+        (local(2026, 11, 19, 23, 59), {"TODAY", "WEEK", "MONTH", "DUE"}),
+        (local(2026, 11, 20), {"TOMORROW", "WEEK", "MONTH", "DUE"}),
+        (local(2026, 11, 16), {"OVERDUE", "WEEK", "MONTH"}),
+        (local(2026, 11, 15, 23, 59), {"OVERDUE", "MONTH"}),
+        (local(2026, 11, 23), {"MONTH", "DUE"}),
+        (local(2026, 11, 26, 10, 29), {"MONTH", "DUE"}),
+        (local(2026, 11, 26, 10, 30), {"MONTH"}),
+        (local(2026, 12, 1), set()),
+        (local(2026, 10, 31), {"OVERDUE"}),
+        (None, set()),
+    ],
+)
+def test_virtual_date_tags(due: datetime | None, expected: set[str]) -> None:
+    assert tagger()(task(due=due)) & DATE_TAGS == expected
+
+
+def test_virtual_tags_of_plain_and_rich_tasks() -> None:
+    plain = task(project=None, tags=frozenset())
+    assert tagger()(plain) == {"UNBLOCKED"}
+    rich = task(annotations=(Annotation(T0, "note"),))
+    assert tagger()(rich) == {"ANNOTATED", "PROJECT", "TAGGED", "UNBLOCKED"}
+
+
+def test_blocked_only_by_pending_dependencies() -> None:
+    blocked = task(depends=frozenset({OTHER, "gone"}))
+    assert "BLOCKED" in tagger(frozenset({OTHER}))(blocked)
+    assert "UNBLOCKED" in tagger(frozenset())(blocked)
+
+
+def test_closed_tasks_have_no_status_dependent_tags() -> None:
+    done = task(
+        status=Status.COMPLETED, id=None, due=local(2026, 11, 1), depends=frozenset({OTHER})
+    )
+    assert tagger(frozenset({OTHER}))(done) == {"PROJECT", "TAGGED"}
+
+
+def test_filter_on_virtual_tags() -> None:
+    where = Filter(virtual_in=frozenset({"TAGGED"}), virtual_out=frozenset({"OVERDUE"}))
+    assert where.uses_virtual_tags
+    assert not Filter().uses_virtual_tags
+    assert where.matches(task(), frozenset({"TAGGED"}))
+    assert not where.matches(task(), frozenset({"TAGGED", "OVERDUE"}))
+    assert not where.matches(task(), frozenset())

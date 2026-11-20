@@ -397,11 +397,48 @@ def test_info_spec_example(capsys: Capture) -> None:
         "Status",
         "Project",
         "Tags",
+        "Virtual",
         "Priority",
         "Entered",
         "Modified",
         "Urgency",
     ]
+    assert "PROJECT TAGGED UNBLOCKED" in out
+
+
+# --- virtual tags (0.3) -------------------------------------------------------------
+
+
+def test_virtual_tags_filter(capsys: Capture) -> None:
+    run(capsys, "add", "late", "due:yesterday", "+x")
+    run(capsys, "add", "soon", "due:+3d", "project:home")
+    run(capsys, "add", "plain")
+    assert descriptions(capsys, "+OVERDUE") == ["1 late"]
+    assert descriptions(capsys, "+DUE") == ["2 soon"]
+    assert descriptions(capsys, "-TAGGED", "-PROJECT") == ["3 plain"]
+    assert descriptions(capsys, "+UNBLOCKED", "-OVERDUE", "+PROJECT") == ["2 soon"]
+    assert run(capsys, "+OVERDUE", "done")[0] == 0
+    assert run(capsys, "status:completed", "+OVERDUE", "list")[0] == 2  # pending only
+
+
+@pytest.mark.parametrize("argv", [("add", "x", "+TODAY"), ("1", "modify", "+OVERDUE")])
+def test_virtual_tags_cannot_be_set(capsys: Capture, argv: tuple[str, ...]) -> None:
+    run(capsys, "add", "x")
+    code, out, err = run(capsys, *argv)
+    assert (code, out) == (1, "")
+    assert err.startswith("'")
+    assert "is a virtual tag" in err
+
+
+def test_imported_tag_with_virtual_name_is_kept_and_removable(
+    capsys: Capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdin_bytes(monkeypatch, b'[{"description": "imported", "tags": ["TODAY", "x"]}]')
+    run(capsys, "import")
+    assert json.loads(run(capsys, "export")[1])[0]["tags"] == ["TODAY", "x"]
+    assert run(capsys, "+TODAY", "list")[0] == 2  # the virtual tag: no due date
+    run(capsys, "1", "modify", "-TODAY")
+    assert json.loads(run(capsys, "export")[1])[0]["tags"] == ["x"]
 
 
 def test_info_without_filter_shows_all_pending(capsys: Capture) -> None:

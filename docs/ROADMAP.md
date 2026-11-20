@@ -12,10 +12,10 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 | Feature | Example | Notes |
 |---|---|---|
 | Schema migration v2 | – | First PR: add `annotations(uuid, entry, description)` and `depends(uuid, depends_on)` tables in one migration, so 0.4 needs no second schema bump. Promote TW `annotations`/`depends` from `extra`. |
-| Virtual tags | `tk +OVERDUE list`, `tk +TODAY` | Computed in `core/filters.py`, uppercase, read-only: `OVERDUE TODAY TOMORROW WEEK MONTH DUE ACTIVE BLOCKED UNBLOCKED WAITING ANNOTATED PROJECT TAGGED`. Cannot be set with `+X`. No schema change. |
+| Virtual tags | `tk +OVERDUE list`, `tk +TODAY` | Computed in `core/filters.py`, uppercase, read-only: `OVERDUE TODAY TOMORROW WEEK MONTH DUE BLOCKED UNBLOCKED ANNOTATED PROJECT TAGGED`. Cannot be set with `+X`. No schema change. `WAITING` and `ACTIVE` come later with `wait:` and start/stop. |
 | `next` report | `tk next` | Top N pending by urgency (`next_limit`, default 10), compact columns. Candidate default command (`default_command` setting, default stays `list`). |
 | Annotations | `tk 3 annotate Call back Monday`, `tk 3 denotate Call` | Timestamped notes; shown in `info`, under the task in `print`, as a count in `list`. `+ANNOTATED`. TW round-trip native. |
-| `wait:` | `tk 4 modify wait:mon` | Hidden from `list`/`next` until the date; `+WAITING` or `status:all` shows them. TW `waiting` status maps to `pending` + `wait`. |
+| `wait:` | `tk 4 modify wait:mon` | Hidden from `list`/`next` until the date; Adds the `+WAITING` virtual tag (reserved name from then on); `+WAITING` or `status:all` shows them. TW `waiting` status maps to `pending` + `wait`. |
 | Shell completion | `tk completion powershell >> $PROFILE` | Commands, attributes, projects, tags, date keywords. PowerShell and bash. Data from a hidden `tk _complete` command (fast path, no rich import). |
 
 ## 0.4 – power on demand
@@ -24,7 +24,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 |---|---|---|
 | Dependencies | `tk 5 modify depends:3,4` | `+BLOCKED` while a dependency is pending; blocked tasks lose urgency, blocking tasks gain some (config coeffs). Cycle detection → usage error. |
 | Recurrence | `tk add Backup recur:weekly due:fri` | `daily weekly monthly yearly` + `Nd/Nw/Nm`; `until:` optional. Next instance created on `done` (no template task, no background job). TW `recur` imported. |
-| start / stop | `tk 3 start`, `tk stop` | `start` timestamp; `+ACTIVE`; time spent summed in `info`. One active task by default (`multiple_active` setting). Active tasks gain urgency. |
+| start / stop | `tk 3 start`, `tk stop` | `start` timestamp; adds the `+ACTIVE` virtual tag (reserved name from then on); time spent summed in `info`. One active task by default (`multiple_active` setting). Active tasks gain urgency. |
 | Advanced filters | `tk '(+phone or +mail) and pri:H'` | `or`, `and`, `not`, parentheses, `/regex/` on description. Only when typed: plain filters parse exactly as today. |
 
 ## 0.5 – automate and customize

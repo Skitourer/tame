@@ -37,7 +37,7 @@ If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`
 |---|---|
 | `project:home` `pri:H` `due:fri` | set the attribute |
 | `project:` `pri:` `due:` | clear it (`modify` only) |
-| `+tag` | add the tag |
+| `+tag` | add the tag (not a [virtual tag](#virtual-tags)) |
 | `-tag` | remove the tag (`modify` only; for `add` it is a plain word) |
 | other words | the description (`modify`: replaces it) |
 
@@ -73,7 +73,7 @@ matches every status.
 |---|---|
 | `3` `3,5` `2-6` `1,4-6` | tasks with these short ids |
 | `1a2b3c4d`, `1a2b3c4d-5e6f` | tasks whose uuid starts with this (8+ hex chars; dashes ignored) |
-| `+tag` / `-tag` | tasks having / lacking the tag |
+| `+tag` / `-tag` | tasks having / lacking the tag, or a [virtual tag](#virtual-tags) |
 | `project:home` | project `home` and its sub-projects (`home.garden`), not `homework` |
 | `project:` | tasks without a project |
 | `pri:H` (`priority:`) | exact priority; `pri:` = no priority |
@@ -83,6 +83,35 @@ matches every status.
 
 Ids and uuid prefixes together form one selection: `tk 3 1a2b3c4d list` shows task 3 *and*
 the task with that uuid. A token of digits only is always an id.
+
+## Virtual tags
+
+TAME computes these tags from the other fields; you never set them. Use them like tags in
+filters: `+NAME` keeps the tasks that have it, `-NAME` the tasks that do not. They are
+uppercase and English, whatever the interface language.
+
+| Tag | Tasks that… |
+|---|---|
+| `OVERDUE` | are past their due date |
+| `TODAY` / `TOMORROW` | are due today / tomorrow |
+| `WEEK` / `MONTH` | are due this week (Monday to Sunday) / this month, earlier days included |
+| `DUE` | are due in the next 7 days |
+| `BLOCKED` / `UNBLOCKED` | depend / do not depend on another pending task |
+| `ANNOTATED` | have an annotation |
+| `PROJECT` / `TAGGED` | have a project / at least one tag |
+
+The first eight only apply to pending tasks: a completed task is never `OVERDUE`. Days,
+weeks and months follow your local calendar. `tk info` lists the virtual tags of a task.
+
+These names are reserved: `tk add x +TODAY` is refused. A real tag with one of these names,
+imported from Taskwarrior, is kept and exported back; `tk 3 modify -TODAY` removes it.
+
+```sh
+tk +OVERDUE                 # late tasks
+tk +TODAY print             # today's page
+tk +WEEK -BLOCKED           # due this week, and nothing to wait for
+tk project:home -TAGGED     # home tasks with no tag at all
+```
 
 ## Examples
 

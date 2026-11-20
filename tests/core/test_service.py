@@ -43,6 +43,7 @@ def test_add_minimal(service: TaskService) -> None:
     [
         ({"description": " "}, "error.empty_description"),
         ({"description": "x", "tags": ["+bad"]}, "error.invalid_tag"),
+        ({"description": "x", "tags": ["OVERDUE"]}, "error.virtual_tag"),
         ({"description": "x", "project": "a..b"}, "error.invalid_project"),
         ({"description": "x", "priority": "Z"}, "error.invalid_priority"),
     ],
@@ -341,3 +342,22 @@ def test_undo_import(service: TaskService, repo: TaskRepo, frozen_now: datetime)
     assert [t.description for t in result.removed] == ["new"]
     assert service.query() == []
     assert repo.get(one.uuid).status is Status.COMPLETED  # type: ignore[union-attr]
+
+
+def test_modify_rejects_virtual_tag(service: TaskService) -> None:
+    task = service.add("x")
+    with pytest.raises(ValidationError) as exc:
+        service.modify([task], Changes(tags_add=frozenset({"TAGGED"})))
+    assert exc.value.key == "error.virtual_tag"
+
+
+def test_query_with_virtual_tags(service: TaskService, frozen_now: datetime) -> None:
+    late = service.add("late", due=frozen_now - timedelta(days=1))
+    free = service.add("free")
+    blocked = replace(free, uuid=str(uuid.uuid4()), id=None, depends=frozenset({free.uuid}))
+    service.import_tasks([blocked])
+    assert service.query(Filter(virtual_in=frozenset({"OVERDUE"}))) == [late]
+    assert [t.description for t in service.query(Filter(virtual_in=frozenset({"BLOCKED"})))] == [
+        "free"
+    ]
+    assert service.query(Filter(virtual_out=frozenset({"OVERDUE", "BLOCKED"}))) == [free]
