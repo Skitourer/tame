@@ -90,7 +90,7 @@ All filters: [Filters & grammar](grammar.md).
 tk config set language fr       # French interface
 tk config set date_format %d/%m/%Y
 tk alias install task           # also run tame as `task`
-tk completion powershell >> $PROFILE   # Tab completion (new terminal needed)
+tk config set completion true  # Tab completion (in new terminals)
 ```
 
 More in [Settings](settings.md). Coming from Taskwarrior? See

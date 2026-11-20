@@ -172,6 +172,12 @@ OPTIONS: tuple[Option, ...] = (
         lambda value: value >= 1,
     ),
     Option(
+        "completion",
+        False,
+        "Tab completion in your shell profile (PowerShell, bash), for new terminals.",
+        "setting.expected.bool",
+    ),
+    Option(
         "undo.retention",
         "3m",
         "Keep undo history this long: forever, or <n>d/w/m/y (m = 30 days, y = 365 days).",
@@ -246,6 +252,11 @@ class Settings:
     def next_limit(self) -> int:
         """How many tasks ``next`` shows."""
         return int(self.values["next_limit"])
+
+    @property
+    def completion(self) -> bool:
+        """Whether TAME keeps its Tab completion block in the shell profiles."""
+        return bool(self.values["completion"])
 
     @property
     def undo_retention(self) -> timedelta | None:

@@ -52,3 +52,13 @@ class _Never:
 def no_random_extras(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep random output out of tests (see tests/cli/test_eggs.py)."""
     monkeypatch.setattr("tame.cli.eggs._random", _Never())
+
+
+def _no_real_profiles() -> list[object]:
+    raise AssertionError("a test tried to find the real shell profiles")
+
+
+@pytest.fixture(autouse=True)
+def isolated_shell_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never touch the user's real shell profiles: tests that need some inject them."""
+    monkeypatch.setattr("tame.cli.shellprofile.discover", _no_real_profiles)

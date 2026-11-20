@@ -16,7 +16,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 | `next` report | `tk next` | Top N pending by urgency (`next_limit`, default 10), compact columns. Candidate default command (`default_command` setting, default stays `list`). |
 | Annotations | `tk 3 annotate Call back Monday`, `tk 3 denotate Call` | Timestamped notes; shown in `info`, under the task in `print`, as a count in `list`. `+ANNOTATED`. TW round-trip native. |
 | `wait:` | `tk 4 modify wait:mon` | Hidden from `list`/`next` until the date; Adds the `+WAITING` virtual tag (reserved name from then on); `+WAITING` or `status:all` shows them. TW `waiting` status maps to `pending` + `wait`. |
-| Shell completion | `tk completion powershell >> $PROFILE` | Commands, attributes, projects, tags, date keywords. PowerShell and bash. Data from a hidden `tk _complete` command (fast path, no rich import). |
+| Shell completion | `tk config set completion true` | Commands, attributes, projects, tags, date keywords. PowerShell and bash. Data from a hidden `tk _complete` command (fast path, no rich import). |
 
 ## 0.4 – power on demand
 

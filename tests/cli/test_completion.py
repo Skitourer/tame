@@ -150,7 +150,14 @@ def test_completion_command(capsys: Capture, monkeypatch: pytest.MonkeyPatch) ->
     assert main(["completion", "powershell"]) == 0
     assert "-CommandName tk, tame, task" in capsys.readouterr().out
     assert main(["completion"]) == 1
-    assert capsys.readouterr().err.startswith("Unknown shell ''")
+    assert capsys.readouterr().err == (
+        "Usage: tk completion powershell | bash (prints the script). "
+        "To turn Tab completion on: tk config set completion true\n"
+    )
+    assert main(["completion", "powershell", "x"]) == 1
+    assert capsys.readouterr().err.startswith("Usage: tk completion")
+    assert main(["completion", "cmd"]) == 1
+    assert capsys.readouterr().err == "Unknown shell 'cmd': use one of powershell, bash.\n"
 
 
 @pytest.mark.skipif(shutil.which("powershell") is None, reason="needs Windows PowerShell")
