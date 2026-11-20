@@ -39,9 +39,9 @@ another `task` comes first in your `PATH`. `tk alias remove task` takes it away.
 
 ## What is different
 
-- No recurrence, dependencies, annotations, `wait`, contexts, custom reports, hooks, sync or
-  UDAs. These are kept on import and exported back unchanged (see below), but TAME does not use
-  them.
+- Annotations work as in Taskwarrior (`annotate`, `denotate`). No recurrence, dependency
+  commands, `wait`, contexts, custom reports, hooks, sync or UDAs yet. These are kept on
+  import and exported back unchanged (see below).
 - One status filter value at a time, plus `status:all`. No `or` and no parentheses.
 - Priorities are H, M and L only.
 - `delete` always asks for confirmation; `tk undo` goes back any number of steps.

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from tame.core.dates import utc_now
 from tame.core.filters import Filter, VirtualTagger
 from tame.core.models import (
+    Annotation,
     Changes,
     Status,
     Task,
@@ -16,7 +17,7 @@ from tame.core.models import (
     check_project,
     parse_priority,
 )
-from tame.errors import NoMatchError
+from tame.errors import NoMatchError, ValidationError
 from tame.storage.repo import TaskRepo
 
 Clock = Callable[[], datetime]
@@ -169,6 +170,56 @@ class TaskService:
                 self._repo.update(task)
         return changed
 
+    def annotate(self, tasks: Iterable[Task], text: str) -> list[Task]:
+        """Add an annotation (entry = now) to each of ``tasks``; ``modified`` = now.
+
+        Returns:
+            The changed tasks, as stored.
+
+        Raises:
+            ValidationError: If ``text`` is blank.
+        """
+        if not (text := text.strip()):
+            raise ValidationError("error.empty_annotation")
+        now = self._clock()
+        note = Annotation(now, text)
+        changed = [
+            replace(task, annotations=(*task.annotations, note), modified=now) for task in tasks
+        ]
+        return self._write("annotate", now, changed)
+
+    def denotate(self, tasks: Iterable[Task], text: str = "") -> list[Task]:
+        """Remove one annotation from each of ``tasks``; ``modified`` = now.
+
+        The annotation removed is the one whose text equals ``text`` (case-insensitive),
+        else the only one containing it, else (``text`` empty) the most recent. Tasks
+        without such an annotation are left as they are.
+
+        Returns:
+            The changed tasks, as stored.
+
+        Raises:
+            ValidationError: If several annotations of a task contain ``text``; nothing
+                is changed.
+        """
+        now = self._clock()
+        changed = []
+        for task in tasks:
+            if (index := _annotation_to_remove(task, text.strip())) is not None:
+                notes = task.annotations[:index] + task.annotations[index + 1 :]
+                changed.append(replace(task, annotations=notes, modified=now))
+        return self._write("denotate", now, changed)
+
+    def _write(self, cmd: str, now: datetime, changed: list[Task]) -> list[Task]:
+        """Store ``changed`` tasks in one undoable transaction; nothing to do if empty."""
+        if not changed:
+            return []
+        with self._repo.transaction():
+            self._log(now, cmd, self._snapshot(changed))
+            for task in changed:
+                self._repo.update(task)
+        return changed
+
     def import_tasks(self, tasks: Iterable[Task]) -> ImportResult:
         """Merge ``tasks`` by uuid: add new ones, update older ones, skip the others.
 
@@ -288,3 +339,29 @@ class TaskService:
     def virtual_tagger(self) -> VirtualTagger:
         """Return a tagger computing virtual tags as of now, in the system time zone."""
         return VirtualTagger(self._clock(), self._repo.pending_ids())
+
+
+def _annotation_to_remove(task: Task, text: str) -> int | None:
+    """Return the index of the annotation ``denotate`` removes from ``task``, if any.
+
+    Raises:
+        ValidationError: If several annotations contain ``text``.
+    """
+    notes = task.annotations
+    if not notes:
+        return None
+    if not text:
+        return max(range(len(notes)), key=lambda i: (notes[i].entry, i))
+    wanted = text.casefold()
+    exact = [i for i, note in enumerate(notes) if note.description.casefold() == wanted]
+    if exact:
+        return exact[0]
+    partial = [i for i, note in enumerate(notes) if wanted in note.description.casefold()]
+    if len(partial) > 1:
+        raise ValidationError(
+            "error.ambiguous_annotation",
+            task=str(task.id) if task.id is not None else task.uuid[:8],
+            text=text,
+            candidates=", ".join(f"'{notes[i].description}'" for i in partial),
+        )
+    return partial[0] if partial else None

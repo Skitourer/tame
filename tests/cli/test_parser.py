@@ -39,7 +39,9 @@ def test_match_command_none(token: str) -> None:
     assert match_command(token) is None
 
 
-@pytest.mark.parametrize(("token", "candidates"), [("d", "delete, done"), ("i", "import, info")])
+@pytest.mark.parametrize(
+    ("token", "candidates"), [("d", "delete, denotate, done"), ("i", "import, info")]
+)
 def test_match_command_ambiguous(token: str, candidates: str) -> None:
     with pytest.raises(UsageError) as exc:
         match_command(token)

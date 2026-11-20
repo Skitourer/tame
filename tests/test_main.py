@@ -42,7 +42,7 @@ def test_unknown_word_is_a_list_filter(capsys: Capture) -> None:
 
 
 def test_ambiguous_command(capsys: Capture) -> None:
-    assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, done\n")
+    assert run(capsys, "3", "d") == (1, "", "Ambiguous command 'd': delete, denotate, done\n")
 
 
 def test_filter_not_allowed(capsys: Capture) -> None:
@@ -671,8 +671,8 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
     assert lines[0] == "Usage: tk [filter] <command> [arguments]   (no command = list)"
     listed = [line.split()[0] for line in lines[3 : 3 + len(HELP_COMMANDS)]]
     assert listed == list(HELP_COMMANDS)
-    assert "  add      Create a task" in lines
-    assert "  export   Export tasks as Taskwarrior JSON" in lines
+    assert "  add       Create a task" in lines
+    assert "  export    Export tasks as Taskwarrior JSON" in lines
     assert "Topics: tk help filters | dates | urgency | tour | license | credits" in out
 
 
@@ -738,7 +738,7 @@ def test_help_unknown_subject(capsys: Capture) -> None:
         "",
         "No help for 'frob'. Run 'tk help' for the list.\n",
     )
-    assert run(capsys, "help", "d")[2] == "Ambiguous command 'd': delete, done\n"
+    assert run(capsys, "help", "d")[2] == "Ambiguous command 'd': delete, denotate, done\n"
     assert run(capsys, "help", "a", "b")[0] == 1
 
 
@@ -1093,3 +1093,53 @@ def test_default_command_next(capsys: Capture) -> None:
 @pytest.mark.parametrize(("key", "value"), [("default_command", "info"), ("next_limit", "0")])
 def test_next_settings_validated(capsys: Capture, key: str, value: str) -> None:
     assert run(capsys, "config", "set", key, value)[0] == 1
+
+
+# --- annotate / denotate (0.3) ------------------------------------------------------
+
+
+def test_annotate_and_denotate_spec_examples(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank")
+    assert run(capsys, "1", "annotate", "Call", "back", "Monday") == (
+        0,
+        "Annotated task 1 'Call bank'.\n",
+        "",
+    )
+    run(capsys, "annotate", "1", "--", "done", "by", "mail")  # classic order, `--`
+    assert "Call bank [2]" in run(capsys, "list")[1]
+    assert "Call bank [2]" in run(capsys, "next")[1]
+    info = run(capsys, "1", "info")[1]
+    assert "Call back Monday" in info and "done by mail" in info
+    assert run(capsys, "+ANNOTATED", "list")[0] == 0
+    assert run(capsys, "1", "denotate", "Call") == (0, "Denotated task 1 'Call bank'.\n", "")
+    assert "Call back Monday" not in run(capsys, "1", "info")[1]
+    run(capsys, "undo")
+    assert "Call back Monday" in run(capsys, "1", "info")[1]
+
+
+def test_denotate_errors(capsys: Capture) -> None:
+    run(capsys, "add", "x")
+    assert run(capsys, "1", "denotate") == (2, "", "No note to remove.\n")
+    run(capsys, "1", "annotate", "Call back")
+    run(capsys, "1", "annotate", "Call bank")
+    code, _, err = run(capsys, "1", "denotate", "call")
+    assert code == 1
+    assert err == (
+        "Several notes of task 1 contain 'call': 'Call back', 'Call bank'. Give more of the text.\n"
+    )
+    assert run(capsys, "1", "denotate", "zzz")[0] == 2
+
+
+def test_annotate_needs_filter_and_text(capsys: Capture) -> None:
+    run(capsys, "add", "x")
+    assert run(capsys, "annotate", "text")[0] == 1  # no filter
+    assert run(capsys, "1", "annotate")[2].startswith("Nothing to annotate")
+
+
+@pytest.mark.usefixtures("five_tasks")
+def test_annotate_bulk_asks(capsys: Capture, monkeypatch: pytest.MonkeyPatch) -> None:
+    answer(monkeypatch, "n\n")
+    assert run(capsys, "+t", "annotate", "note")[1].startswith("Annotate 5 tasks? (y/N)")
+    assert "[1]" not in run(capsys, "list")[1]
+    run(capsys, "+t", "annotate", "note", "--yes")
+    assert run(capsys, "list")[1].count("[1]") == 5

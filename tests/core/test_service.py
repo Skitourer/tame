@@ -6,7 +6,7 @@ import pytest
 
 from tame.core.dates import utc_now
 from tame.core.filters import Filter
-from tame.core.models import NONE, Changes, Priority, Status, Task
+from tame.core.models import NONE, Annotation, Changes, Priority, Status, Task
 from tame.core.service import TaskService
 from tame.errors import NoMatchError, ValidationError
 from tame.storage.repo import TaskRepo
@@ -361,3 +361,64 @@ def test_query_with_virtual_tags(service: TaskService, frozen_now: datetime) -> 
         "free"
     ]
     assert service.query(Filter(virtual_out=frozenset({"OVERDUE", "BLOCKED"}))) == [free]
+
+
+# --- annotate / denotate ------------------------------------------------------------
+
+
+def notes(task: Task) -> list[str]:
+    return [note.description for note in task.annotations]
+
+
+def test_annotate_adds_note_and_is_undoable(service: TaskService, frozen_now: datetime) -> None:
+    task = service.add("x")
+    (changed,) = service.annotate([task], "  first  ")
+    assert changed.annotations == (Annotation(frozen_now, "first"),)
+    assert changed.modified == frozen_now
+    assert service.query() == [changed]
+    assert service.undo().cmd == "annotate"
+    assert service.query()[0].annotations == ()
+
+
+def test_annotate_rejects_blank(service: TaskService) -> None:
+    with pytest.raises(ValidationError) as exc:
+        service.annotate([service.add("x")], " ")
+    assert exc.value.key == "error.empty_annotation"
+
+
+def annotated(service: TaskService, *texts: str) -> Task:
+    task = service.add("x")
+    for text in texts:
+        (task,) = service.annotate([task], text)
+    return task
+
+
+@pytest.mark.parametrize(
+    ("text", "left"),
+    [
+        ("call back", ["Call bank", "mail sent"]),  # exact, any case, wins over partial
+        ("mail", ["Call back", "Call bank"]),  # the only one containing it
+        ("", ["Call back", "Call bank"]),  # the most recent
+    ],
+)
+def test_denotate_picks_one_note(service: TaskService, text: str, left: list[str]) -> None:
+    task = annotated(service, "Call back", "Call bank", "mail sent")
+    (changed,) = service.denotate([task], text)
+    assert notes(changed) == left
+
+
+def test_denotate_ambiguous_changes_nothing(service: TaskService) -> None:
+    task = annotated(service, "Call back", "Call bank")
+    with pytest.raises(ValidationError) as exc:
+        service.denotate([task], "call")
+    assert exc.value.key == "error.ambiguous_annotation"
+    assert exc.value.params["candidates"] == "'Call back', 'Call bank'"
+    assert notes(service.query()[0]) == ["Call back", "Call bank"]
+
+
+def test_denotate_skips_tasks_without_match(service: TaskService) -> None:
+    plain = service.add("plain")
+    task = annotated(service, "note")
+    assert service.denotate([plain, task], "other") == []
+    assert service.denotate([plain], "") == []
+    assert [t.description for t in service.denotate([plain, task], "note")] == ["x"]

@@ -235,6 +235,54 @@ def cmd_modify(command: ParsedCommand, settings: Settings) -> int:
     return ExitCode.OK
 
 
+def cmd_annotate(command: ParsedCommand, settings: Settings) -> int:
+    """``annotate``: add the argument text as an annotation to the matching tasks."""
+    where = _required_filter(command)
+    if not (text := _text(command.args)):
+        raise UsageError("error.empty_annotation")
+    with open_service(settings) as service:
+        tasks = _matching(service, where)
+        if not _confirmed(
+            command,
+            tasks,
+            "confirm.annotate.one",
+            "confirm.annotate.many",
+            threshold=settings.confirm_threshold,
+        ):
+            return ExitCode.OK
+        changed = service.annotate(tasks, text)
+    _report("cmd.annotate.task", tasks, changed)
+    return ExitCode.OK
+
+
+def cmd_denotate(command: ParsedCommand, settings: Settings) -> int:
+    """``denotate``: remove one annotation (matching the argument text) from the tasks."""
+    where = _required_filter(command)
+    text = _text(command.args)
+    with open_service(settings) as service:
+        tasks = _matching(service, where)
+        if not _confirmed(
+            command,
+            tasks,
+            "confirm.denotate.one",
+            "confirm.denotate.many",
+            threshold=settings.confirm_threshold,
+        ):
+            return ExitCode.OK
+        if not (changed := service.denotate(tasks, text)):
+            raise NoMatchError("error.no_annotation" if text else "error.no_notes", text=text)
+    _report("cmd.denotate.task", tasks, changed)
+    return ExitCode.OK
+
+
+def _text(args: Sequence[str]) -> str:
+    """Join free-text arguments; the first ``--`` (rule 5) is dropped."""
+    words = list(args)
+    if "--" in words:
+        words.remove("--")
+    return " ".join(words).strip()
+
+
 def cmd_info(command: ParsedCommand, settings: Settings) -> int:
     """``info``: print every field of the matching tasks."""
     where = parse_filter(command.filter)
@@ -460,6 +508,8 @@ HELP_COMMANDS = (
     "next",
     "info",
     "modify",
+    "annotate",
+    "denotate",
     "done",
     "delete",
     "undo",
@@ -537,7 +587,9 @@ def help_text(subject: str) -> str:
 HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "add": cmd_add,
     "alias": cmd_alias,
+    "annotate": cmd_annotate,
     "delete": cmd_delete,
+    "denotate": cmd_denotate,
     "done": cmd_done,
     "export": cmd_export,
     "import": cmd_import,

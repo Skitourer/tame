@@ -11,6 +11,8 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 | [`next`](#next) | the most urgent tasks you can do now |
 | [`info`](#info) | show every field of tasks |
 | [`modify`](#modify) | change tasks |
+| [`annotate`](#annotate) | add a dated note to tasks |
+| [`denotate`](#denotate) | remove a note from tasks |
 | [`done`](#done) | mark tasks completed |
 | [`delete`](#delete) | delete tasks |
 | [`undo`](#undo) | revert the last change |
@@ -107,6 +109,41 @@ changing more than `confirm_threshold` tasks (default 3); `--yes` skips the ques
 tk 12 modify due:mon -phone
 tk 3 modify project: Call the bank
 tk +phone modify pri:L --yes
+```
+
+## annotate
+
+```text
+tk <filter> annotate <text>
+```
+
+Adds a dated note to each matching task: a follow-up, a phone number, what was said on the
+last call. [`info`](#info) shows the notes, [`print`](#print) prints them under the task, and
+`list`/`next` show how many a task has, dim, after its description: `Call bank [2]`. A filter
+is required; asks before changing more than `confirm_threshold` tasks, `--yes` skips it.
+After `--`, words are text even if they look like a command. `tk undo` removes the note.
+
+```sh
+tk 3 annotate Call back Monday, ask for Ann
+tk annotate 3 Call back Monday      # also works: ids right after the command are the filter
+tk 3 annotate -- done by mail
+tk +ANNOTATED                       # tasks with notes (a virtual tag)
+```
+
+## denotate
+
+```text
+tk <filter> denotate [text]
+```
+
+Removes one note from each matching task: the one with exactly this text (any case), else the
+only one containing it, else, without text, the most recent. If several notes contain the
+text, nothing is removed and the error lists them: give more of the text. No note removed at
+all → exit code 2.
+
+```sh
+tk 3 denotate Call back
+tk 3 denotate                       # the most recent note
 ```
 
 ## done

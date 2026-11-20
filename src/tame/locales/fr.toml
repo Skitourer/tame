@@ -25,6 +25,12 @@ task = "Tâche {task} « {description} » supprimée."
 task = "Tâche {task} « {description} » modifiée."
 unchanged = "Aucune tâche modifiée."
 
+[cmd.annotate]
+task = "Tâche {task} « {description} » annotée."
+
+[cmd.denotate]
+task = "Note retirée de la tâche {task} « {description} »."
+
 [cmd.undo]
 header = "Annulé : « {command} »."
 restored = "Tâche {task} « {description} » restaurée."
@@ -97,6 +103,14 @@ many = "Terminer {count} tâches ?"
 one = "Supprimer la tâche {task} « {description} » ?"
 many = "Supprimer {count} tâches ?"
 
+[confirm.annotate]
+one = "Annoter la tâche {task} « {description} » ?"
+many = "Annoter {count} tâches ?"
+
+[confirm.denotate]
+one = "Retirer une note de la tâche {task} « {description} » ?"
+many = "Retirer une note de {count} tâches ?"
+
 [confirm.modify]
 one = "Modifier la tâche {task} « {description} » ?"
 many = "Modifier {count} tâches ?"
@@ -131,6 +145,10 @@ invalid_id_range = "Plage d'ids invalide : « {token} »"
 invalid_status = "Statut invalide : « {value} » (attendu : pending, completed, deleted ou all)"
 unexpected_argument = "Argument inattendu : {arg}"
 filter_required = "La commande « {command} » demande un filtre, p. ex. « tk 3 {command} »."
+empty_annotation = "Rien à annoter : donnez le texte de la note."
+ambiguous_annotation = "Plusieurs notes de la tâche {task} contiennent « {text} » : {candidates}. Précisez le texte."
+no_annotation = "Aucune note ne correspond à « {text} »."
+no_notes = "Aucune note à retirer."
 no_modifications = "Rien à modifier : donnez attr:valeur, attr:, +tag, -tag ou une nouvelle description."
 task_not_found = "Tâche {uuid} introuvable."
 unknown_attribute = "Attribut inconnu : {name}"
@@ -314,6 +332,33 @@ Exemples :
   tk +tel modify pri:L --yes
 '''
 
+[help.cmd.annotate]
+summary = "Ajouter une note à des tâches"
+usage = "tk <filtre> annotate <texte>"
+body = '''
+Ajoute une note datée à chaque tâche correspondante. tk info affiche les notes,
+tk print les imprime sous la tâche, et list indique combien une tâche en a :
+Appeler la banque [2]. Un filtre est obligatoire. Demande confirmation au-delà de
+confirm_threshold tâches ; --yes l'évite.
+
+Exemples :
+  tk 3 annotate Rappeler lundi, demander Mme Martin
+  tk 3 annotate -- done par mail     (après --, les mots sont du texte)
+'''
+
+[help.cmd.denotate]
+summary = "Retirer une note de tâches"
+usage = "tk <filtre> denotate [texte]"
+body = '''
+Retire une note de chaque tâche correspondante : celle qui a exactement ce texte
+(casse ignorée), sinon la seule qui le contient, sinon, sans texte, la plus récente.
+Si plusieurs notes contiennent le texte, rien n'est retiré : précisez-le.
+
+Exemples :
+  tk 3 denotate Rappeler
+  tk 3 denotate                      (la note la plus récente)
+'''
+
 [help.cmd.done]
 summary = "Marquer des tâches terminées"
 usage = "tk <filtre> done [--yes]"
@@ -344,8 +389,8 @@ Exemples :
 summary = "Annuler la dernière modification"
 usage = "tk undo"
 body = '''
-Annule le dernier add, done, delete, modify ou import, ids compris. Relancez-le pour remonter
-plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est purgé ;
+Annule le dernier add, done, delete, modify, annotate, denotate ou import, ids
+compris. Relancez-le pour remonter plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est purgé ;
 voir tk help config.
 '''
 

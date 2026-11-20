@@ -10,7 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
-- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7).
+- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5).
 - **Out V1**: recurrence, depends, annotations, wait, contexts, custom reports, sync, hooks, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -85,10 +85,10 @@ tk [filter]                # = tk [filter] list (so `tk` = tk list), or `next` (
 
 Parse rules (in order):
 
-1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/done.
+1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/denotate/done.
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
-4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
+4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
 5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias config help import undo version`) → usage error (exit 1).
@@ -123,23 +123,25 @@ Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-N
 
 Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it).
 
-Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` always prompts unless `--yes`.
+Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` always prompts unless `--yes`.
 
-`modify/done/delete` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 3 cmds. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
+`modify/done/delete/annotate/denotate` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 5 cmds. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
 
 ## 5. Commands
 
 | Cmd | Example | Behavior |
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
-| list | `tk project:home list` | table, pending tasks first, then by urgency desc; no filter and no task at all (any status) → welcome with first commands, exit 0 |
-| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden); if more tasks match, a last line `N of M tasks. tk list shows them all.`; no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
+| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
+| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden; annotation count as for `list`); if more tasks match, a last line `N of M tasks. tk list shows them all.`; no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
+| annotate | `tk 3 annotate Call back Monday` | add an annotation (entry = now) to each matching task; text = all args (`--` dropped, rest kept); empty text → usage error; `modified` = now; undoable; print `Annotated task <id> '<description>'.` Since 0.3.0 |
+| denotate | `tk 3 denotate Call` | remove one annotation per matching task: the one whose text equals the arg (case-insensitive), else the only one containing it, else (no arg) the most recent; several contain it → validation error listing them (exit 1, nothing changed); tasks with no match are skipped; none changed → exit 2; `modified` = now; undoable. Since 0.3.0 |
 | info | `tk 7 info` | all fields, local times; one row per annotation; virtual tags (§4) |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
-| print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
+| print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold), annotations under the task (small italic, `<date> <text>`, oldest first); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
 | export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; no match → `[]`, exit 0 |
 | import | `tk import f.json` | TW JSON from FILE, or stdin if none or `-` (UTF-8, or UTF-16 with BOM); merge by uuid; prints added/updated/skipped counts; 1 undo step; any invalid task → nothing imported, error names the task number |
 | alias | `tk alias install task` | `install\|remove NAME`: opt-in shim `NAME` (`NAME.cmd` on Windows) running `python -m tame`, in the uv tool bin dir (`UV_TOOL_BIN_DIR`, `XDG_BIN_HOME`, `$XDG_DATA_HOME/../bin`, `~/.local/bin`); marked as tame's: never overwrites/removes other files; warns if the dir is not in PATH or another NAME comes first |
@@ -151,7 +153,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
 
-**Kind words**: 50 phrases (`kindness.p01`..`p50`, EN + FR) about friends, family, colleagues, free time, nature and not fearing others, each shown as `♥ <phrase>` on its own line after a blank line (italic, dim when colors are on). Shuffled order, all 50 before any repeat; state (`kindness_last`, `kindness_order`) in `meta`, outside undo. They appear: (1) after a successful `list next add done delete modify info undo`, only if stdout is a terminal, at most once every 3 days, then with a 1-in-10 chance per command; (2) when `done` leaves no pending task (terminal only); (3) at the foot of a `print` page opened in the browser (not with `--file`); (4) in an easter egg. Every appearance restarts the 3-day cooldown. Setting `kindness = false` turns off (1)-(3).
+**Kind words**: 50 phrases (`kindness.p01`..`p50`, EN + FR) about friends, family, colleagues, free time, nature and not fearing others, each shown as `♥ <phrase>` on its own line after a blank line (italic, dim when colors are on). Shuffled order, all 50 before any repeat; state (`kindness_last`, `kindness_order`) in `meta`, outside undo. They appear: (1) after a successful `list next add done delete modify annotate denotate info undo`, only if stdout is a terminal, at most once every 3 days, then with a 1-in-10 chance per command; (2) when `done` leaves no pending task (terminal only); (3) at the foot of a `print` page opened in the browser (not with `--file`); (4) in an easter egg. Every appearance restarts the 3-day cooldown. Setting `kindness = false` turns off (1)-(3).
 
 Hidden easter eggs exist: English only, exempt from i18n, kept unreadable in the code (hashed triggers, ROT13/compressed replies); see `tests/cli/test_eggs.py`.
 

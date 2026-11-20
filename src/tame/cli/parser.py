@@ -34,8 +34,10 @@ from tame.errors import UsageError, ValidationError
 COMMANDS = (
     "add",
     "alias",
+    "annotate",
     "config",
     "delete",
+    "denotate",
     "done",
     "export",
     "help",
@@ -50,7 +52,9 @@ COMMANDS = (
 )
 """V1 command names (never translated)."""
 
-FILTER_COMMANDS = frozenset({"list", "next", "done", "delete", "modify", "info", "export", "print"})
+FILTER_COMMANDS = frozenset(
+    {"list", "next", "done", "delete", "modify", "annotate", "denotate", "info", "export", "print"}
+)
 """Commands that accept a filter."""
 
 _ARGLESS_COMMANDS = frozenset({"list", "next", "done", "delete", "info", "export", "print"})
@@ -59,7 +63,10 @@ _ARGLESS_COMMANDS = frozenset({"list", "next", "done", "delete", "info", "export
 ``print`` has one option, ``--file PATH``, taken out before the filter is split.
 """
 
-CONFIRM_COMMANDS = frozenset({"done", "delete", "modify"})
+_TEXT_COMMANDS = frozenset({"modify", "annotate", "denotate"})
+"""Commands whose arguments are free text: in classic order only ids/uuids are filter."""
+
+CONFIRM_COMMANDS = frozenset({"done", "delete", "modify", "annotate", "denotate"})
 """Commands that may ask for confirmation, and so accept ``--yes``."""
 
 YES_FLAG = "--yes"
@@ -160,7 +167,7 @@ def parse_command(argv: Sequence[str]) -> ParsedCommand:
     if before:  # Rule 2: tokens before the command are the filter.
         filter_tokens, args = before, after
     else:  # Rule 4: classic order; leading filter-like tokens are the filter.
-        is_filter = _is_id_token if name == "modify" else _is_filter_token
+        is_filter = _is_id_token if name in _TEXT_COMMANDS else _is_filter_token
         count = next((i for i, tok in enumerate(after) if not is_filter(tok)), len(after))
         filter_tokens, args = after[:count], after[count:]
     if name in _ARGLESS_COMMANDS:
