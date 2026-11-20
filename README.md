@@ -59,7 +59,8 @@ uv tool install tame-tasks
 ```
 
 This installs two commands: `tame` and its short alias `tk`. Run `tk` to get started, or take
-the two-minute tour: `tk help tour`. Full documentation: **https://skitourer.github.io/tame/**.
+the two-minute tour: `tk help tour`. For Tab completion in PowerShell:
+`tk completion powershell >> $PROFILE` (bash: `tk completion bash >> ~/.bashrc`). Full documentation: **https://skitourer.github.io/tame/**.
 
 ## Usage
 

@@ -157,6 +157,7 @@ empty_annotation = "Nothing to annotate: give the text of the note."
 ambiguous_annotation = "Several notes of task {task} contain '{text}': {candidates}. Give more of the text."
 no_annotation = "No note matches '{text}'."
 no_notes = "No note to remove."
+completion_shell = "Unknown shell '{shell}': use one of {shells}."
 no_modifications = "Nothing to modify: give attr:value, attr:, +tag, -tag or a new description."
 task_not_found = "Task {uuid} not found."
 unknown_attribute = "Unknown attribute: {name}"
@@ -478,6 +479,23 @@ Examples:
   tk alias install task
   task add Call bank
   tk alias remove task
+'''
+
+[help.cmd.completion]
+summary = "Set up Tab completion in your shell"
+usage = "tk completion powershell | bash"
+body = '''
+Prints a script that makes Tab complete commands, attributes, your tags and
+projects, date keywords and help topics, for tk, tame and your aliases. Add it once
+to your shell profile, then open a new terminal. Not available in cmd.exe.
+
+Examples:
+  tk completion powershell >> $PROFILE     (PowerShell)
+  tk completion bash >> ~/.bashrc          (bash)
+
+Run it again after adding an alias. To stay up to date at the cost of a slower
+start, put this line in $PROFILE instead:
+  tk completion powershell | Out-String | Invoke-Expression
 '''
 
 [help.cmd.help]

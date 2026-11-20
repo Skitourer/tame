@@ -672,8 +672,12 @@ def test_help_lists_implemented_commands_and_topics(capsys: Capture) -> None:
     assert lines[0] == "Usage: tk [filter] <command> [arguments]   (no command = list)"
     listed = [line.split()[0] for line in lines[3 : 3 + len(HELP_COMMANDS)]]
     assert listed == list(HELP_COMMANDS)
-    assert "  add       Create a task" in lines
-    assert "  export    Export tasks as Taskwarrior JSON" in lines
+    assert [
+        line.split(maxsplit=1) for line in lines if line.startswith(("  add ", "  export "))
+    ] == [
+        ["add", "Create a task"],
+        ["export", "Export tasks as Taskwarrior JSON"],
+    ]
     assert "Topics: tk help filters | dates | urgency | tour | license | credits" in out
 
 

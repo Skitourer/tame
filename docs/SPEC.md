@@ -10,7 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
-- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3.
+- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5).
 - **Out V1**: recurrence, depends, annotations, wait, contexts, custom reports, sync, hooks, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -98,7 +98,7 @@ Parse rules (in order):
 4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print`): all tokens after cmd = filter (`print` first takes out `--file PATH`).
 5. `--` ends parsing: rest = description words (`tk add -- done the report`); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
-7. Filter given to a cmd that takes none (`add` before it, `alias config help import undo version`) → usage error (exit 1).
+7. Filter given to a cmd that takes none (`add` before it, `alias completion config help import undo version`) → usage error (exit 1).
 
 Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; OR/parens out V1; default `status:pending` unless `status:` given; `status:all` = any status):
 
@@ -157,6 +157,7 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 | alias | `tk alias install task` | `install\|remove NAME`: opt-in shim `NAME` (`NAME.cmd` on Windows) running `python -m tame`, in the uv tool bin dir (`UV_TOOL_BIN_DIR`, `XDG_BIN_HOME`, `$XDG_DATA_HOME/../bin`, `~/.local/bin`); marked as tame's: never overwrites/removes other files; warns if the dir is not in PATH or another NAME comes first |
 | config | `tk config set undo.retention 1y` | list / `get` / `set` / `unset` (= default) / `path` / `edit` settings (§7) |
 | help | `tk help [cmd\|topic]` | no arg: implemented cmds + 1-line summaries; cmd (exact or prefix): usage, text, examples; topics `filters` `dates` `urgency` `tour` (guided tour; its commands run in order are a test) `license` (TAME's license text + installed libraries with versions and licenses, read from package metadata) `credits` (author Skitourer, thanks, libraries, tools). Topics, not commands: no new command names, so prefixes like `tk l` stay unambiguous. `--help` before `--` = `tk help [<cmd on the line>]`. Works with an invalid config |
+| completion | `tk completion powershell >> $PROFILE` | `powershell\|bash`: print a script registering Tab completion for `tk`, `tame` and the aliases installed by `alias` (as of now); added once to the shell profile (or, always current but slower to start: `tk completion powershell \| Out-String \| Invoke-Expression`). No arg or other shell → usage error. cmd.exe has no completion. Since 0.3.0 |
 | version | `tk version` | app + schema version; second line points to `tk help license` / `tk help credits` |
 
 `list` columns: ID Age Project Tags Pri Due Description Urg; hide empty cols; overdue red, due today yellow; `color=false` or non-TTY → plain.
@@ -164,6 +165,8 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
 
 **Kind words**: 50 phrases (`kindness.p01`..`p50`, EN + FR) about friends, family, colleagues, free time, nature and not fearing others, each shown as `♥ <phrase>` on its own line after a blank line (italic, dim when colors are on). Shuffled order, all 50 before any repeat; state (`kindness_last`, `kindness_order`) in `meta`, outside undo. They appear: (1) after a successful `list next add done delete modify annotate denotate info undo`, only if stdout is a terminal, at most once every 3 days, then with a 1-in-10 chance per command; (2) when `done` leaves no pending task (terminal only); (3) at the foot of a `print` page opened in the browser (not with `--file`); (4) in an easter egg. Every appearance restarts the 3-day cooldown. Setting `kindness = false` turns off (1)-(3).
+
+**Completion protocol** (since 0.3.0): the scripts call the hidden `tk _complete _<current> [words before it...]` (current word prefixed with `_`, so an empty one survives PowerShell 5.1), which prints the candidates, full tokens starting with the current word, one per line, and always exits 0. Never in `tk help`. Fast path: handled in `main()` before parsing; no rich/tomlkit import, database read only, opened read-only and never created. Candidates by context: no command yet → command names, attribute names (`project:` `pri:` `status:` `due.before:` `due.after:`); `+`/`-` → tags of pending tasks and virtual tags (real tags only in `add`/`modify` mods); `project:` → projects of pending tasks; `pri:` → `H M L`; `status:` → statuses and `all`; `due:` `wait:` `due.before:` `due.after:` → date keywords; after `add`/`modify` → mods attributes (`project:` `pri:` `due:` `wait:`); after `help` → commands and topics; `config` → its subcommands, then keys (`get` `set` `unset`), then values for `set` (languages, booleans, `default_command`); `alias` → `install remove`; `completion` → shells; after `--`, `import`, `annotate`, `denotate` → nothing (the shell falls back to file names).
 
 Hidden easter eggs exist: English only, exempt from i18n, kept unreadable in the code (hashed triggers, ROT13/compressed replies); see `tests/cli/test_eggs.py`.
 
@@ -245,6 +248,7 @@ src/tame/
   core/dates.py    # relative date parser
   core/urgency.py
   cli/eggs.py      # hidden extras (§5)
+  cli/completion.py # shell completion scripts and candidates (§5)
   core/service.py  # TaskService: add/modify/complete/delete/query/undo/import
   storage/repo.py  # SQLite repo
   storage/migrations.py

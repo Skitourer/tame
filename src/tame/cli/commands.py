@@ -332,6 +332,24 @@ def cmd_undo(command: ParsedCommand, settings: Settings) -> int:
     return ExitCode.OK
 
 
+def cmd_completion(command: ParsedCommand, settings: Settings) -> int:
+    """``completion``: print the Tab completion script for a shell."""
+    from tame import alias
+    from tame.cli import completion
+
+    match command.args:
+        case (shell,):
+            names = ["tk", "tame", *alias.installed()]
+            print(completion.script(shell, names), end="")
+        case _:
+            raise UsageError(
+                "error.completion_shell",
+                shell=" ".join(command.args),
+                shells=", ".join(completion.SHELLS),
+            )
+    return ExitCode.OK
+
+
 def cmd_version(command: ParsedCommand, settings: Settings) -> int:
     """``version``: print the app and schema versions."""
     _no_args(command.args)
@@ -529,6 +547,7 @@ HELP_COMMANDS = (
     "import",
     "config",
     "alias",
+    "completion",
     "help",
     "version",
 )
@@ -599,6 +618,7 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "add": cmd_add,
     "alias": cmd_alias,
     "annotate": cmd_annotate,
+    "completion": cmd_completion,
     "delete": cmd_delete,
     "denotate": cmd_denotate,
     "done": cmd_done,

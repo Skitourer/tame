@@ -158,6 +158,7 @@ empty_annotation = "Rien à annoter : donnez le texte de la note."
 ambiguous_annotation = "Plusieurs notes de la tâche {task} contiennent « {text} » : {candidates}. Précisez le texte."
 no_annotation = "Aucune note ne correspond à « {text} »."
 no_notes = "Aucune note à retirer."
+completion_shell = "Shell inconnu « {shell} » : utilisez {shells}."
 no_modifications = "Rien à modifier : donnez attr:valeur, attr:, +tag, -tag ou une nouvelle description."
 task_not_found = "Tâche {uuid} introuvable."
 unknown_attribute = "Attribut inconnu : {name}"
@@ -488,6 +489,24 @@ Exemples :
   tk alias install task
   task add Appeler la banque
   tk alias remove task
+'''
+
+[help.cmd.completion]
+summary = "Activer la complétion par Tab dans votre shell"
+usage = "tk completion powershell | bash"
+body = '''
+Affiche un script qui fait compléter par Tab les commandes, attributs, vos tags et
+projets, les mots-clés de date et les sujets d'aide, pour tk, tame et vos alias.
+Ajoutez-le une fois au profil de votre shell, puis ouvrez un nouveau terminal.
+Indisponible dans cmd.exe.
+
+Exemples :
+  tk completion powershell >> $PROFILE     (PowerShell)
+  tk completion bash >> ~/.bashrc          (bash)
+
+Relancez-le après avoir ajouté un alias. Pour rester à jour au prix d'un démarrage
+plus lent, mettez plutôt cette ligne dans $PROFILE :
+  tk completion powershell | Out-String | Invoke-Expression
 '''
 
 [help.cmd.help]

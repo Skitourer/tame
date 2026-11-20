@@ -20,6 +20,7 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 | [`export`](#export) | export tasks as Taskwarrior JSON |
 | [`import`](#import) | import Taskwarrior JSON |
 | [`alias`](#alias) | add or remove a command alias, such as `task` |
+| [`completion`](#completion) | set up Tab completion in your shell |
 | [`config`](#config) | show or change settings |
 | [`help`](#help) | show help |
 | [`version`](#version) | show the version |
@@ -244,6 +245,33 @@ tk status:all export | tk import -
 ```
 
 Merge rules: [Coming from Taskwarrior](taskwarrior.md#import).
+
+## completion
+
+```text
+tk completion powershell | bash
+```
+
+Prints a script that makes **Tab** complete commands, attributes, your tags and projects,
+date keywords and help topics, for `tk`, `tame` and the aliases you installed with
+[`alias`](#alias). Add it once to your shell profile, then open a new terminal:
+
+```powershell
+tk completion powershell >> $PROFILE     # PowerShell (Windows Terminal's default)
+```
+
+```sh
+tk completion bash >> ~/.bashrc          # bash
+```
+
+Then try `tk mo` <kbd>Tab</kbd>, `tk +` <kbd>Tab</kbd>, `tk project:` <kbd>Tab</kbd> or
+`tk add x due:` <kbd>Tab</kbd>. Tags and projects come from your pending tasks.
+
+If PowerShell says `$PROFILE` does not exist, create it first:
+`New-Item -Force $PROFILE`. Run the command again after adding an alias, or after an update
+that changes the script; to stay always up to date at the cost of a slower terminal start,
+put `tk completion powershell | Out-String | Invoke-Expression` in `$PROFILE` instead. The
+classic Command Prompt (cmd.exe) has no completion.
 
 ## alias
 
