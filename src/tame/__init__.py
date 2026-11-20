@@ -1,3 +1,3 @@
 """TAME Arranges My Errands: a lightweight Taskwarrior-like CLI task manager."""
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"

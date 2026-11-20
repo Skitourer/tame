@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-20
+
+Tab completion in both PowerShells, and now in Git Bash.
+
 ### Added
 
 - **Tab completion in Git Bash**: on Windows, `tk config set completion true` now also
