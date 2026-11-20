@@ -152,6 +152,7 @@ def test_discover_asks_powershell(monkeypatch: pytest.MonkeyPatch) -> None:
     import subprocess
 
     monkeypatch.setattr(shellprofile.sys, "platform", "win32")
+    monkeypatch.setattr(shellprofile, "_has_git_bash", lambda: False)
     monkeypatch.setattr(
         shellprofile.shutil, "which", lambda exe: exe if exe == "powershell" else None
     )
@@ -172,6 +173,7 @@ def test_discover_drops_inherited_module_path(monkeypatch: pytest.MonkeyPatch) -
     import subprocess
 
     monkeypatch.setattr(shellprofile.sys, "platform", "win32")
+    monkeypatch.setattr(shellprofile, "_has_git_bash", lambda: False)
     monkeypatch.setattr(shellprofile.shutil, "which", lambda exe: exe)
     monkeypatch.setenv("PSModulePath", r"C:\Program Files\PowerShell\7\Modules")
     monkeypatch.setenv("TAME_KEEP", "1")
@@ -186,6 +188,42 @@ def test_discover_drops_inherited_module_path(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(shellprofile.subprocess, "run", fake_run)
     assert [p.path for p in real_discover()] == ["C:/me/powershell.ps1", "C:/me/pwsh.ps1"]
+
+
+def test_discover_git_bash_on_windows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(shellprofile.sys, "platform", "win32")
+    monkeypatch.setattr(shellprofile.shutil, "which", lambda exe: None)
+    monkeypatch.setattr(shellprofile, "_has_git_bash", lambda: True)
+    monkeypatch.setattr(shellprofile.Path, "home", lambda: tmp_path)
+    assert real_discover() == [Profile("bash", str(tmp_path / ".bashrc"))]
+
+
+def test_has_git_bash_finds_git_for_windows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PROGRAMFILES", str(tmp_path / "none"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "none"))
+    git = tmp_path / "Git" / "cmd" / "git.exe"
+    git.parent.mkdir(parents=True)
+    git.touch()
+    monkeypatch.setattr(shellprofile.shutil, "which", lambda exe: str(git))
+    assert not shellprofile._has_git_bash()  # git alone, or WSL's bash.exe, is not enough
+    (tmp_path / "Git" / "git-bash.exe").touch()
+    assert shellprofile._has_git_bash()
+    monkeypatch.setattr(shellprofile.shutil, "which", lambda exe: None)
+    monkeypatch.setenv("PROGRAMFILES", str(tmp_path))  # not on PATH: default install folder
+    assert shellprofile._has_git_bash()
+
+
+def test_bashrc_gets_lf_on_windows(
+    monkeypatch: pytest.MonkeyPatch, service: TaskService, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(shellprofile.sys, "platform", "win32")
+    path = tmp_path / ".bashrc"
+    reconcile(service, True, NAMES, explicit=True, find=lambda: [Profile("bash", str(path))])
+    data = path.read_bytes()
+    assert b"complete -o default -F _tame_complete tk tame" in data
+    assert b"\r" not in data
 
 
 def test_discover_bash(monkeypatch: pytest.MonkeyPatch) -> None:
