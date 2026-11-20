@@ -195,20 +195,24 @@ def hint(text: str) -> None:
     say(text, "hint")
 
 
-def ask(question: str) -> str:
+def ask(question: str, *, yes_no: bool = True) -> str:
     """Ask ``question`` on stdout and return the answer; ``?`` first in a terminal.
+
+    Args:
+        question: The question text.
+        yes_no: Show the ``(y/N)`` choices after it.
 
     Raises:
         EOFError: At end of input.
     """
     stream = sys.stdout
-    choices = t("confirm.choices")
+    choices = f"{t('confirm.choices')} " if yes_no else ""
     open_frame(stream)
     if colors_on(stream):
-        prompt = _text([("? ", "question"), (f"{question} ", None), (choices, "note"), (" ", None)])
+        prompt = _text([("? ", "question"), (f"{question} ", None), (choices, "note")])
         return _console(stream).input(prompt)
     prefix = "? " if is_terminal(stream) else ""
-    return input(f"{prefix}{question} {choices} ")
+    return input(f"{prefix}{question} {choices}")
 
 
 # --- Formatting ----------------------------------------------------------------------

@@ -21,6 +21,12 @@ task = "Tâche {task} « {description} » terminée."
 [cmd.delete]
 task = "Tâche {task} « {description} » supprimée."
 
+[cmd.purge]
+done_one = "1 tâche effacée définitivement."
+done_many = "{count} tâches effacées définitivement."
+backup = "Sauvegarde de la base avant la purge : {path}"
+no_undo = "Une purge ne s'annule pas : tk undo n'a plus rien à annuler."
+
 [cmd.modify]
 task = "Tâche {task} « {description} » modifiée."
 unchanged = "Aucune tâche modifiée."
@@ -110,6 +116,12 @@ many = "Terminer {count} tâches ?"
 [confirm.delete]
 one = "Supprimer la tâche {task} « {description} » ?"
 many = "Supprimer {count} tâches ?"
+
+[confirm.purge]
+one = "Effacer définitivement la tâche supprimée {task} « {description} » ?"
+many = "Effacer définitivement {count} tâches supprimées ?"
+all = "Effacer définitivement TOUTES les tâches ({count} : en cours, terminées, supprimées) ?"
+word = "Tapez {word} pour confirmer :"
 
 [confirm.annotate]
 one = "Annoter la tâche {task} « {description} » ?"
@@ -201,6 +213,11 @@ invalid_priority = "Priorité invalide : « {value} » (attendu : H, M ou L)"
 invalid_date = "Date invalide : « {value} » (p. ex. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "Aucune tâche trouvée."
 nothing_to_undo = "Rien à annuler."
+nothing_to_purge = "Rien à purger."
+purge_status = "purge n'efface que les tâches supprimées : retirez status: du filtre."
+purge_all_filter = "purge --all efface toutes les tâches : pas de filtre."
+purge_all_terminal = "purge --all se confirme dans un terminal : il faut taper le mot purge."
+backup = "Impossible d'écrire la sauvegarde {path} : {detail}. Rien n'a été purgé."
 config_io = "Impossible de lire ou d'écrire {path} : {detail}"
 config_syntax = "Fichier de réglages invalide {path} : {detail}"
 config_unknown_key = "Réglage inconnu « {name} » dans {path}. Lancez « tk config » pour les lister."
@@ -430,7 +447,8 @@ usage = "tk <filtre> delete [--yes]"
 body = '''
 Un filtre est obligatoire. Demande toujours confirmation ; --yes l'évite. Les tâches
 supprimées sont gardées avec status:deleted, et tk undo les fait revenir. Les tâches
-en cours sont ensuite renumérotées 1..n.
+en cours sont ensuite renumérotées 1..n. tk purge efface définitivement les tâches
+supprimées.
 
 Exemples :
   tk 4 delete
@@ -443,7 +461,31 @@ usage = "tk undo"
 body = '''
 Annule le dernier add, done, delete, modify, annotate, denotate ou import, ids
 compris. Relancez-le pour remonter plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est purgé ;
-voir tk help config.
+voir tk help config. tk purge efface tout l'historique.
+'''
+
+[help.cmd.purge]
+summary = "Effacer définitivement les tâches supprimées"
+usage = "tk [filtre] purge [--yes] | tk purge --all"
+body = '''
+Efface définitivement les tâches supprimées (status:deleted), avec leurs notes et les
+liens que d'autres tâches ont vers elles. Un filtre en choisit certaines
+(project:ancien, un uuid) ; sans filtre, toutes les tâches supprimées partent.
+Demande toujours confirmation ; --yes l'évite.
+
+--all efface toutes les tâches, quel que soit leur statut : après la question y/N,
+tapez le mot purge pour confirmer (--yes ne saute jamais cette étape ; un terminal
+est nécessaire).
+
+Avant toute purge, une copie de la base est enregistrée à côté, sous le nom
+tame-AAAAMMJJ-HHMMSS.db.bak, et son chemin est affiché : recopiez-la sur tasks.db
+pour revenir en arrière. TAME ne supprime jamais ces copies. Une purge ne s'annule
+pas : elle vide l'historique de tk undo. Tapez le nom en entier : tk p reste print.
+
+Exemples :
+  tk purge
+  tk project:ancien purge --yes
+  tk purge --all
 '''
 
 [help.cmd.export]

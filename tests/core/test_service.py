@@ -447,3 +447,77 @@ def test_modify_sets_and_clears_wait(service: TaskService, frozen_now: datetime)
     assert task.wait == frozen_now + timedelta(days=1)
     (task,) = service.modify([task], Changes(wait=NONE))
     assert task.wait is None
+
+
+# --- purge (0.4) ----------------------------------------------------------------------------
+
+
+def _deleted(service: TaskService, description: str) -> Task:
+    task = service.add(description)
+    return service.delete([task])[0]
+
+
+def test_purge_removes_deleted_tasks_with_links_and_backs_up_first(
+    service: TaskService, repo: TaskRepo
+) -> None:
+    gone = _deleted(service, "old")
+    service.annotate([gone], "note")
+    kept = service.add("kept")
+    repo.update(replace(kept, depends=frozenset({gone.uuid})))
+    service.purge([gone, kept])  # kept is pending: skipped
+    assert repo.get(gone.uuid) is None
+    assert repo.get(kept.uuid) is not None
+    assert repo.get(kept.uuid).depends == frozenset()  # type: ignore[union-attr]
+
+
+def test_purge_backup_holds_the_tasks_before(service: TaskService, repo: TaskRepo) -> None:
+    gone = _deleted(service, "old")
+    result = service.purge([gone])
+    assert result.purged == (gone,)
+    assert result.backup.parent == repo.path.parent
+    assert result.backup.name.startswith("tame-")
+    assert result.backup.name.endswith(".db.bak")
+    with TaskRepo(result.backup) as copy:
+        assert copy.get(gone.uuid) == gone
+
+
+def test_purge_backup_name_is_local_time_and_unique(
+    service: TaskService, frozen_now: datetime
+) -> None:
+    stamp = f"tame-{frozen_now.astimezone():%Y%m%d-%H%M%S}"
+    first = service.purge([_deleted(service, "a")]).backup
+    second = service.purge([_deleted(service, "b")]).backup
+    assert first.name == f"{stamp}.db.bak"
+    assert second.name == f"{stamp}-2.db.bak"
+
+
+def test_purge_clears_undo(service: TaskService) -> None:
+    service.purge([_deleted(service, "old")])
+    with pytest.raises(NoMatchError):
+        service.undo()
+
+
+def test_purge_nothing_deleted_writes_nothing(service: TaskService, repo: TaskRepo) -> None:
+    task = service.add("pending")
+    with pytest.raises(NoMatchError):
+        service.purge([task])
+    assert list(repo.path.parent.glob("*.bak")) == []
+    assert service.undo().cmd == "add"
+
+
+def test_purge_all_keeps_meta(service: TaskService, repo: TaskRepo) -> None:
+    service.add("a")
+    service.complete([service.add("b")])
+    _deleted(service, "c")
+    service.set_state("kindness_last", "x")
+    result = service.purge_all()
+    assert len(result.purged) == 3
+    assert service.query(Filter(status="all")) == []
+    assert service.state("kindness_last") == "x"
+    with pytest.raises(NoMatchError):
+        service.undo()
+
+
+def test_purge_all_empty_database(service: TaskService) -> None:
+    with pytest.raises(NoMatchError):
+        service.purge_all()

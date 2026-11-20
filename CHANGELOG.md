@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`tk purge`**: erases deleted tasks for good (all of them, or those a filter picks), with
+  their notes. `tk purge --all` empties the whole database, after a y/N question and the word
+  `purge` typed in full. A backup copy of the database (`tame-YYYYMMDD-HHMMSS.db.bak`) is
+  saved next to it first. A purge cannot be undone; only the full name runs it (`tk p` is
+  still `print`).
+
 ## [0.3.5] - 2026-11-20
 
 ### Changed
