@@ -57,6 +57,10 @@ def is_terminal() -> bool:
 def discover() -> list[Profile]:
     """Find the profiles of the user's shells (may run PowerShell: about 0.3 s each)."""
     if sys.platform == "win32":
+        # PSModulePath inherited from one PowerShell (tk run from pwsh, say) points the
+        # other to modules it cannot load, so Get-ExecutionPolicy fails: let each shell
+        # rebuild its own.
+        env = {key: value for key, value in os.environ.items() if key.upper() != "PSMODULEPATH"}
         found = []
         for exe in ("powershell", "pwsh"):
             if shutil.which(exe) is None:
@@ -68,6 +72,7 @@ def discover() -> list[Profile]:
                     text=True,
                     timeout=20,
                     check=False,
+                    env=env,
                 )
             except (OSError, subprocess.SubprocessError):
                 continue
