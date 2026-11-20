@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from tame.core.models import Priority, Status, Task
+from tame.core.models import Links, Priority, Status, Task
 
 _DAY = timedelta(days=1)
 _YEAR = timedelta(days=365)
@@ -20,6 +20,8 @@ class Coefficients:
     age: float = 2.0
     tags: float = 1.0
     project: float = 1.0
+    blocked: float = -5.0
+    blocking: float = 8.0
 
 
 DEFAULT_COEFFICIENTS = Coefficients()
@@ -35,11 +37,18 @@ def due_factor(due: datetime, now: datetime) -> float:
     return 0.2 + 0.8 * (overdue_days + 14) / 21
 
 
-def urgency(task: Task, now: datetime, coefficients: Coefficients = DEFAULT_COEFFICIENTS) -> float:
+def urgency(
+    task: Task,
+    now: datetime,
+    coefficients: Coefficients = DEFAULT_COEFFICIENTS,
+    links: Links | None = None,
+) -> float:
     """Return the urgency of ``task`` at ``now``.
 
     Sum of: priority weight; ``due`` * :func:`due_factor`; ``age`` * age in years
-    (capped at 1); ``tags`` if any tag; ``project`` if a project is set.
+    (capped at 1); ``tags`` if any tag; ``project`` if a project is set; with
+    ``links``, ``blocked`` if it waits for a pending task and ``blocking`` if a
+    pending task waits for it.
     """
     c = coefficients
     score = {Priority.H: c.pri_H, Priority.M: c.pri_M, Priority.L: c.pri_L, None: 0.0}[
@@ -52,11 +61,19 @@ def urgency(task: Task, now: datetime, coefficients: Coefficients = DEFAULT_COEF
         score += c.tags
     if task.project:
         score += c.project
+    if links is not None:
+        if links.is_blocked(task):
+            score += c.blocked
+        if links.is_blocking(task):
+            score += c.blocking
     return score
 
 
 def by_urgency(
-    tasks: list[Task], now: datetime, coefficients: Coefficients = DEFAULT_COEFFICIENTS
+    tasks: list[Task],
+    now: datetime,
+    coefficients: Coefficients = DEFAULT_COEFFICIENTS,
+    links: Links | None = None,
 ) -> list[Task]:
     """Return ``tasks`` sorted pending first, then by urgency, highest first.
 
@@ -64,5 +81,8 @@ def by_urgency(
     """
     return sorted(
         tasks,
-        key=lambda task: (task.status is not Status.PENDING, -urgency(task, now, coefficients)),
+        key=lambda task: (
+            task.status is not Status.PENDING,
+            -urgency(task, now, coefficients, links),
+        ),
     )

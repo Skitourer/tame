@@ -903,7 +903,7 @@ def test_import_annotations_and_depends_survive_modify_and_undo(
     )
     assert run(capsys, "import")[0] == 0
     info = run(capsys, "1", "info")[1]
-    assert "ask Ann" in info and other in info
+    assert "ask Ann" in info and "Depends on  2 'Find IBAN'" in info
     run(capsys, "1", "modify", "+phone")
     run(capsys, "undo")
     (task, _) = json.loads(run(capsys, "export")[1])

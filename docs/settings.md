@@ -47,6 +47,8 @@ Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
 | `urgency.age` | `2.0` | weight of the age |
 | `urgency.tags` | `1.0` | weight of having tags |
 | `urgency.project` | `1.0` | weight of having a project |
+| `urgency.blocked` | `-5.0` | added when the task waits for another pending task |
+| `urgency.blocking` | `8.0` | added when another pending task waits for it |
 
 The file looks like this (comments shortened):
 

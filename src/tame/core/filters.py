@@ -1,12 +1,11 @@
 """Task selection criteria, independent of any command-line syntax (SPEC §4)."""
 
-from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime, timedelta, tzinfo
 from typing import Literal
 
 from tame.core.dates import local_period
-from tame.core.models import NONE, Priority, Status, Task
+from tame.core.models import NONE, Links, Priority, Status, Task
 
 ALL: Literal["all"] = "all"
 """Value of ``Filter.status`` matching every status (``status:all``)."""
@@ -117,13 +116,13 @@ class VirtualTagger:
 
     Args:
         now: Current aware time.
-        pending: Uuids of all pending tasks, for ``BLOCKED``/``UNBLOCKED``.
+        links: Dependencies between pending tasks, for ``BLOCKED``/``UNBLOCKED``/``BLOCKING``.
         tz: Local time zone for calendar periods; None means the system one.
     """
 
-    def __init__(self, now: datetime, pending: Collection[str], tz: tzinfo | None = None) -> None:
+    def __init__(self, now: datetime, links: Links, tz: tzinfo | None = None) -> None:
         self._now = now
-        self._pending = frozenset(pending)
+        self._links = links
         self._periods = {
             "TODAY": local_period("today", now, tz),
             "TOMORROW": local_period("tomorrow", now, tz),
@@ -142,7 +141,9 @@ class VirtualTagger:
             tags.add("TAGGED")
         if task.status is not Status.PENDING:
             return frozenset(tags)
-        tags.add("BLOCKED" if task.depends & self._pending else "UNBLOCKED")
+        tags.add("BLOCKED" if self._links.is_blocked(task) else "UNBLOCKED")
+        if self._links.is_blocking(task):
+            tags.add("BLOCKING")
         if is_waiting(task, self._now):
             tags.add("WAITING")
         if (due := task.due) is not None:

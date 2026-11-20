@@ -43,7 +43,7 @@ DATE_KEYWORDS = (
     "eoy",
 )
 _FILTER_ATTRS = ("project:", "pri:", "status:", "due.before:", "due.after:")
-_MOD_ATTRS = ("project:", "pri:", "due:", "wait:")
+_MOD_ATTRS = ("project:", "pri:", "due:", "wait:", "depends:")
 _DATE_ATTRS = frozenset({"due", "wait", "due.before", "due.after"})
 _MOD_COMMANDS = frozenset({"add", "modify"})
 _TEXT_COMMANDS = frozenset({"import", "annotate", "denotate"})

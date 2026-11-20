@@ -10,7 +10,7 @@ from html import escape
 from itertools import groupby
 
 from tame.cli.render import DEFAULT_DATE_FORMAT, due_state
-from tame.core.models import Task
+from tame.core.models import Links, Task
 from tame.core.urgency import DEFAULT_COEFFICIENTS, Coefficients, by_urgency
 from tame.i18n import current_language, t
 
@@ -55,6 +55,7 @@ def print_page(
     date_format: str = DEFAULT_DATE_FORMAT,
     auto_print: bool = False,
     kind_word: str | None = None,
+    links: Links | None = None,
 ) -> str:
     """Return a printable HTML page of ``tasks``, grouped by project.
 
@@ -69,6 +70,7 @@ def print_page(
         date_format: strftime format of dates.
         auto_print: Open the browser's print dialog when the page loads.
         kind_word: A kind word for the foot of the page, if any.
+        links: Dependencies between pending tasks, for urgency.
     """
 
     def project_key(task: Task) -> tuple[bool, str]:
@@ -78,7 +80,8 @@ def print_page(
     for project, group in groupby(sorted(tasks, key=project_key), key=lambda task: task.project):
         title = escape(project) if project else escape(t("print.no_project"))
         rows = "\n".join(
-            _row(task, now, date_format) for task in by_urgency(list(group), now, coefficients)
+            _row(task, now, date_format)
+            for task in by_urgency(list(group), now, coefficients, links)
         )
         sections.append(f"<section>\n<h2>{title}</h2>\n<table>\n{rows}\n</table>\n</section>")
 

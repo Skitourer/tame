@@ -18,11 +18,14 @@ from typing import Literal
 from tame.core.dates import parse_date, utc_now
 from tame.core.filters import ALL, Filter
 from tame.core.models import (
+    NO_REFS,
     NONE,
     VIRTUAL_TAGS,
     Changes,
+    DependsChange,
     Priority,
     Status,
+    TaskRefs,
     check_description,
     check_new_tag,
     check_project,
@@ -131,6 +134,7 @@ class AddArgs:
     priority: str | None = None
     due: datetime | None = None
     wait: datetime | None = None
+    depends: TaskRefs = NO_REFS
 
 
 def match_command(token: str) -> str | None:
@@ -339,6 +343,34 @@ def _parse_ids(token: str) -> set[int]:
     return ids
 
 
+def parse_depends(value: str) -> DependsChange:
+    """Parse the value of ``depends:`` (SPEC §5 depends).
+
+    Comma-separated ids, id ranges or uuid prefixes (8+ hex digits) to add; a leading
+    ``-`` removes one instead. An empty value clears every dependency.
+
+    Raises:
+        ValidationError: On an item that names no task.
+    """
+    if not value:
+        return DependsChange(clear=True)
+    refs: dict[bool, tuple[set[int], list[str]]] = {True: (set(), []), False: (set(), [])}
+    for item in value.split(","):
+        removing = item.startswith("-")
+        ids, uuids = refs[removing]
+        token = item[1:] if removing else item
+        if re.fullmatch(r"\d+(?:-\d+)?", token):
+            ids |= _parse_ids(token)
+        elif _UUID_DASHED_RE.fullmatch(token) or _UUID_HEX_RE.fullmatch(token):
+            uuids.append(token.lower().replace("-", ""))
+        else:
+            raise ValidationError("error.invalid_depends", value=item)
+    return DependsChange(
+        add=TaskRefs(frozenset(refs[False][0]), tuple(refs[False][1])),
+        remove=TaskRefs(frozenset(refs[True][0]), tuple(refs[True][1])),
+    )
+
+
 def _parse_status(value: str) -> Status | Literal["all"]:
     if value.lower() == ALL:
         return ALL
@@ -370,6 +402,7 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
     priority: Priority | Literal[""] | None = None
     due: datetime | Literal[""] | None = None
     wait: datetime | Literal[""] | None = None
+    depends: DependsChange | None = None
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -388,6 +421,8 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
                 due = parse_date(value, now) if value else NONE
             elif name == "wait":
                 wait = parse_date(value, now) if value else NONE
+            elif name == "depends":
+                depends = _merge_depends(depends, parse_depends(value))
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
         else:
@@ -400,6 +435,23 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
         wait=wait,
         tags_add=frozenset(tags_add),
         tags_remove=frozenset(tags_remove),
+        depends=depends,
+    )
+
+
+def _merge_depends(first: DependsChange | None, second: DependsChange) -> DependsChange:
+    """Combine two ``depends:`` tokens of one command line, in order."""
+    if first is None or second.clear:
+        return second
+    return DependsChange(
+        add=TaskRefs(
+            first.add.ids | second.add.ids, first.add.uuid_prefixes + second.add.uuid_prefixes
+        ),
+        remove=TaskRefs(
+            first.remove.ids | second.remove.ids,
+            first.remove.uuid_prefixes + second.remove.uuid_prefixes,
+        ),
+        clear=first.clear,
     )
 
 
@@ -417,6 +469,7 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
     words: list[str] = []
     tags: list[str] = []
     attrs: dict[str, str | None] = {"project": None, "priority": None, "due": None, "wait": None}
+    depends = TaskRefs()
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -426,6 +479,14 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
             continue
         if match := _ATTR_RE.fullmatch(token):
             name = _ATTR_ALIASES.get(match[1], match[1])
+            if name == "depends":
+                change = parse_depends(match[2])
+                if change.remove:
+                    raise ValidationError("error.invalid_depends", value=match[2])
+                depends = TaskRefs(
+                    depends.ids | change.add.ids, depends.uuid_prefixes + change.add.uuid_prefixes
+                )
+                continue
             if name not in attrs:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
             attrs[name] = match[2] or None
@@ -438,4 +499,5 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
         priority=attrs["priority"],
         due=parse_date(due, now or utc_now()) if (due := attrs["due"]) else None,
         wait=parse_date(wait, now or utc_now()) if (wait := attrs["wait"]) else None,
+        depends=depends,
     )

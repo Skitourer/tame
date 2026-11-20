@@ -10,6 +10,8 @@ shows it too). Urgency is a sum of simple terms:
 | Age | 2.0 × age in years, at most 1 year |
 | Tags | 1.0 if the task has any tag |
 | Project | 1.0 if the task has a project |
+| Blocked | −5.0 if the task waits for another pending task (`depends:`) |
+| Blocking | 8.0 if another pending task waits for it |
 
 Tasks without a due date get no due term. Urgency is shown with one decimal.
 
@@ -42,4 +44,4 @@ tk config unset urgency.due        # back to 12.0
 ```
 
 Keys: `urgency.pri_H`, `urgency.pri_M`, `urgency.pri_L`, `urgency.due`, `urgency.age`,
-`urgency.tags`, `urgency.project`.
+`urgency.tags`, `urgency.project`, `urgency.blocked`, `urgency.blocking`.

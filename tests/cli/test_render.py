@@ -7,6 +7,7 @@ import pytest
 from tame.cli import render
 from tame.cli.render import (
     ROLES,
+    Related,
     due_state,
     format_age,
     format_local,
@@ -139,19 +140,29 @@ def test_info_blocks_group_fields_and_leave_out_unset_ones() -> None:
         depends=frozenset({"u-3", "u-2"}),
         extra={"annotations": [{"description": "note"}], "wait": "20261201T000000Z"},
     )
-    blocks = info_blocks(done, T0, virtual=frozenset({"BLOCKED", "ANNOTATED"}))
+    paint = task(uuid="u-2", id=2, description="Buy paint")
+    gone = task(uuid="u-4", id=None, description="Old", status=Status.DELETED)
+    waiting = task(uuid="u-5", id=5, description="Paint walls")
+    related = Related(depends=[paint, gone, "u-3xxxxxxxxx"], blocking=[waiting])
+    blocks = info_blocks(done, T0, virtual=frozenset({"BLOCKED", "ANNOTATED"}), related=related)
     labels = [[label for label, _ in block] for block in blocks]
     assert labels == [
-        ["Status", "Tags", "Urgency", "Depends on"],
+        ["Status", "Tags", "Urgency", "Depends on", "", "", "Blocking"],
         ["Entered", "Modified", "Ended"],
         ["Notes", ""],
         ["UUID", "annotations", "wait"],
     ]
-    values = {
-        label: "".join(text for text, _ in value) for block in blocks for label, value in block
-    }
+    lines = [
+        (label, "".join(text for text, _ in value)) for block in blocks for label, value in block
+    ]
+    values = dict(lines)
     assert values["Tags"] == "ANNOTATED BLOCKED"
-    assert values["Depends on"] == "u-2 u-3"
+    assert lines[3:7] == [
+        ("Depends on", "2 'Buy paint'"),
+        ("", "u-4 'Old'"),
+        ("", "u-3xxxxx  (missing)"),
+        ("Blocking", "5 'Paint walls'"),
+    ]
     assert values["Ended"] == f"{format_local(T0)}  today"
     assert values["Notes"] == f"{format_local(T0)}  call back"
     assert values["annotations"] == '[{"description": "note"}]'
