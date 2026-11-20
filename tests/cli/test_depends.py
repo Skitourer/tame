@@ -50,6 +50,9 @@ def five(capsys: Capture) -> None:
                 remove=TaskRefs(uuid_prefixes=("a1b2c3d40000",)),
             ),
         ),
+        # A uuid made of digits only: dashed, it is never read as an id range.
+        ("12345678-1234", DependsChange(add=TaskRefs(uuid_prefixes=("123456781234",)))),
+        ("-12345678-9", DependsChange(remove=TaskRefs(uuid_prefixes=("123456789",)))),
     ],
 )
 def test_parse_depends(value: str, expected: DependsChange) -> None:
