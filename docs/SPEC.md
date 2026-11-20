@@ -262,7 +262,7 @@ src/tame/
   locales/en.toml  fr.toml
 tests/             # mirrors src; tmp TAME_HOME fixture
 scripts/           # tk.ps1/tk.sh sandbox, smoke.py, release_notes.py, spoilers.py
-docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.ps1/.sh
+docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.ps1/.sh; assets/ (logo: light, dark, site header, favicon SVG; social-preview.png)
 .github/workflows/ # ci.yml, docs.yml (Pages), release.yml (PyPI + GitHub release)
 ```
 
@@ -295,4 +295,4 @@ docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.
 
 **Roadmap 0.2.0**: `license`/`credits` help topics; `print`; kind words; GitHub Actions on Node.js 24.
 
-**Roadmap 0.3.0** (1 PR each): schema v2; virtual tags; `next`; `annotate`/`denotate`; `wait:` + schema 3; shell completion. **0.3.1**: `completion` setting. **0.3.2**: `tk help settings`, `tk help config KEY`. Next: `docs/ROADMAP.md`.
+**Roadmap 0.3.0** (1 PR each): schema v2; virtual tags; `next`; `annotate`/`denotate`; `wait:` + schema 3; shell completion. **0.3.1**: `completion` setting. **0.3.2**: `tk help settings`, `tk help config KEY`; logo. Next: `docs/ROADMAP.md`.

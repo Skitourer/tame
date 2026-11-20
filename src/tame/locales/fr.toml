@@ -684,6 +684,7 @@ Construit avec :
   tomlkit           fichier de réglages qui garde vos commentaires
 
 Réalisé avec uv, ruff, mypy, pytest et MkDocs Material.
+Logo : une case cochée avec un petit cœur, qui fait partie de TAME (licence MIT).
 
 Licences : tk help license.
 '''

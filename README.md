@@ -1,4 +1,4 @@
-# TAME
+# <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Skitourer/tame/main/docs/assets/logo-dark.svg"><img src="https://raw.githubusercontent.com/Skitourer/tame/main/docs/assets/logo.svg" alt="" width="40" height="40" align="top"></picture> TAME
 
 [![CI](https://github.com/Skitourer/tame/actions/workflows/ci.yml/badge.svg)](https://github.com/Skitourer/tame/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fskitourer.github.io%2Ftame%2Fbadges%2Fcoverage.json&cacheSeconds=3600)](https://github.com/Skitourer/tame/actions/workflows/docs.yml)
