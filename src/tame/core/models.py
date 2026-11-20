@@ -145,6 +145,35 @@ def check_tag(tag: str) -> str:
     return tag
 
 
+VIRTUAL_TAGS = frozenset(
+    {
+        "OVERDUE",
+        "TODAY",
+        "TOMORROW",
+        "WEEK",
+        "MONTH",
+        "DUE",
+        "BLOCKED",
+        "UNBLOCKED",
+        "ANNOTATED",
+        "PROJECT",
+        "TAGGED",
+    }
+)
+"""Tags computed when filtering (SPEC §4); reserved: they cannot be set."""
+
+
+def check_new_tag(tag: str) -> str:
+    """Return ``tag`` if it is valid and may be set on a task (not a virtual tag).
+
+    Raises:
+        ValidationError: If the tag is invalid or a virtual tag.
+    """
+    if check_tag(tag) in VIRTUAL_TAGS:
+        raise ValidationError("error.virtual_tag", tag=tag)
+    return tag
+
+
 def check_project(project: str) -> str:
     """Return ``project`` if valid: dotted names, no empty segment, no whitespace.
 

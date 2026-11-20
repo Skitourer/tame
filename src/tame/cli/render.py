@@ -1,7 +1,7 @@
 """Terminal output. The only module that imports rich, lazily (SPEC §2 perf)."""
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -117,10 +117,13 @@ def info_rows(
     task: Task,
     now: datetime,
     *,
+    virtual: frozenset[str] = frozenset(),
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
 ) -> list[tuple[str, str]]:
     """Return the (label, value) rows of ``task`` for ``info``; unset fields are left out.
+
+    ``virtual`` holds the task's virtual tags (SPEC §4), shown after its tags.
 
     One row per annotation follows, then unknown Taskwarrior attributes (``extra``)
     under their own names.
@@ -136,6 +139,7 @@ def info_rows(
         (t("info.status"), task.status.value),
         (t("info.project"), task.project or ""),
         (t("info.tags"), " ".join(sorted(task.tags))),
+        (t("info.virtual"), " ".join(sorted(virtual))),
         (t("info.priority"), task.priority or ""),
         (t("info.due"), local(task.due)),
         (t("info.entry"), local(task.entry)),
@@ -159,11 +163,15 @@ def print_task_info(
     tasks: Sequence[Task],
     now: datetime,
     *,
+    virtual: Mapping[str, frozenset[str]] | None = None,
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
     color: bool = True,
 ) -> None:
-    """Print every field of each task, one two-column table per task."""
+    """Print every field of each task, one two-column table per task.
+
+    ``virtual`` maps task uuids to their virtual tags.
+    """
     from rich import box
     from rich.console import Console
     from rich.table import Table
@@ -176,7 +184,11 @@ def print_task_info(
         table.add_column(t("info.col.name"))
         table.add_column(t("info.col.value"))
         for label, value in info_rows(
-            task, now, coefficients=coefficients, date_format=date_format
+            task,
+            now,
+            virtual=(virtual or {}).get(task.uuid, frozenset()),
+            coefficients=coefficients,
+            date_format=date_format,
         ):
             table.add_row(label, value)
         console.print(table)

@@ -10,6 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
+- **Since 0.3.0** (unreleased): schema 2, annotations and depends stored natively (§3); virtual tags (§4).
 - **Out V1**: recurrence, depends, annotations, wait, contexts, custom reports, sync, hooks, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -98,11 +99,27 @@ Filter tokens (AND-combined, except ids and uuid prefixes which together form on
 |---|---|
 | `3` `3,5` `2-6` | ids (digits-only token = always ids) |
 | 8+ hex chars | uuid prefix (dashes ignored) |
-| `+t` / `-t` | has / lacks tag |
+| `+t` / `-t` | has / lacks tag (virtual tag if `t` is one, see below) |
 | `project:x` | project = x or x.*; `project:` = no project |
 | `pri:H` `status:completed` | equality (`pri` = alias of `priority`); `pri:` = no priority; `status:all` = any status |
 | `due.before:fri` `due.after:today` | date compare |
 | other word | case-insensitive substring of description |
+
+**Virtual tags** (since 0.3.0): computed when filtering, never stored. Uppercase, exact case, EN only. Used like tags in filters: `tk +OVERDUE`, `tk +home -TAGGED`. Days, weeks (Monday to Sunday) and months are local calendar periods; `now` = current time.
+
+| Tag | True when |
+|---|---|
+| `OVERDUE` | pending, due < now |
+| `TODAY` / `TOMORROW` | pending, due on the local day today / tomorrow |
+| `WEEK` / `MONTH` | pending, due in the current local week / month (earlier days of it included) |
+| `DUE` | pending, now ≤ due < now + 7 days |
+| `BLOCKED` | pending, depends on at least one pending task |
+| `UNBLOCKED` | pending, not `BLOCKED` |
+| `ANNOTATED` | has at least one annotation |
+| `PROJECT` | has a project |
+| `TAGGED` | has at least one (real) tag |
+
+Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. Planned: `WAITING` (with `wait:`) and `ACTIVE` (with `start`) join the list, and become reserved, with their features; until then they are ordinary tags.
 
 Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it).
 
@@ -119,7 +136,7 @@ Bulk: `modify/done/delete` on > `confirm_threshold` (default 3) tasks → y/N pr
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
-| info | `tk 7 info` | all fields, local times |
+| info | `tk 7 info` | all fields, local times; one row per annotation; virtual tags (§4) |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
 | print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
 | export | `tk status:all export > f.json` | TW JSON to stdout, one task per line, incl. `id` (0 if not pending) and `urgency`; no match → `[]`, exit 0 |

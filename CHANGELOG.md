@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Virtual tags**: filter on what TAME computes, without tagging anything yourself.
+  `tk +OVERDUE` lists late tasks, `tk +TODAY print` prints today's page, `tk -TAGGED` shows
+  tasks without tags. Also `TOMORROW`, `WEEK`, `MONTH`, `DUE` (next 7 days), `BLOCKED`,
+  `UNBLOCKED`, `ANNOTATED` and `PROJECT`. See `tk help filters`. `tk info` lists them.
+
 ### Changed
+
+- The virtual tag names (`OVERDUE`, `TODAY`…) are reserved: `add` and `modify` refuse to set
+  them. Such tags imported from Taskwarrior are kept, and `modify -NAME` removes them.
 
 - **Database schema 2**: annotations and dependencies imported from Taskwarrior now have
   their own tables, ready for the commands that will use them. Your database is upgraded

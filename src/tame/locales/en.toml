@@ -69,6 +69,7 @@ description = "Description"
 status = "Status"
 project = "Project"
 tags = "Tags"
+virtual = "Virtual tags"
 priority = "Priority"
 due = "Due"
 entry = "Entered"
@@ -129,6 +130,7 @@ task_not_found = "Task {uuid} not found."
 unknown_attribute = "Unknown attribute: {name}"
 empty_description = "A task needs a description."
 invalid_tag = "Invalid tag: '{tag}'"
+virtual_tag = "'{tag}' is a virtual tag: TAME computes it, it cannot be set (see tk help filters)"
 invalid_project = "Invalid project: '{project}'"
 invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
 invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
@@ -431,6 +433,7 @@ selection. Without status:, only pending tasks match.
   3   3,5   2-6        short ids
   1a2b3c4d             uuid prefix (8+ hex characters)
   +tag   -tag          has / lacks the tag
+  +OVERDUE  -TAGGED    has / lacks a virtual tag (below)
   project:home         project home and its sub-projects (home.garden)
   project:             no project
   pri:H   pri:         priority H / no priority
@@ -438,6 +441,15 @@ selection. Without status:, only pending tasks match.
   due.before:fri       due strictly before the date (see tk help dates)
   due.after:today      due strictly after the date
   other words          text contained in the description, any case
+
+Virtual tags are computed, never set (pending tasks only for the first six):
+  OVERDUE              due date passed
+  TODAY  TOMORROW      due today / tomorrow
+  WEEK  MONTH          due this week (Monday to Sunday) / this month
+  DUE                  due in the next 7 days
+  BLOCKED  UNBLOCKED   waiting / not waiting for another pending task
+  ANNOTATED            has an annotation
+  PROJECT  TAGGED      has a project / at least one tag
 
 The filter goes before the command (tk +phone list) or right after it
 (tk list +phone). After --, everything is plain words.

@@ -65,8 +65,8 @@ tk status:completed list
 tk [filter] info
 ```
 
-Shows all fields of the matching tasks, in local time, including the uuid and any attribute
-kept from a Taskwarrior import.
+Shows all fields of the matching tasks, in local time, including the uuid, the annotations,
+the [virtual tags](grammar.md#virtual-tags) and any attribute kept from a Taskwarrior import.
 
 ```sh
 tk 7 info

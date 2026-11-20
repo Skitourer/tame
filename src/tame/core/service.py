@@ -6,14 +6,14 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from tame.core.dates import utc_now
-from tame.core.filters import Filter
+from tame.core.filters import Filter, VirtualTagger
 from tame.core.models import (
     Changes,
     Status,
     Task,
     check_description,
+    check_new_tag,
     check_project,
-    check_tag,
     parse_priority,
 )
 from tame.errors import NoMatchError
@@ -99,7 +99,7 @@ class TaskService:
             entry=now,
             modified=now,
             project=check_project(project) if project is not None else None,
-            tags=frozenset(check_tag(tag) for tag in tags),
+            tags=frozenset(check_new_tag(tag) for tag in tags),
             priority=parse_priority(priority) if priority is not None else None,
             due=due,
         )
@@ -151,7 +151,12 @@ class TaskService:
 
         Returns:
             The changed tasks, as stored. Tasks the changes leave as they were are skipped.
+
+        Raises:
+            ValidationError: If ``changes`` adds a virtual tag.
         """
+        for tag in changes.tags_add:
+            check_new_tag(tag)
         now = self._clock()
         changed = [
             replace(new, modified=now) for task in tasks if (new := changes.apply(task)) != task
@@ -272,9 +277,14 @@ class TaskService:
         Ordered by status (pending, completed, deleted), then short id, then entry.
         """
         where = where or Filter()
+        tagger = self.virtual_tagger() if where.uses_virtual_tags else None
         return [
             task
             for status in where.statuses
             for task in self._repo.by_status(status)
-            if where.matches(task)
+            if where.matches(task, tagger(task) if tagger else frozenset())
         ]
+
+    def virtual_tagger(self) -> VirtualTagger:
+        """Return a tagger computing virtual tags as of now, in the system time zone."""
+        return VirtualTagger(self._clock(), self._repo.pending_ids())

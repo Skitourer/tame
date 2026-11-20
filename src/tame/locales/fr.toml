@@ -70,6 +70,7 @@ description = "Description"
 status = "Statut"
 project = "Projet"
 tags = "Tags"
+virtual = "Tags virtuels"
 priority = "Priorité"
 due = "Échéance"
 entry = "Créée"
@@ -130,6 +131,7 @@ task_not_found = "Tâche {uuid} introuvable."
 unknown_attribute = "Attribut inconnu : {name}"
 empty_description = "Une tâche doit avoir une description."
 invalid_tag = "Tag invalide : « {tag} »"
+virtual_tag = "« {tag} » est un tag virtuel : TAME le calcule, il ne peut pas être posé (voir tk help filters)"
 invalid_project = "Projet invalide : « {project} »"
 invalid_priority = "Priorité invalide : « {value} » (attendu : H, M ou L)"
 invalid_date = "Date invalide : « {value} » (p. ex. 2026-12-15, tomorrow, fri, eom, +3d)"
@@ -439,6 +441,7 @@ correspondent.
   3   3,5   2-6        ids courts
   1a2b3c4d             début d'uuid (8 caractères hexa ou plus)
   +tag   -tag          a / n'a pas le tag
+  +OVERDUE  -TAGGED    a / n'a pas le tag virtuel (ci-dessous)
   project:maison       projet maison et ses sous-projets (maison.jardin)
   project:             sans projet
   pri:H   pri:         priorité H / sans priorité
@@ -446,6 +449,16 @@ correspondent.
   due.before:fri       échéance strictement avant la date (voir tk help dates)
   due.after:today      échéance strictement après la date
   autres mots          texte contenu dans la description, casse ignorée
+
+Les tags virtuels sont calculés, jamais posés (tâches en cours seulement pour les
+six premiers) :
+  OVERDUE              échéance dépassée
+  TODAY  TOMORROW      échéance aujourd'hui / demain
+  WEEK  MONTH          échéance cette semaine (lundi à dimanche) / ce mois-ci
+  DUE                  échéance dans les 7 prochains jours
+  BLOCKED  UNBLOCKED   attend / n'attend pas une autre tâche en cours
+  ANNOTATED            a une annotation
+  PROJECT  TAGGED      a un projet / au moins un tag
 
 Le filtre se place avant la commande (tk +tel list) ou juste après
 (tk list +tel). Après --, tout est mots simples.

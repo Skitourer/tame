@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from tame.core.dates import parse_date, utc_now
+from tame.core.dates import local_period, parse_date, utc_now
 from tame.errors import ValidationError
 
 TZ = timezone(timedelta(hours=1))
@@ -90,3 +90,21 @@ def test_utc_now_is_aware_and_second_precision() -> None:
     now = utc_now()
     assert now.tzinfo is not None
     assert now.microsecond == 0
+
+
+@pytest.mark.parametrize(
+    ("unit", "start", "end"),
+    [
+        ("today", local(2026, 11, 19), local(2026, 11, 20)),
+        ("tomorrow", local(2026, 11, 20), local(2026, 11, 21)),
+        ("week", local(2026, 11, 16), local(2026, 11, 23)),
+        ("month", local(2026, 11, 1), local(2026, 12, 1)),
+    ],
+)
+def test_local_period(unit: str, start: datetime, end: datetime) -> None:
+    assert local_period(unit, NOW, TZ) == (start, end)  # type: ignore[arg-type]
+
+
+def test_local_period_month_rolls_over_year() -> None:
+    december = datetime(2026, 12, 31, 12, tzinfo=UTC)
+    assert local_period("month", december, TZ) == (local(2026, 12, 1), local(2027, 1, 1))

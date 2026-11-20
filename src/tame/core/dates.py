@@ -7,6 +7,7 @@ the system time zone (DST-aware); tests inject a fixed ``tz``.
 import calendar
 import re
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
+from typing import Literal
 
 from tame.errors import ValidationError
 
@@ -70,6 +71,35 @@ def parse_date(text: str, now: datetime, tz: tzinfo | None = None) -> datetime:
     if result is None:
         raise ValidationError("error.invalid_date", value=text)
     return result.astimezone(UTC).replace(microsecond=0)
+
+
+def local_period(
+    unit: Literal["today", "tomorrow", "week", "month"], now: datetime, tz: tzinfo | None = None
+) -> tuple[datetime, datetime]:
+    """Return the local calendar period around ``now`` as ``[start, end)`` in UTC.
+
+    Weeks run from Monday to Sunday.
+
+    Args:
+        unit: The local day today or tomorrow, the current week or month.
+        now: Current aware time.
+        tz: Local time zone; None means the system one.
+    """
+    today = now.astimezone(tz).date()
+    if unit == "today":
+        start, end = today, today + timedelta(days=1)
+    elif unit == "tomorrow":
+        start, end = today + timedelta(days=1), today + timedelta(days=2)
+    elif unit == "week":
+        start = today - timedelta(days=today.weekday())
+        end = start + timedelta(days=7)
+    else:
+        start = today.replace(day=1)
+        end = (start + timedelta(days=31)).replace(day=1)
+    return (
+        _local(datetime.combine(start, time()), tz).astimezone(UTC),
+        _local(datetime.combine(end, time()), tz).astimezone(UTC),
+    )
 
 
 def _weekday(word: str) -> int | None:

@@ -224,11 +224,14 @@ def cmd_info(command: ParsedCommand, settings: Settings) -> int:
     where = parse_filter(command.filter)
     with open_service(settings) as service:
         tasks = _matching(service, where)
+        tagger = service.virtual_tagger()
+        virtual = {task.uuid: tagger(task) for task in tasks}
     from tame.cli.render import print_task_info
 
     print_task_info(
         tasks,
         utc_now(),
+        virtual=virtual,
         coefficients=settings.urgency,
         date_format=settings.date_format,
         color=settings.color,

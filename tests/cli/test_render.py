@@ -38,10 +38,11 @@ def test_info_rows_hide_unset_fields_and_show_extra() -> None:
         depends=frozenset({"u-3", "u-2"}),
         extra={"annotations": [{"description": "note"}], "wait": "20261201T000000Z"},
     )
-    assert info_rows(task, T0) == [
+    assert info_rows(task, T0, virtual=frozenset({"ANNOTATED", "BLOCKED"})) == [
         ("UUID", "u-1"),
         ("Description", "Call bank"),
         ("Status", "completed"),
+        ("Virtual tags", "ANNOTATED BLOCKED"),
         ("Entered", format_local(T0)),
         ("Modified", format_local(T0)),
         ("Ended", format_local(T0)),

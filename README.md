@@ -68,6 +68,7 @@ tk add Call bank project:home +phone due:fri pri:H  # Created task 1.
 tk add -- done the report                    # everything after -- is description
 tk list                                      # most urgent first; or just: tk
 tk due.before:eow                            # due before the end of the week
+tk +OVERDUE                                  # late tasks (virtual tags: +TODAY, +WEEK…)
 tk project:home list                         # filter first (or: tk list project:home)
 tk +phone -work bank                         # tags and description words
 tk 2-6 pri:H                                 # ids and priority

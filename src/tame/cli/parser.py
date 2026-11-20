@@ -19,10 +19,12 @@ from tame.core.dates import parse_date, utc_now
 from tame.core.filters import ALL, Filter
 from tame.core.models import (
     NONE,
+    VIRTUAL_TAGS,
     Changes,
     Priority,
     Status,
     check_description,
+    check_new_tag,
     check_project,
     check_tag,
     parse_priority,
@@ -229,6 +231,8 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
     uuids: list[str] = []
     tags_in: set[str] = set()
     tags_out: set[str] = set()
+    virtual_in: set[str] = set()
+    virtual_out: set[str] = set()
     project: str | None = None
     priority: Priority | Literal[""] | None = None
     status: Status | Literal["all"] | None = None
@@ -245,10 +249,12 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
             ids |= _parse_ids(token)
         elif _UUID_HEX_RE.fullmatch(token):
             uuids.append(token.lower())
-        elif len(token) > 1 and token[0] == "+":
-            tags_in.add(check_tag(token[1:]))
-        elif len(token) > 1 and token[0] == "-":
-            tags_out.add(check_tag(token[1:]))
+        elif len(token) > 1 and token[0] in "+-":
+            tag = check_tag(token[1:])
+            if tag in VIRTUAL_TAGS:
+                (virtual_in if token[0] == "+" else virtual_out).add(tag)
+            else:
+                (tags_in if token[0] == "+" else tags_out).add(tag)
         elif match := _ATTR_RE.fullmatch(token):
             name, value = _ATTR_ALIASES.get(match[1], match[1]), match[2]
             if name == "project":
@@ -270,6 +276,8 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
         uuid_prefixes=tuple(uuids),
         tags_in=frozenset(tags_in),
         tags_out=frozenset(tags_out),
+        virtual_in=frozenset(virtual_in),
+        virtual_out=frozenset(virtual_out),
         project=project,
         priority=priority,
         status=status,
@@ -325,7 +333,7 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
             words.extend(tokens[index + 1 :])
             break
         if len(token) > 1 and token[0] == "+":
-            tags_add.add(check_tag(token[1:]))
+            tags_add.add(check_new_tag(token[1:]))
         elif len(token) > 1 and token[0] == "-":
             tags_remove.add(check_tag(token[1:]))
         elif match := _ATTR_RE.fullmatch(token):

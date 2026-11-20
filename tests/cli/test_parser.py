@@ -392,3 +392,16 @@ def test_help_flag(line: str, expected: ParsedCommand) -> None:
 def test_parse_filter_status_all() -> None:
     assert parse_filter(["status:all"]).status == ALL
     assert parse_filter(["status:ALL"]).status == ALL
+
+
+def test_parse_filter_virtual_tags() -> None:
+    f = parse_filter(["+OVERDUE", "-TAGGED", "+today", "+WAITING"])
+    assert (f.virtual_in, f.virtual_out) == ({"OVERDUE"}, {"TAGGED"})
+    assert (f.tags_in, f.tags_out) == ({"today", "WAITING"}, set())
+
+
+def test_modify_rejects_virtual_tag_but_allows_removing_it() -> None:
+    with pytest.raises(ValidationError) as exc:
+        parse_modify(["+TODAY"])
+    assert exc.value.key == "error.virtual_tag"
+    assert parse_modify(["-TODAY"]).tags_remove == {"TODAY"}
