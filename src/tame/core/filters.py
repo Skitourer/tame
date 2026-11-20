@@ -144,6 +144,8 @@ class VirtualTagger:
         tags.add("BLOCKED" if self._links.is_blocked(task) else "UNBLOCKED")
         if self._links.is_blocking(task):
             tags.add("BLOCKING")
+        if task.start is not None:
+            tags.add("ACTIVE")
         if is_waiting(task, self._now):
             tags.add("WAITING")
         if (due := task.due) is not None:

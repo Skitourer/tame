@@ -19,6 +19,13 @@ created = "Tâche {id} créée."
 unblocked = "La tâche {task} « {description} » n'est plus bloquée."
 task = "Tâche {task} « {description} » terminée."
 
+[cmd.start]
+task = "Tâche {task} « {description} » démarrée."
+already = "La tâche {task} « {description} » est déjà active."
+
+[cmd.stop]
+task = "Tâche {task} « {description} » arrêtée après {duration}."
+
 [cmd.delete]
 task = "Tâche {task} « {description} » supprimée."
 
@@ -84,6 +91,7 @@ priority = "Prio"
 due = "Échéance"
 wait = "Attente"
 depends = "Dép"
+active = "Active"
 description = "Description"
 urgency = "Urg"
 
@@ -106,6 +114,9 @@ urgency = "Urgence"
 depends = "Dépend de"
 blocking = "Bloque"
 missing = "(introuvable)"
+spent = "Temps passé"
+sessions_one = "(1 session)"
+sessions_many = "({count} sessions)"
 notes = "Notes"
 
 [confirm]
@@ -116,6 +127,10 @@ cancelled = "Annulé : aucune tâche modifiée."
 [confirm.done]
 one = "Terminer la tâche {task} « {description} » ?"
 many = "Terminer {count} tâches ?"
+
+[confirm.start]
+one = "Démarrer la tâche {task} « {description} » ?"
+many = "Démarrer {count} tâches ?"
 
 [confirm.delete]
 one = "Supprimer la tâche {task} « {description} » ?"
@@ -150,6 +165,7 @@ color = "Couleurs dans le terminal (jamais dans les fichiers ou les redirections
 kindness = "De temps en temps, un mot gentil sur les gens autour de vous, après une commande."
 default_command = "Ce que lance tk seul, ou tk suivi d'un filtre."
 next_limit = "Nombre de tâches affichées par next."
+multiple_active = "false : tk start arrête la tâche déjà démarrée. true : plusieurs tâches peuvent être démarrées à la fois."
 completion = "Complétion par Tab : true l'ajoute à votre profil PowerShell (ou bash), false la retire."
 
 [setting.help.undo]
@@ -165,6 +181,7 @@ tags = "Urgence ajoutée quand une tâche a des tags."
 project = "Urgence ajoutée quand une tâche a un projet."
 blocked = "Urgence ajoutée quand la tâche attend une autre tâche en cours (en général négative)."
 blocking = "Urgence ajoutée quand une autre tâche en cours attend celle-ci."
+active = "Urgence ajoutée tant que la tâche est démarrée (tk start)."
 
 [setting.expected]
 language = "une valeur parmi : {languages}"
@@ -219,6 +236,8 @@ invalid_priority = "Priorité invalide : « {value} » (attendu : H, M ou L)"
 invalid_date = "Date invalide : « {value} » (p. ex. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "Aucune tâche trouvée."
 nothing_to_undo = "Rien à annuler."
+no_active = "Aucune tâche active."
+one_active = "Une seule tâche peut être active : {count} correspondent (mettez multiple_active à true pour le permettre)."
 no_task = "Pas de tâche {ref}."
 ambiguous_task = "Plusieurs tâches correspondent à {ref} : donnez plus de l'uuid."
 invalid_depends = "Dépendance invalide : « {value} » (attendu des ids comme 3,4 ou 1-3, des uuids, -3 pour retirer)"
@@ -531,6 +550,36 @@ Exemples :
   tk 3 denotate                      (la note la plus récente)
 '''
 
+[help.cmd.start]
+summary = "Commencer à travailler sur une tâche"
+usage = "tk <filtre> start [--yes]"
+body = '''
+Marque la tâche comme démarrée (+ACTIVE) et compte le temps jusqu'à tk stop. Les
+tâches démarrées gagnent en urgence (urgency.active) et la colonne Active de list et
+next indique depuis combien de temps elles tournent. tk info affiche le temps passé,
+toutes sessions additionnées.
+
+Une seule tâche tourne à la fois : en démarrer une arrête l'autre (mettez
+multiple_active à true pour en permettre plusieurs). done et delete arrêtent d'abord
+la tâche, en gardant son temps.
+
+Exemples :
+  tk 3 start
+  tk +ACTIVE list
+'''
+
+[help.cmd.stop]
+summary = "Arrêter de travailler sur des tâches"
+usage = "tk [filtre] stop"
+body = '''
+Arrête les tâches actives, toutes ou celles que choisit le filtre, et enregistre le
+temps passé depuis tk start. Rien d'actif : code de sortie 2.
+
+Exemples :
+  tk stop
+  tk 3 stop
+'''
+
 [help.cmd.done]
 summary = "Marquer des tâches terminées"
 usage = "tk <filtre> done [--yes]"
@@ -562,7 +611,7 @@ Exemples :
 summary = "Annuler la dernière modification"
 usage = "tk undo"
 body = '''
-Annule le dernier add, done, delete, modify, annotate, denotate ou import, ids
+Annule le dernier add, done, delete, modify, annotate, denotate, start, stop ou import, ids
 compris. Relancez-le pour remonter plus loin. L'historique plus ancien que undo.retention (3 mois par défaut) est purgé ;
 voir tk help config. tk purge efface tout l'historique.
 '''
@@ -745,6 +794,7 @@ trois derniers) :
   DUE                  échéance dans les 7 prochains jours
   BLOCKED  UNBLOCKED   attend / n'attend pas une autre tâche en cours
   BLOCKING             une autre tâche en cours l'attend
+  ACTIVE               démarrée avec tk start
   WAITING              cachée par wait: jusqu'à une date à venir
   ANNOTATED            a une annotation
   PROJECT  TAGGED      a un projet / au moins un tag
@@ -799,6 +849,7 @@ Les tâches sont listées par urgence, la somme de :
   projet       1.0 si la tâche a un projet
   bloquée      -5.0 si elle attend une autre tâche en cours (depends:)
   bloquante    8.0 si une autre tâche en cours l'attend
+  active       4.0 tant que la tâche est démarrée (tk start)
 
 Changez les poids avec tk config set urgency.<nom> <valeur>, par exemple
 tk config set urgency.due 8.

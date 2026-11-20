@@ -86,6 +86,7 @@ tk +OVERDUE                                  # late tasks (virtual tags: +TODAY,
 tk project:home list                         # filter first (or: tk list project:home)
 tk +phone -work bank                         # tags and description words
 tk 2-6 pri:H                                 # ids and priority
+tk 3 start                                   # work on task 3; tk stop tells how long
 tk 3,5 done                                  # complete tasks 3 and 5
 tk 4 delete                                  # asks first; --yes skips the question
 tk 1 modify due:+3d -phone Call the bank     # set, untag, new description

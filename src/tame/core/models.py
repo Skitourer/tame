@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -42,6 +42,24 @@ class Annotation:
 
 
 @dataclass(frozen=True, slots=True)
+class Session:
+    """A finished stretch of work on a task, from ``start`` to ``stop`` (SPEC §5).
+
+    Attributes:
+        start: When work started.
+        end: When it stopped.
+    """
+
+    start: datetime
+    end: datetime
+
+    @property
+    def duration(self) -> timedelta:
+        """How long it lasted."""
+        return self.end - self.start
+
+
+@dataclass(frozen=True, slots=True)
 class Task:
     """A task. Datetimes are timezone-aware (stored as UTC).
 
@@ -60,10 +78,11 @@ class Task:
         annotations: Notes, sorted by entry time.
         depends: Uuids of the tasks this one waits for (never its own).
         wait: Hidden from filters until then (SPEC §4 waiting tasks).
-        start: When work started (used from 0.4).
+        start: When the current work session started (``tk start``); None if not active.
         recur: Taskwarrior recurrence period, stored as is (used from 0.4).
         until: End of the recurrence (used from 0.4).
         extra: Unknown Taskwarrior attributes, kept for JSON round-trip.
+        sessions: Finished work sessions, by start time.
     """
 
     uuid: str
@@ -84,6 +103,19 @@ class Task:
     recur: str | None = None
     until: datetime | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+    sessions: tuple[Session, ...] = ()
+
+    @property
+    def active(self) -> bool:
+        """True if the task is pending and started."""
+        return self.status is Status.PENDING and self.start is not None
+
+    def time_spent(self, now: datetime) -> timedelta:
+        """Total of the sessions, plus the current one if active."""
+        total = sum((session.duration for session in self.sessions), timedelta())
+        if self.start is not None and self.status is Status.PENDING:
+            total += max(now - self.start, timedelta())
+        return total
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,6 +268,7 @@ VIRTUAL_TAGS = frozenset(
         "BLOCKED",
         "UNBLOCKED",
         "BLOCKING",
+        "ACTIVE",
         "WAITING",
         "ANNOTATED",
         "PROJECT",

@@ -432,8 +432,8 @@ def test_parse_filter_status_all() -> None:
 
 def test_parse_filter_virtual_tags() -> None:
     f = parse_filter(["+OVERDUE", "-TAGGED", "+today", "+ACTIVE"])
-    assert (f.virtual_in, f.virtual_out) == ({"OVERDUE"}, {"TAGGED"})
-    assert (f.tags_in, f.tags_out) == ({"today", "ACTIVE"}, set())
+    assert (f.virtual_in, f.virtual_out) == ({"OVERDUE", "ACTIVE"}, {"TAGGED"})
+    assert (f.tags_in, f.tags_out) == ({"today"}, set())
 
 
 def test_modify_rejects_virtual_tag_but_allows_removing_it() -> None:

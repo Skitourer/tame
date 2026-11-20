@@ -22,6 +22,7 @@ class Coefficients:
     project: float = 1.0
     blocked: float = -5.0
     blocking: float = 8.0
+    active: float = 4.0
 
 
 DEFAULT_COEFFICIENTS = Coefficients()
@@ -48,7 +49,7 @@ def urgency(
     Sum of: priority weight; ``due`` * :func:`due_factor`; ``age`` * age in years
     (capped at 1); ``tags`` if any tag; ``project`` if a project is set; with
     ``links``, ``blocked`` if it waits for a pending task and ``blocking`` if a
-    pending task waits for it.
+    pending task waits for it; ``active`` if it is started.
     """
     c = coefficients
     score = {Priority.H: c.pri_H, Priority.M: c.pri_M, Priority.L: c.pri_L, None: 0.0}[
@@ -61,6 +62,8 @@ def urgency(
         score += c.tags
     if task.project:
         score += c.project
+    if task.active:
+        score += c.active
     if links is not None:
         if links.is_blocked(task):
             score += c.blocked

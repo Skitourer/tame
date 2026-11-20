@@ -17,6 +17,7 @@ from typing import Any
 from tame.core.models import (
     Annotation,
     Priority,
+    Session,
     Status,
     Task,
     check_description,
@@ -83,10 +84,10 @@ def task_to_tw(task: Task, urgency: float | None = None) -> dict[str, Any]:
     data["status"] = tw_status if task.status is Status.PENDING and tw_status else task.status
     if task.tags:
         data["tags"] = sorted(task.tags)
-    if task.annotations:
+    if notes := [*task.annotations, *_journal(task.sessions)]:
         data[ANNOTATIONS] = [
             {"entry": format_date(note.entry), "description": note.description}
-            for note in sorted(task.annotations, key=lambda note: note.entry)
+            for note in sorted(notes, key=lambda note: note.entry)
         ]
     if task.depends:
         data[DEPENDS] = sorted(task.depends)
@@ -99,6 +100,45 @@ def task_to_tw(task: Task, urgency: float | None = None) -> dict[str, Any]:
     if urgency is not None:
         data["urgency"] = round(urgency, 4)
     return {**extra, **data}
+
+
+JOURNAL_START = "Started task"
+JOURNAL_STOP = "Stopped task"
+"""Annotations Taskwarrior writes on start/stop with ``journal.time``; sessions map to them."""
+
+
+def _journal(sessions: Iterable[Session]) -> list[Annotation]:
+    """Each session as a ``Started task`` / ``Stopped task`` pair of annotations."""
+    notes = []
+    for session in sessions:
+        notes += [Annotation(session.start, JOURNAL_START), Annotation(session.end, JOURNAL_STOP)]
+    return notes
+
+
+def split_sessions(
+    notes: Iterable[Annotation], start: datetime | None
+) -> tuple[tuple[Annotation, ...], tuple[Session, ...]]:
+    """Turn ``Started task``/``Stopped task`` annotation pairs back into sessions.
+
+    The other notes are returned as they are, so is a journal note without its pair,
+    but for a last ``Started task`` at ``start`` (the current session, kept by ``start``).
+    """
+    kept: list[Annotation] = []
+    sessions: list[Session] = []
+    opened: Annotation | None = None
+    for note in sorted(notes, key=lambda note: note.entry):
+        if note.description == JOURNAL_START:
+            if opened is not None:
+                kept.append(opened)
+            opened = note
+        elif note.description == JOURNAL_STOP and opened is not None:
+            sessions.append(Session(opened.entry, note.entry))
+            opened = None
+        else:
+            kept.append(note)
+    if opened is not None and opened.entry != start:
+        kept.append(opened)
+    return tuple(sorted(kept, key=lambda note: note.entry)), tuple(sessions)
 
 
 def dumps(objects: Iterable[Mapping[str, Any]]) -> str:
@@ -164,6 +204,10 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
     if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
         raise _field_error("tags", tags)
     project = _str(data, "project")
+    if ANNOTATIONS in fields:
+        fields[ANNOTATIONS], sessions = split_sessions(fields[ANNOTATIONS], fields.get("start"))
+    else:
+        sessions = ()
     return Task(
         uuid=uuid,
         description=check_description(_str(data, "description") or ""),
@@ -176,6 +220,7 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
         due=dates["due"],
         end=dates["end"],
         extra=extra,
+        sessions=sessions,
         **fields,
     )
 

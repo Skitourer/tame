@@ -18,6 +18,13 @@ created = "Created task {id}."
 task = "Completed task {task} '{description}'."
 unblocked = "Task {task} '{description}' is now unblocked."
 
+[cmd.start]
+task = "Started task {task} '{description}'."
+already = "Task {task} '{description}' is already active."
+
+[cmd.stop]
+task = "Stopped task {task} '{description}' after {duration}."
+
 [cmd.delete]
 task = "Deleted task {task} '{description}'."
 
@@ -83,6 +90,7 @@ priority = "Pri"
 due = "Due"
 wait = "Wait"
 depends = "Dep"
+active = "Active"
 description = "Description"
 urgency = "Urg"
 
@@ -105,6 +113,9 @@ urgency = "Urgency"
 depends = "Depends on"
 blocking = "Blocking"
 missing = "(missing)"
+spent = "Time spent"
+sessions_one = "(1 session)"
+sessions_many = "({count} sessions)"
 notes = "Notes"
 
 [confirm]
@@ -115,6 +126,10 @@ cancelled = "Cancelled: no task changed."
 [confirm.done]
 one = "Complete task {task} '{description}'?"
 many = "Complete {count} tasks?"
+
+[confirm.start]
+one = "Start task {task} '{description}'?"
+many = "Start {count} tasks?"
 
 [confirm.delete]
 one = "Delete task {task} '{description}'?"
@@ -149,6 +164,7 @@ color = "Colors in the terminal (never in files or pipes). The NO_COLOR environm
 kindness = "Now and then, a kind word about the people around you, after a command."
 default_command = "What tk alone, or tk followed by a filter, runs."
 next_limit = "How many tasks next shows."
+multiple_active = "false: tk start stops the task already started. true: several tasks can be started at once."
 completion = "Tab completion: true adds it to your PowerShell (or bash) profile, false removes it."
 
 [setting.help.undo]
@@ -164,6 +180,7 @@ tags = "Urgency added when a task has tags."
 project = "Urgency added when a task has a project."
 blocked = "Urgency added when the task waits for another pending task (usually negative)."
 blocking = "Urgency added when another pending task waits for this one."
+active = "Urgency added while the task is started (tk start)."
 
 [setting.expected]
 language = "one of: {languages}"
@@ -218,6 +235,8 @@ invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
 invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "No matches."
 nothing_to_undo = "Nothing to undo."
+no_active = "No active task."
+one_active = "Only one task can be active: {count} match (set multiple_active to true to allow it)."
 no_task = "No task {ref}."
 ambiguous_task = "Several tasks match {ref}: give more of the uuid."
 invalid_depends = "Invalid dependency: '{value}' (expected ids such as 3,4 or 1-3, uuids, -3 to remove)"
@@ -526,6 +545,34 @@ Examples:
   tk 3 denotate                      (the most recent note)
 '''
 
+[help.cmd.start]
+summary = "Start working on a task"
+usage = "tk <filter> start [--yes]"
+body = '''
+Marks the task as started (+ACTIVE) and counts the time until tk stop. Started tasks
+gain urgency (urgency.active) and the Active column of list and next shows how long
+they have been running. tk info shows the time spent, all sessions added up.
+
+Only one task runs at a time: starting one stops the other (set multiple_active to
+true to allow several). done and delete stop a task first, keeping its time.
+
+Examples:
+  tk 3 start
+  tk +ACTIVE list
+'''
+
+[help.cmd.stop]
+summary = "Stop working on tasks"
+usage = "tk [filter] stop"
+body = '''
+Stops the active tasks, all of them or those the filter picks, and records the time
+spent since tk start. Nothing active: exit code 2.
+
+Examples:
+  tk stop
+  tk 3 stop
+'''
+
 [help.cmd.done]
 summary = "Mark tasks completed"
 usage = "tk <filter> done [--yes]"
@@ -556,7 +603,7 @@ Examples:
 summary = "Revert the last change"
 usage = "tk undo"
 body = '''
-Reverts the last add, done, delete, modify, annotate, denotate or import, ids included. Run it again to go
+Reverts the last add, done, delete, modify, annotate, denotate, start, stop or import, ids included. Run it again to go
 further back. History older than undo.retention (default 3 months) is purged; see
 tk help config. tk purge clears the whole history.
 '''
@@ -730,6 +777,7 @@ Virtual tags are computed, never set (pending tasks only, but the last three):
   DUE                  due in the next 7 days
   BLOCKED  UNBLOCKED   waiting / not waiting for another pending task
   BLOCKING             another pending task waits for it
+  ACTIVE               started with tk start
   WAITING              hidden by wait: until a later date
   ANNOTATED            has an annotation
   PROJECT  TAGGED      has a project / at least one tag
@@ -783,6 +831,7 @@ Tasks are listed by urgency, the sum of:
   project      1.0 if the task has a project
   blocked      -5.0 if it waits for another pending task (depends:)
   blocking     8.0 if another pending task waits for it
+  active       4.0 while the task is started (tk start)
 
 Change the weights with tk config set urgency.<name> <value>, for example
 tk config set urgency.due 8.

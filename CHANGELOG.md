@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`tk start` / `tk stop`**: count the time spent on a task. `tk 3 start` starts it
+  (`+ACTIVE`, more urgency), `tk stop` stops it and tells how long it ran. One task runs at a
+  time unless `multiple_active = true`; `done` and `delete` stop it first. `list` and `next`
+  show an **Active** column, `tk info` the **Time spent** over all sessions. Sessions travel to
+  and from Taskwarrior as its *Started task* / *Stopped task* notes. Database schema 4.
+
 - **Dependencies**: `tk 5 modify depends:3,4` makes task 5 wait for tasks 3 and 4 (added to
   the ones it already waits for, as in Taskwarrior); `depends:-3` removes one, `depends:`
   all; `tk add … depends:2` too. A blocked task leaves `tk next` and loses urgency, the task

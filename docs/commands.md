@@ -13,6 +13,8 @@ in your interface language. Commands can be shortened to any unique prefix: `tk 
 | [`modify`](#modify) | change tasks |
 | [`annotate`](#annotate) | add a dated note to tasks |
 | [`denotate`](#denotate) | remove a note from tasks |
+| [`start`](#start) | start working on a task |
+| [`stop`](#stop) | stop working on tasks |
 | [`done`](#done) | mark tasks completed |
 | [`delete`](#delete) | delete tasks |
 | [`undo`](#undo) | revert the last change |
@@ -162,6 +164,42 @@ tk 3 denotate Call back
 tk 3 denotate                       # the most recent note
 ```
 
+## start
+
+```text
+tk <filter> start [--yes]
+```
+
+Marks the task as started (`+ACTIVE`) and counts the time until [`tk stop`](#stop). Started
+tasks gain [urgency](urgency.md) (4.0) and the **Active** column of `list` and `next` shows how
+long they have been running. `tk info` shows the **Time spent**, all sessions added up.
+
+Only one task runs at a time: starting one stops the other, with its *Stopped…* message. Set
+[`multiple_active`](settings.md) to `true` to allow several. `done` and `delete` stop a task
+first, keeping its time. Undoable.
+
+```text
+tk 3 start
+tk +ACTIVE list
+```
+
+Exported to Taskwarrior, each session becomes two notes, *Started task* and *Stopped task*,
+as Taskwarrior writes them with `journal.time`; importing turns them back into sessions.
+
+## stop
+
+```text
+tk [filter] stop
+```
+
+Stops the active tasks, all of them or those the filter picks, and records the time spent:
+*Stopped task 3 'Write report' after 1h20.* Nothing active: exit code 2.
+
+```text
+tk stop
+tk 3 stop
+```
+
 ## done
 
 ```text
@@ -198,7 +236,7 @@ tk project:old delete --yes
 tk undo
 ```
 
-Reverts the last `add`, `done`, `delete`, `modify` or `import`, ids included. Run it again to
+Reverts the last `add`, `done`, `delete`, `modify`, `annotate`, `denotate`, `start`, `stop` or `import`, ids included. Run it again to
 go further back. History older than `undo.retention` (default 3 months) is purged; see
 [Settings](settings.md). [`tk purge`](#purge) clears the whole history.
 

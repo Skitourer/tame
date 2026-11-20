@@ -38,6 +38,7 @@ Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
 | `kindness` | `true` | now and then, a kind word about the people around you (see [below](#kind-words)) |
 | `default_command` | `"list"` | what `tk` alone (or `tk <filter>`) runs: `list` or [`next`](commands.md#next) |
 | `next_limit` | `10` | how many tasks [`next`](commands.md#next) shows (1 or more) |
+| `multiple_active` | `false` | `false`: [`tk start`](commands.md#start) stops the task already started; `true`: several can run at once |
 | `completion` | `false` | Tab completion in your shell: `true` adds it to your PowerShell (or bash) profile, `false` removes it (see [completion](commands.md#completion)) |
 | `undo.retention` | `"3m"` | how long undo history is kept: `forever`, or `<n>d`/`w`/`m`/`y` (m = 30 days, y = 365 days) |
 | `urgency.pri_H` | `6.0` | [urgency](urgency.md) weight of priority H |
@@ -49,6 +50,7 @@ Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
 | `urgency.project` | `1.0` | weight of having a project |
 | `urgency.blocked` | `-5.0` | added when the task waits for another pending task |
 | `urgency.blocking` | `8.0` | added when another pending task waits for it |
+| `urgency.active` | `4.0` | added while the task is started |
 
 The file looks like this (comments shortened):
 
@@ -60,6 +62,7 @@ color = true
 kindness = true
 default_command = "list"
 next_limit = 10
+multiple_active = false
 completion = false
 
 [undo]

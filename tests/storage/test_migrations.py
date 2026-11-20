@@ -26,8 +26,9 @@ def test_empty_database_is_version_0(tmp_path: Path) -> None:
 def test_migrate_creates_schema(tmp_path: Path) -> None:
     conn = connect(tmp_path / "x.db")
     migrate(conn)
-    assert schema_version(conn) == SCHEMA_VERSION == 3
-    assert {"meta", "tasks", "task_tags", "undo_log", "annotations", "depends"} <= tables(conn)
+    assert schema_version(conn) == SCHEMA_VERSION == 4
+    expected = {"meta", "tasks", "task_tags", "undo_log", "annotations", "depends", "sessions"}
+    assert expected <= tables(conn)
 
 
 def test_migrate_is_idempotent(tmp_path: Path) -> None:

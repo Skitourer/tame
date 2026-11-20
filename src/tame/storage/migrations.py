@@ -9,7 +9,7 @@ from tame.errors import StorageError
 from tame.io.tw_json import ANNOTATIONS, DEPENDS, split_extra
 from tame.storage.codec import to_db
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 """Schema version this code reads and writes."""
 
 type Step = str | Callable[[sqlite3.Connection], None]
@@ -112,6 +112,15 @@ _MIGRATIONS: dict[int, tuple[Step, ...]] = {
         "ALTER TABLE tasks ADD COLUMN recur TEXT",
         'ALTER TABLE tasks ADD COLUMN "until" TEXT',
         _promote_wait_start_recur_until,
+    ),
+    4: (
+        """CREATE TABLE sessions(
+            id INTEGER PRIMARY KEY,
+            uuid TEXT NOT NULL REFERENCES tasks(uuid) ON DELETE CASCADE,
+            start TEXT NOT NULL,
+            "end" TEXT NOT NULL
+        )""",
+        "CREATE INDEX idx_sessions_uuid ON sessions(uuid)",
     ),
 }
 

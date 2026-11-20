@@ -14,6 +14,7 @@ from tame.core.models import (
     Changes,
     DependsChange,
     Links,
+    Session,
     Status,
     Task,
     TaskRefs,
@@ -69,6 +70,21 @@ class PurgeResult:
 
     backup: Path
     purged: tuple[Task, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class StartResult:
+    """What :meth:`TaskService.start` did.
+
+    Attributes:
+        started: The tasks started, as stored.
+        stopped: Other tasks stopped to keep one active, with the session just ended.
+        already: Tasks that were active already, left as they were.
+    """
+
+    started: tuple[Task, ...] = ()
+    stopped: tuple[tuple[Task, Session], ...] = ()
+    already: tuple[Task, ...] = ()
 
 
 class TaskService:
@@ -157,7 +173,7 @@ class TaskService:
     def _close(self, tasks: Iterable[Task], status: Status, cmd: str) -> list[Task]:
         now = self._clock()
         changed = [
-            replace(task, status=status, id=None, end=now, modified=now)
+            replace(_stopped(task, now)[0], status=status, id=None, end=now, modified=now)
             for task in tasks
             if task.status is not status
         ]
@@ -170,6 +186,56 @@ class TaskService:
                 self._repo.update(task)
             self._repo.renumber()
         return changed
+
+    def start(self, tasks: Iterable[Task], *, multiple_active: bool = False) -> StartResult:
+        """Start work on the pending ones of ``tasks`` (``start`` = now).
+
+        Unless ``multiple_active``, the other active tasks are stopped first, each
+        recording its session.
+
+        Raises:
+            ValidationError: If several tasks would start while only one may be active.
+        """
+        tasks = [task for task in tasks if task.status is Status.PENDING]
+        already = tuple(task for task in tasks if task.start is not None)
+        to_start = [task for task in tasks if task.start is None]
+        if not to_start:
+            return StartResult(already=already)
+        if not multiple_active and len(to_start) > 1:
+            raise ValidationError("error.one_active", count=len(to_start))
+        now = self._clock()
+        started = [replace(task, start=now, modified=now) for task in to_start]
+        stopped: list[tuple[Task, Session]] = []
+        if not multiple_active:
+            for other in self.query(include_waiting=True):
+                if other.start is not None and other.uuid not in {t.uuid for t in started}:
+                    new, session = _stopped(other, now)
+                    stopped.append((replace(new, modified=now), session))
+        changed = started + [task for task, _ in stopped]
+        with self._repo.transaction():
+            self._log(now, "start", self._snapshot(changed))
+            for task in changed:
+                self._repo.update(task)
+        return StartResult(tuple(started), tuple(stopped), already)
+
+    def stop(self, tasks: Iterable[Task]) -> list[tuple[Task, Session]]:
+        """Stop work on the active ones of ``tasks``, recording each session.
+
+        Returns:
+            The stopped tasks, as stored, with the session just ended.
+        """
+        now = self._clock()
+        result = []
+        for task in tasks:
+            if task.active:
+                new, session = _stopped(task, now)
+                result.append((replace(new, modified=now), session))
+        if result:
+            with self._repo.transaction():
+                self._log(now, "stop", self._snapshot([task for task, _ in result]))
+                for task, _ in result:
+                    self._repo.update(task)
+        return result
 
     def modify(self, tasks: Iterable[Task], changes: Changes) -> list[Task]:
         """Apply ``changes`` to ``tasks``; ``modified`` = now on the tasks that change.
@@ -506,6 +572,17 @@ class TaskService:
     def virtual_tagger(self) -> VirtualTagger:
         """Return a tagger computing virtual tags as of now, in the system time zone."""
         return VirtualTagger(self._clock(), self.links())
+
+
+def _stopped(task: Task, now: datetime) -> tuple[Task, Session]:
+    """Return ``task`` with its current session ended at ``now``, and that session.
+
+    A task not started is returned as is, with an empty session.
+    """
+    if task.start is None:
+        return task, Session(now, now)
+    session = Session(task.start, max(now, task.start))
+    return replace(task, start=None, sessions=(*task.sessions, session)), session
 
 
 def _ref(task: Task) -> str:
