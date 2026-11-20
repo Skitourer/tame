@@ -57,8 +57,27 @@ ROLES: dict[str, str] = {
     "heading": "bold underline",
     "command": "cyan",
     "kind": "italic dim",
+    # Easter eggs: fixed colors, never themed.
+    "egg.heart1": "bold red",
+    "egg.heart2": "red",
+    "egg.heart3": "magenta",
+    "egg.heart4": "bright_magenta",
+    "egg.art": "yellow",
+    "egg.figure": "cyan",
+    "egg.rope": "yellow",
+    "egg.caption": "bold green",
+    "egg.number": "bold",
+    "egg.strong": "bold",
+    "egg.soft": "italic",
+    "egg.shout": "bold yellow",
+    "egg.spark": "bold cyan",
+    "egg.yes": "bold green",
+    "egg.no": "italic dim",
 }
-"""Style of each output role, as rich style strings (groundwork for the 0.5 themes)."""
+"""Style of each output role, as rich style strings (groundwork for the 0.5 themes).
+
+``egg.*`` roles are the easter eggs' own colors: themes will not change them.
+"""
 
 SYMBOLS = {"success": "✓", "error": "✗", "warning": "!", "question": "?"}
 """Prefix of each kind of message, in a terminal only."""

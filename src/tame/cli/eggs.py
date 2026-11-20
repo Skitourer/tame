@@ -4,10 +4,13 @@ import base64
 import codecs
 import hashlib
 import random
+import re
 import sys
 import zlib
 from collections.abc import Sequence
 
+from tame.cli import render
+from tame.cli.render import Line, Segment
 from tame.core.models import Task
 
 _TABLE: dict[str, tuple[int, str]] = {
@@ -71,8 +74,70 @@ def hatch(argv: Sequence[str]) -> bool:
                 done = len(service.query(Filter(status=Status.COMPLETED)))
                 pending = len(service.query())
                 data = _z(data).format(done, pending, "" if done == 1 else "s")
-    print(_z(data) if kind == 2 else data if kind == 3 else _r(data))
+    match kind:
+        case 0:
+            render.say(_r(data), "egg.no")
+        case 1:
+            render.say(_r(data), "egg.yes")
+        case 2:
+            render.emit([_caption(line, "egg.art") for line in _z(data).split("\n")])
+        case _:
+            render.emit([_lasso(line) for line in data.split("\n")])
     return True
+
+
+_CAPTION_RE = re.compile(r"^(.*?)( {3,})([+\w].*)$")  # Text starts with a word or +N.
+_ROPE_RE = re.compile(r"(~+/|_/)")
+_NUMBER_RE = re.compile(r"(\d+)")
+
+
+def _caption(line: str, art: str) -> list[Segment]:
+    """Split ``line`` into its drawing and the text after it (3+ spaces apart)."""
+    if match := _CAPTION_RE.match(line):
+        return [(match.group(1), art), (match.group(2), None), (match.group(3), "egg.caption")]
+    return [(line, art)]
+
+
+def _lasso(line: str) -> Line:
+    """A drawing with a rope, then a caption whose numbers stand out."""
+    caption: list[Segment] = []
+    if match := _CAPTION_RE.match(line):
+        line, gap, text = match.groups()
+        caption = [(gap, None)] + [
+            (part, "egg.number" if part.isdigit() else None)
+            for part in _NUMBER_RE.split(text)
+            if part
+        ]
+    drawing: list[Segment] = [
+        (part, "egg.rope" if _ROPE_RE.fullmatch(part) else "egg.figure")
+        for part in _ROPE_RE.split(line)
+        if part
+    ]
+    return drawing + caption
+
+
+def _gradient(lines: list[str]) -> list[Line]:
+    """Color ``lines`` from the first heart role to the last, top to bottom."""
+    roles = ["egg.heart1", "egg.heart2", "egg.heart3", "egg.heart4"]
+    return [[(line, roles[i * len(roles) // len(lines)])] for i, line in enumerate(lines)]
+
+
+_SPARK_RE = re.compile(r"(\d+\.\d+ \w+)")
+
+
+def _sentences(text: str, first: str, rest: str | None) -> list[Segment]:
+    """Style the first sentence of ``text`` as ``first``, what follows as ``rest``.
+
+    A number with a unit in what follows (``1.21 xyz``) stands out.
+    """
+    end = re.search(r"[.!?] ", text)
+    cut = end.start() + 1 if end else len(text)
+    tail = [
+        (part, "egg.spark" if _SPARK_RE.fullmatch(part) else rest)
+        for part in _SPARK_RE.split(text[cut:])
+        if part
+    ]
+    return [(text[:cut], first), *tail]
 
 
 def _heart(data: str) -> None:
@@ -84,18 +149,19 @@ def _heart(data: str) -> None:
     settings = load_settings()
     with open_service(settings) as service:
         word = kindness.draw(service, utc_now())
-    print(_z(data))
+    render.emit(_gradient(_z(data).split("\n")))
     kindness.show(word)
-    print(_r(_HINT))
+    text, _, command = _r(_HINT).partition("  ")
+    render.emit([[], [(f"{text}  ", None), (command, "command")]])
 
 
 def after_done(tasks: Sequence[Task]) -> None:
     """Called after ``done`` with the tasks as they were before."""
     if any(task.id == 42 for task in tasks):
-        print(_r(_FORTY_TWO))
+        render.emit([_sentences(_r(_FORTY_TWO), "egg.strong", "egg.soft")])
 
 
 def after_empty_undo() -> None:
     """Called when ``undo`` has nothing left to undo."""
     if _random.random() < 1 / 5:
-        print(_r(_TOO_FAR), file=sys.stderr)
+        render.emit([_sentences(_r(_TOO_FAR), "egg.shout", None)], sys.stderr)
