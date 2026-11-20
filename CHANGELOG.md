@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-20
+
+A face, and help on every setting.
+
 ### Added
 
 - **A logo**: a ticked box with a small heart on its corner, on the README, the
