@@ -127,6 +127,28 @@ many = "Modifier {count} tâches ?"
 [next]
 more = "{shown} tâches sur {total}. tk list les affiche toutes."
 
+[setting.help]
+language = "Langue de l'interface. Commandes, attributs et mots-clés de date restent en anglais."
+confirm_threshold = "done et modify demandent confirmation au-delà de ce nombre de tâches (delete demande toujours)."
+date_format = "Affichage des dates, en codes strftime : %Y année, %m mois, %d jour."
+color = "Couleurs dans le terminal (jamais dans les fichiers ou les redirections)."
+kindness = "De temps en temps, un mot gentil sur les gens autour de vous, après une commande."
+default_command = "Ce que lance tk seul, ou tk suivi d'un filtre."
+next_limit = "Nombre de tâches affichées par next."
+completion = "Complétion par Tab : true l'ajoute à votre profil PowerShell (ou bash), false la retire."
+
+[setting.help.undo]
+retention = "Jusqu'où tk undo peut remonter ; l'historique plus ancien est purgé."
+
+[setting.help.urgency]
+pri_H = "Urgence ajoutée par la priorité H."
+pri_M = "Urgence ajoutée par la priorité M."
+pri_L = "Urgence ajoutée par la priorité L."
+due = "Poids de l'échéance : x0,2 à 14 jours ou plus, jusqu'à x1,0 à 7 jours de retard ou plus."
+age = "Poids de l'âge : x0 pour une tâche neuve, jusqu'à x1,0 à un an."
+tags = "Urgence ajoutée quand une tâche a des tags."
+project = "Urgence ajoutée quand une tâche a un projet."
+
 [setting.expected]
 language = "une valeur parmi : {languages}"
 count = "un nombre entier, 0 ou plus"
@@ -272,6 +294,12 @@ usage_label = "Usage : {usage}"
 commands = "Commandes :"
 topics = "Sujets : tk help {topics}"
 more = "Détails : tk help <commande>, ou tk <commande> --help. Les commandes s'abrègent : tk mod."
+
+[help.settings]
+intro = "Réglages, dans config.toml (tk config path). Changez-en un avec tk config set CLÉ VALEUR,\nrevenez à sa valeur par défaut avec tk config unset CLÉ."
+values = "Valeurs : {values}. Par défaut : {default}."
+current = "Valeur actuelle : {value}."
+more = "Un seul réglage : tk help config CLÉ. Toutes les valeurs actuelles : tk config."
 
 [help.cmd.add]
 summary = "Créer une tâche"
@@ -465,11 +493,11 @@ Sans argument, liste tous les réglages ; ceux qui ont changé montrent leur val
 défaut. unset rétablit le défaut ; edit ouvre le fichier dans $EDITOR (Notepad sous
 Windows).
 
-Réglages : language, confirm_threshold, date_format, color, kindness, undo.retention,
-urgency.pri_H, urgency.pri_M, urgency.pri_L, urgency.due, urgency.age,
-urgency.tags, urgency.project.
+Chaque réglage, son rôle et ses valeurs : tk help settings
+Un seul réglage : tk help config CLÉ (par exemple tk help config date_format)
 
 Exemples :
+  tk help settings                     le rôle de chaque réglage, et ses valeurs
   tk config set language fr            interface en français
   tk config set undo.retention 1y      garder l'historique 1 an (ou : forever)
   tk config set date_format %d/%m/%Y

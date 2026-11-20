@@ -53,6 +53,8 @@ def complete_line(line: str) -> list[str]:
         ("list st", ["status:"]),
         ("help f", ["filters"]),
         ("help list ", []),
+        ("help config next", ["next_limit"]),
+        ("help s", ["settings"]),
         ("config ", ["get", "set", "unset", "path", "edit"]),
         ("config set la", ["language"]),
         ("config set language ", ["en", "fr"]),

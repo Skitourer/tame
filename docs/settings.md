@@ -21,6 +21,8 @@ tk config set undo.retention 1y
 tk config unset undo.retention         # back to the default
 tk config path                         # where the file is
 tk config edit                         # open it in $VISUAL / $EDITOR (Notepad on Windows)
+tk help settings                       # every setting: what it does, values, default
+tk help config date_format             # one setting, with its current value
 ```
 
 Booleans accept `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`.
