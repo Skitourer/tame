@@ -255,11 +255,12 @@ keywords and help topics. Turn it on once:
 tk config set completion true
 ```
 
-TAME adds a block to your PowerShell profile (`$PROFILE`; on Linux, `~/.bashrc` if bash is
-your shell) and keeps it up to date; open a new terminal to use it. Then try `tk mo`
-<kbd>Tab</kbd>, `tk +` <kbd>Tab</kbd>, `tk project:` <kbd>Tab</kbd> or `tk add x due:`
-<kbd>Tab</kbd>. `tk config set completion false` removes the block; the rest of your profile
-is never touched. The first time you run TAME in a terminal, it reminds you of this once.
+TAME adds a block to your PowerShell profile (`$PROFILE`), to `~/.bashrc` for Git Bash if
+it is installed, and on Linux to `~/.bashrc` if bash is your shell. It keeps the block up
+to date; open a new terminal to use it. Then try `tk mo` <kbd>Tab</kbd>, `tk +`
+<kbd>Tab</kbd>, `tk project:` <kbd>Tab</kbd> or `tk add x due:` <kbd>Tab</kbd>.
+`tk config set completion false` removes the block; the rest of your profile is never
+touched. The first time you run TAME in a terminal, it reminds you of this once.
 
 If PowerShell does not run profile scripts on your computer (execution policy `Restricted`),
 TAME writes nothing and tells you; `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`

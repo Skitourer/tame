@@ -79,10 +79,24 @@ def discover() -> list[Profile]:
             lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             if len(lines) == 2:
                 found.append(Profile("powershell", lines[0], lines[1]))
+        if _has_git_bash():
+            found.append(Profile("bash", str(Path.home() / ".bashrc")))
         return found
     if Path(os.environ.get("SHELL", "")).name == "bash":
         return [Profile("bash", str(Path.home() / ".bashrc"))]
     return []
+
+
+def _has_git_bash() -> bool:
+    """True if Git for Windows, with its Git Bash, is installed (not WSL's bash.exe)."""
+    roots: list[Path] = []
+    if (git := shutil.which("git")) is not None:
+        roots += Path(git).resolve().parents[:3]  # <root>/cmd/git.exe, <root>/mingw64/bin
+    if program_files := os.environ.get("PROGRAMFILES"):
+        roots.append(Path(program_files) / "Git")
+    if local := os.environ.get("LOCALAPPDATA"):
+        roots.append(Path(local) / "Programs" / "Git")
+    return any((root / "git-bash.exe").is_file() for root in roots)
 
 
 def edit_block(text: str, block: str | None, newline: str) -> str:
@@ -106,25 +120,30 @@ def has_block(text: str) -> bool:
     return BEGIN in text.splitlines()
 
 
-def _read(path: Path) -> tuple[str, str, str]:
-    """Return the text, encoding and newline of ``path`` (empty UTF-8 if missing)."""
+def _read(path: Path, shell: str = "powershell") -> tuple[str, str, str]:
+    """Return the text, encoding and newline of ``path`` (empty UTF-8 if missing).
+
+    A new file gets CRLF for PowerShell on Windows, LF otherwise: bash, Git Bash
+    included, fails on CR.
+    """
+    crlf = sys.platform == "win32" and shell == "powershell"
     try:
         data = path.read_bytes()
     except FileNotFoundError:
-        return "", "utf-8", "\r\n" if sys.platform == "win32" else "\n"
+        return "", "utf-8", "\r\n" if crlf else "\n"
     encoding = "utf-8"
     if data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
         encoding = "utf-16"
     elif data.startswith(codecs.BOM_UTF8):
         encoding = "utf-8-sig"
     text = data.decode(encoding)
-    newline = "\r\n" if "\r\n" in text or (not text and sys.platform == "win32") else "\n"
+    newline = "\r\n" if "\r\n" in text or (not text and crlf) else "\n"
     return text, encoding, newline
 
 
-def _write_block(path: Path, block: str | None) -> bool:
+def _write_block(path: Path, block: str | None, shell: str = "powershell") -> bool:
     """Put ``block`` (None: remove it) in ``path``; return True if the file changed."""
-    text, encoding, newline = _read(path)
+    text, encoding, newline = _read(path, shell)
     new = edit_block(text, block, newline)
     if new == text or (block is None and not text):
         return False
@@ -174,7 +193,7 @@ def reconcile(
     for profile in profiles:
         path = Path(profile.path)
         if not enabled:
-            if _write_block(path, None):
+            if _write_block(path, None, profile.shell):
                 messages.append(t("completion.removed", path=path))
             continue
         if not profile.allowed:
@@ -183,7 +202,8 @@ def reconcile(
                 messages.append(t("completion.blocked", path=path, policy=profile.policy))
             continue
         was_there = has_block(_read(path)[0])
-        if _write_block(path, completion.script(profile.shell, names)) and not was_there:
+        block = completion.script(profile.shell, names)
+        if _write_block(path, block, profile.shell) and not was_there:
             messages.append(t("completion.enabled", path=path))
         elif explicit and was_there:
             messages.append(t("completion.already", path=path))

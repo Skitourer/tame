@@ -136,6 +136,13 @@ def test_cold_complete_does_not_import_rich_or_tomlkit() -> None:
     assert result.stdout.splitlines()[-1] == "False False"
 
 
+def test_candidates_end_with_lf_only() -> None:
+    """On Windows, text output would end lines with CRLF; bash would show the CR as ^M."""
+    code = "from tame.__main__ import main; main(['_complete', '_ver'])"
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=True)
+    assert result.stdout == b"version\n"
+
+
 # --- Scripts ---------------------------------------------------------------------------
 
 
