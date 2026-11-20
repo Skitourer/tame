@@ -76,6 +76,21 @@ def shim_text() -> str:
     )
 
 
+def installed(directory: Path | None = None) -> list[str]:
+    """Return the names of the aliases TAME installed, sorted (``[]`` if none)."""
+    folder = directory or bin_dir()
+    try:
+        paths = sorted(folder.iterdir())
+    except OSError:
+        return []
+    suffix = ".cmd" if sys.platform == "win32" else ""
+    return [
+        path.name.removesuffix(suffix)
+        for path in paths
+        if path.is_file() and path.name.endswith(suffix) and is_shim(path)
+    ]
+
+
 def is_shim(path: Path) -> bool:
     """Return True if ``path`` is a shim written by TAME."""
     try:

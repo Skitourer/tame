@@ -35,6 +35,10 @@ uv run --group docs mkdocs serve       # preview at http://127.0.0.1:8000
 uv run --group docs mkdocs build --strict
 ```
 
+Shell completion: the scripts printed by `tk completion` call the hidden
+`tk _complete _<current word> [words before it...]`, handled in `main()` before anything
+heavy is imported. Try it directly: `uv run tk _complete _+` lists your tags.
+
 Easter eggs are hidden in the code and tests (hashed triggers, ROT13 replies). To list
 them: `uv run python scripts/spoilers.py` (spoilers!).
 

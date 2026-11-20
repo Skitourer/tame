@@ -35,6 +35,7 @@ COMMANDS = (
     "add",
     "alias",
     "annotate",
+    "completion",
     "config",
     "delete",
     "denotate",

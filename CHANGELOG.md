@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Tab completion** in PowerShell and bash: `tk completion powershell >> $PROFILE` once,
+  then Tab completes commands, attributes, your tags and projects, date keywords, help
+  topics and settings. Not available in cmd.exe.
 - **`wait:`**: `tk add Chase the bank wait:mon` puts a task aside until a date. It is left
   out of `list`, `next`, `print` and filters until then (a last line says how many are
   hidden), and shows again by itself. `tk +WAITING` lists them; `export` keeps them.
@@ -26,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tk c` and `tk co` are now ambiguous (`completion`, `config`): type `con` or more.
 - **Database schema 3**: `wait`, plus `start`, `recur` and `until` for the next version,
   become real fields (Taskwarrior values are moved out of the kept attributes). Upgraded
   automatically, like schema 2.
