@@ -16,6 +16,7 @@ created = "Created task {id}."
 
 [cmd.done]
 task = "Completed task {task} '{description}'."
+unblocked = "Task {task} '{description}' is now unblocked."
 
 [cmd.delete]
 task = "Deleted task {task} '{description}'."
@@ -81,6 +82,7 @@ tags = "Tags"
 priority = "Pri"
 due = "Due"
 wait = "Wait"
+depends = "Dep"
 description = "Description"
 urgency = "Urg"
 
@@ -101,6 +103,8 @@ recur = "Recurrence"
 until = "Until"
 urgency = "Urgency"
 depends = "Depends on"
+blocking = "Blocking"
+missing = "(missing)"
 notes = "Notes"
 
 [confirm]
@@ -158,6 +162,8 @@ due = "Weight of the due date: x0.2 when due in 14+ days, up to x1.0 when 7+ day
 age = "Weight of age: x0 for a new task, up to x1.0 at one year old."
 tags = "Urgency added when a task has tags."
 project = "Urgency added when a task has a project."
+blocked = "Urgency added when the task waits for another pending task (usually negative)."
+blocking = "Urgency added when another pending task waits for this one."
 
 [setting.expected]
 language = "one of: {languages}"
@@ -212,6 +218,11 @@ invalid_priority = "Invalid priority: '{value}' (expected H, M or L)"
 invalid_date = "Invalid date: '{value}' (e.g. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "No matches."
 nothing_to_undo = "Nothing to undo."
+no_task = "No task {ref}."
+ambiguous_task = "Several tasks match {ref}: give more of the uuid."
+invalid_depends = "Invalid dependency: '{value}' (expected ids such as 3,4 or 1-3, uuids, -3 to remove)"
+depends_self = "Task {task} cannot depend on itself."
+depends_cycle = "Dependency cycle: {chain}"
 nothing_to_purge = "Nothing to purge."
 purge_status = "purge only erases deleted tasks: leave status: out of the filter."
 purge_all_filter = "purge --all erases every task: it takes no filter."
@@ -409,15 +420,17 @@ more = "One setting: tk help config KEY. All current values: tk config."
 
 [help.cmd.add]
 summary = "Create a task"
-usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [+tag ...]"
 body = '''
-Words make the description; project:, pri:, due:, wait: and +tag can be anywhere.
-wait: hides the task from list and filters until that date (tk +WAITING shows it).
+Words make the description; project:, pri:, due:, wait:, depends: and +tag can be
+anywhere. wait: hides the task from list and filters until that date (tk +WAITING
+shows it). depends:3,4 makes it wait for tasks 3 and 4 (see tk help modify).
 Everything after -- is description, even words like +1 or pri:H.
 
 Examples:
   tk add Call bank project:home +phone due:fri pri:H
   tk add Chase the bank wait:mon due:fri
+  tk add Paint the walls depends:2
   tk add -- +1 vote for the new logo
 '''
 
@@ -471,11 +484,19 @@ usage = "tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]
 body = '''
 attr:value sets an attribute, attr: clears it (project, pri, due, wait); +tag and -tag add
 and remove tags; other words replace the description. A filter is required.
+
+depends:3,4 adds tasks 3 and 4 to the ones this task waits for (ids, ranges or
+uuids), depends:-3 removes one, depends: removes them all. While one is pending,
+the task is +BLOCKED: next leaves it out and its urgency drops; the task it waits
+for is +BLOCKING and gains urgency. A task cannot depend on itself, nor through a
+cycle.
 Asks before changing more than confirm_threshold tasks (default 3); --yes skips it.
 
 Examples:
   tk 12 modify due:mon -phone
   tk 3 modify project: Call the bank
+  tk 5 modify depends:3,4
+  tk 5 modify depends:-3
   tk +phone modify pri:L --yes
 '''
 
@@ -708,6 +729,7 @@ Virtual tags are computed, never set (pending tasks only, but the last three):
   WEEK  MONTH          due this week (Monday to Sunday) / this month
   DUE                  due in the next 7 days
   BLOCKED  UNBLOCKED   waiting / not waiting for another pending task
+  BLOCKING             another pending task waits for it
   WAITING              hidden by wait: until a later date
   ANNOTATED            has an annotation
   PROJECT  TAGGED      has a project / at least one tag
@@ -759,6 +781,8 @@ Tasks are listed by urgency, the sum of:
   age          2.0 x age in years, at most 1 year
   tags         1.0 if the task has tags
   project      1.0 if the task has a project
+  blocked      -5.0 if it waits for another pending task (depends:)
+  blocking     8.0 if another pending task waits for it
 
 Change the weights with tk config set urgency.<name> <value>, for example
 tk config set urgency.due 8.

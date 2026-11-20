@@ -38,6 +38,7 @@ If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`
 |---|---|
 | `project:home` `pri:H` `due:fri` `wait:mon` | set the attribute (`wait`: see [waiting tasks](#waiting-tasks)) |
 | `project:` `pri:` `due:` `wait:` | clear it (`modify` only) |
+| `depends:3,4` `depends:-3` `depends:` | wait for tasks 3 and 4 / no more for 3 / for none (see [dependencies](#dependencies)) |
 | `+tag` | add the tag (not a [virtual tag](#virtual-tags)) |
 | `-tag` | remove the tag (`modify` only; for `add` it is a plain word) |
 | other words | the description (`modify`: replaces it) |
@@ -100,6 +101,7 @@ uppercase and English, whatever the interface language.
 | `WEEK` / `MONTH` | are due this week (Monday to Sunday) / this month, earlier days included |
 | `DUE` | are due in the next 7 days |
 | `BLOCKED` / `UNBLOCKED` | depend / do not depend on another pending task |
+| `BLOCKING` | have another pending task depending on them |
 | `WAITING` | are [waiting](#waiting-tasks) |
 | `ANNOTATED` | have an annotation |
 | `PROJECT` / `TAGGED` | have a project / at least one tag |
@@ -134,6 +136,27 @@ Until the date, the task is left out of every filter (`list`, `next`, `print`, `
 `modify`…), unless the filter names it by id or uuid, or uses `+WAITING` or `status:all`.
 `export` always includes it. When the date passes, it simply shows again. It keeps its id,
 and `tk info` shows its `wait` date.
+
+## Dependencies
+
+`depends:` makes a task wait for others: *paint the walls once the paint is bought*.
+
+```text
+tk add Buy paint                    # task 2
+tk add Paint the walls depends:2    # waits for task 2
+tk 5 modify depends:3,4             # also waits for 3 and 4 (added, as in Taskwarrior)
+tk 5 modify depends:-3              # no longer waits for 3
+tk 5 modify depends:                # waits for nothing
+```
+
+Ids, ranges (`1-3`) and uuids (8+ hex digits, any status) are accepted. While one of them is
+pending, the task is `+BLOCKED`: `tk next` leaves it out and its
+[urgency](urgency.md) drops by 5; the task it waits for is `+BLOCKING` and gains 8. `tk list`
+shows the ids it waits for in a **Dep** column, `tk info` names them and the tasks waiting for
+it. When `done` completes the last one, TAME says *Task 5 'Paint the walls' is now unblocked.*
+
+A task cannot depend on itself, nor through a cycle (*Dependency cycle: 3 → 5 → 3*): nothing
+is changed.
 
 ## Examples
 

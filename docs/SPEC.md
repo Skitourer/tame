@@ -11,7 +11,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
 - **Since 0.3.0**: schema 3, annotations, depends, wait, start, recur, until stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5). **Since 0.3.1**: `completion` setting (§7). **Since 0.3.4**: output style (§5), `NO_COLOR` (§7), help topic `security` (§5). **Since 0.3.5**: easter eggs in color (§5). **Since 0.3.6**: kind words in pools, translated `love` reminders (§5); `purge` (§5).
-- **Not yet** (see `docs/ROADMAP.md`): dependency commands, recurrence, start/stop, advanced filters (0.4); contexts, custom reports, `--json`, UDAs, hooks, stats (0.5); sync, TUI.
+- **Not yet** (see `docs/ROADMAP.md`): recurrence, start/stop, advanced filters (0.4); contexts, custom reports, `--json`, UDAs, hooks, stats (0.5); sync, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
 ## 2. Stack & standards
@@ -122,14 +122,17 @@ Filter tokens (AND-combined, except ids and uuid prefixes which together form on
 | `DUE` | pending, now ≤ due < now + 7 days |
 | `BLOCKED` | pending, depends on at least one pending task |
 | `UNBLOCKED` | pending, not `BLOCKED` |
+| `BLOCKING` | pending, a pending task depends on it (since 0.4) |
 | `WAITING` | pending, wait > now |
 | `ANNOTATED` | has at least one annotation |
 | `PROJECT` | has a project |
 | `TAGGED` | has at least one (real) tag |
 
-Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. `WAITING` since `wait:` (0.3.0). Planned: `ACTIVE` (with `start`, 0.4) joins the list and becomes reserved; until then it is an ordinary tag.
+Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. `WAITING` since `wait:` (0.3.0), `BLOCKING` since 0.4. Planned: `ACTIVE` (with `start`, 0.4) joins the list and becomes reserved; until then it is an ordinary tag.
 
-Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it). Attrs: `project`, `pri`, `due`, `wait` (dates as `due`).
+Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it). Attrs: `project`, `pri`, `due`, `wait` (dates as `due`), `depends` (since 0.4, see below).
+
+**Dependencies** (since 0.4, TW semantics): `depends:3,4` *adds* tasks 3 and 4 to the dependencies, `depends:-3` removes one, `depends:` clears them all; items mix freely (`depends:5,-3`), several `depends:` tokens combine in order. Items: ids and id ranges (pending tasks), uuid prefixes of 8+ hex digits (any status). In `add`: additions only (`-3` → validation error). Validation errors (exit 1, nothing changed): an id or prefix naming no task (`No task 9.`), a prefix naming several, an item that is neither (`depends:x`), a task depending on itself, a cycle among all stored tasks (`Dependency cycle: 3 → 5 → 3`, tasks by id, else uuid prefix). Bulk `modify` applies to each task; undoable like any `modify`. A dependency on a completed, deleted or absent task is kept but blocks nothing. After `done`, each pending task the completed ones were the last pending dependency of is reported: `Task 5 'Paint walls' is now unblocked.` Not a filter attribute (use `+BLOCKED`/`+BLOCKING`).
 
 **Waiting tasks** (since 0.3.0): a pending task with `wait` > now is *waiting*. Every filter result leaves waiting tasks out, unless the filter has ids/uuids, `+WAITING` or `status:all`; `export` always includes them. Nothing is stored when the date passes: the task simply shows again (its `wait` stays, shown by `info`). Waiting tasks keep their id and urgency. `wait` in the past or after `due` is accepted.
 
@@ -142,8 +145,8 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 | Cmd | Example | Behavior |
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
-| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; a Wait column after Due (hidden when empty); if waiting tasks were left out, a last line `N waiting task(s) hidden: tk +WAITING shows them.`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
-| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, the summary line says `N of M tasks` (§5 Output style); no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
+| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; a Wait column after Due (hidden when empty); a Dep column after it (since 0.4): ids of the pending tasks it depends on, `3,4`, hidden when empty; if waiting tasks were left out, a last line `N waiting task(s) hidden: tk +WAITING shows them.`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
+| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (no Dep: blocked tasks are left out; empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, the summary line says `N of M tasks` (§5 Output style); no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
@@ -195,7 +198,7 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 - *Rows*: whole rows are no longer colored; only the Due date and the ID of an overdue / due-today task carry the alert. The rule under headers spans the table, dim.
 - *Summary line* (`list`, `next`): after the table, a blank line then `N tasks · X overdue · Y due today` (parts with 0 left out; counts over the matching tasks, waiting ones excepted). `next` with more matches than shown: `N of M tasks · …`, then the hint `tk list shows them all.` (replaces the 0.3.0 `next.more` line). The hidden-waiting line follows unchanged.
 - *Messages*: symbols are layout: `✓` success messages of write cmds (`add done delete modify annotate denotate undo import`, `config set/unset`, `alias install/remove`, `print` saved/opened), `✗` errors, `!` warnings, `?` questions; plain mode prints the messages without them, as before.
-- *`info`*: per task, a title `Task <id>  <description>` (bold; uuid prefix if no id), a dim rule, then label/value lines, labels dim and right-aligned, in blocks separated by a blank line: (1) Status, Project, Tags (real tags, then virtual tags dim), Priority, Urgency, Depends, Recur; (2) Due, Wait, Start, Entered, Modified, End, Until, each date followed by a dim relative form (`overdue by 2 days`, `today`, `in 3 days`, `3 days ago`); (3) Notes: one line per annotation, `<date> <text>`, oldest first, label on the first line only; (4) UUID, then Taskwarrior `extra` attributes. Empty fields and empty blocks left out. No `Name`/`Value` header any more. Same layout in plain mode, without colors.
+- *`info`*: per task, a title `Task <id>  <description>` (bold; uuid prefix if no id), a dim rule, then label/value lines, labels dim and right-aligned, in blocks separated by a blank line: (1) Status, Project, Tags (real tags, then virtual tags dim), Priority, Urgency, Depends (since 0.4: one line per task it depends on, `3 'Buy paint'`: pending ones by id, then the others by uuid prefix, then absent ones `a1b2c3d4  (missing)`), Blocking (one line per pending task depending on it), Recur; (2) Due, Wait, Start, Entered, Modified, End, Until, each date followed by a dim relative form (`overdue by 2 days`, `today`, `in 3 days`, `3 days ago`); (3) Notes: one line per annotation, `<date> <text>`, oldest first, label on the first line only; (4) UUID, then Taskwarrior `extra` attributes. Empty fields and empty blocks left out. No `Name`/`Value` header any more. Same layout in plain mode, without colors.
 - *Help*: section labels in `heading`, command names, usage and example lines in `command`, the rest unchanged; plain mode prints the text exactly as before.
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
@@ -204,7 +207,7 @@ Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr
 
 **Completion setup** (since 0.3.1): the `completion` setting is the switch. After any successful command run in a terminal (stdout a tty; never in scripts, pipes or tests), TAME aligns the shell profiles with it: `true` → writes or refreshes, `false` → removes, a block between the lines `# >>> tame completion >>>` and `# <<< tame completion <<<` holding the script of `tk completion <shell>`; the rest of the file is never changed (encoding and line endings kept; file and folders created if missing). Profiles: on Windows, `$PROFILE.CurrentUserCurrentHost` of Windows PowerShell and of PowerShell 7 if installed, asked to `powershell`/`pwsh` once and cached in `meta`, and `~/.bashrc` (LF line endings) if Git for Windows' Git Bash is installed (`git-bash.exe` in Git's folder; WSL's `bash.exe` does not count); elsewhere `~/.bashrc` if `$SHELL` is bash. A PowerShell whose execution policy is `Restricted` or `AllSigned` is skipped (profiles would fail at every start) and the user told once. `tk config set|unset completion` and `tk config edit` re-detect the profiles and apply at once, with a message: enabled in `<path>` (open a new terminal), removed from `<path>`, blocked by the execution policy, or no supported shell. While `completion` is false and nothing was ever set up, the first command run in a terminal prints once: `Tip: Tab completion is available: tk config set completion true`.
 
-**Completion protocol** (since 0.3.0): the scripts call the hidden `tk _complete _<current> [words before it...]` (current word prefixed with `_`, so an empty one survives PowerShell 5.1), which prints the candidates, full tokens starting with the current word, one per line, and always exits 0. Never in `tk help`. Fast path: handled in `main()` before parsing; no rich/tomlkit import, database read only, opened read-only and never created. Candidates by context: no command yet → command names, attribute names (`project:` `pri:` `status:` `due.before:` `due.after:`); `+`/`-` → tags of pending tasks and virtual tags (real tags only in `add`/`modify` mods); `project:` → projects of pending tasks; `pri:` → `H M L`; `status:` → statuses and `all`; `due:` `wait:` `due.before:` `due.after:` → date keywords; after `add`/`modify` → mods attributes (`project:` `pri:` `due:` `wait:`); after `help` → commands and topics; `config` → its subcommands, then keys (`get` `set` `unset`), then values for `set` (languages, booleans, `default_command`); `alias` → `install remove`; `completion` → shells; after `--`, `import`, `annotate`, `denotate` → nothing (the shell falls back to file names).
+**Completion protocol** (since 0.3.0): the scripts call the hidden `tk _complete _<current> [words before it...]` (current word prefixed with `_`, so an empty one survives PowerShell 5.1), which prints the candidates, full tokens starting with the current word, one per line, and always exits 0. Never in `tk help`. Fast path: handled in `main()` before parsing; no rich/tomlkit import, database read only, opened read-only and never created. Candidates by context: no command yet → command names, attribute names (`project:` `pri:` `status:` `due.before:` `due.after:`); `+`/`-` → tags of pending tasks and virtual tags (`BLOCKING` included) (real tags only in `add`/`modify` mods); `project:` → projects of pending tasks; `pri:` → `H M L`; `status:` → statuses and `all`; `due:` `wait:` `due.before:` `due.after:` → date keywords; after `add`/`modify` → mods attributes (`project:` `pri:` `due:` `wait:` `depends:`; nothing after `depends:`); after `help` → commands and topics; `config` → its subcommands, then keys (`get` `set` `unset`), then values for `set` (languages, booleans, `default_command`); `alias` → `install remove`; `completion` → shells; after `--`, `import`, `annotate`, `denotate` → nothing (the shell falls back to file names).
 
 Hidden easter eggs exist: English only, exempt from i18n (but the kind words they show are translated, since 0.3.6), kept unreadable in the code (hashed triggers, ROT13/compressed replies); see `tests/cli/test_eggs.py`. Since 0.3.5 they use the output frame and their own fixed colors (`egg.*` roles, 16 ANSI colors, never changed by themes; off with `color = false` or `NO_COLOR`, plain in files and pipes).
 
@@ -228,6 +231,7 @@ Urgency U = sum, coeffs in config, shown 1 decimal:
 - due: 12 × f; f linear from 0.2 (due ≥14 d ahead) to 1.0 (overdue ≥7 d)
 - age: 2 × min(age_days/365, 1)
 - tags: 1.0 if any; project: 1.0 if set
+- blocked: −5.0 if pending and depends on a pending task; blocking: 8.0 if pending and a pending task depends on it (since 0.4)
 
 ## 7. i18n, config, TW compat
 
@@ -254,6 +258,8 @@ due = 12.0
 age = 2.0
 tags = 1.0
 project = 1.0
+blocked = -5.0     # since 0.4
+blocking = 8.0     # since 0.4
 ```
 
 `NO_COLOR` (environment, non-empty, since 0.3.4) turns colors off like `color = false`, whatever the file says; layout stays (§5 Output style).

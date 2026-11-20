@@ -9,10 +9,14 @@ from pathlib import Path
 from tame.core.dates import utc_now
 from tame.core.filters import ALL, Filter, VirtualTagger, is_waiting
 from tame.core.models import (
+    NO_REFS,
     Annotation,
     Changes,
+    DependsChange,
+    Links,
     Status,
     Task,
+    TaskRefs,
     check_description,
     check_new_tag,
     check_project,
@@ -92,6 +96,7 @@ class TaskService:
         priority: str | None = None,
         due: datetime | None = None,
         wait: datetime | None = None,
+        depends: TaskRefs = NO_REFS,
     ) -> Task:
         """Create a pending task with the next free short id.
 
@@ -102,12 +107,13 @@ class TaskService:
             priority: H, M or L (any case).
             due: Due date (aware).
             wait: Hidden from filters until then (aware).
+            depends: Tasks the new one waits for.
 
         Returns:
             The stored task.
 
         Raises:
-            ValidationError: If a value is invalid.
+            ValidationError: If a value is invalid or ``depends`` names no task.
         """
         now = self._clock()
         task = Task(
@@ -120,6 +126,7 @@ class TaskService:
             priority=parse_priority(priority) if priority is not None else None,
             due=due,
             wait=wait,
+            depends=self._resolve(depends),
         )
         with self._repo.transaction():
             task = replace(task, id=self._repo.max_pending_id() + 1)
@@ -171,13 +178,20 @@ class TaskService:
             The changed tasks, as stored. Tasks the changes leave as they were are skipped.
 
         Raises:
-            ValidationError: If ``changes`` adds a virtual tag.
+            ValidationError: If ``changes`` adds a virtual tag, names a task that does not
+                exist, makes a task depend on itself or makes a cycle of dependencies.
         """
         for tag in changes.tags_add:
             check_new_tag(tag)
         now = self._clock()
+        tasks = list(tasks)
+        new_tasks = [changes.apply(task) for task in tasks]
+        if changes.depends is not None:
+            new_tasks = self._apply_depends(new_tasks, changes.depends)
         changed = [
-            replace(new, modified=now) for task in tasks if (new := changes.apply(task)) != task
+            replace(new, modified=now)
+            for task, new in zip(tasks, new_tasks, strict=True)
+            if new != task
         ]
         if not changed:
             return []
@@ -186,6 +200,80 @@ class TaskService:
             for task in changed:
                 self._repo.update(task)
         return changed
+
+    def _apply_depends(self, tasks: list[Task], change: DependsChange) -> list[Task]:
+        """Return ``tasks`` with ``change`` applied to their dependencies.
+
+        Raises:
+            ValidationError: On a task named that does not exist, a task depending on
+                itself, or a cycle.
+        """
+        add, remove = self._resolve(change.add), self._resolve(change.remove)
+        result = []
+        for task in tasks:
+            if task.uuid in add:
+                raise ValidationError("error.depends_self", task=_ref(task))
+            current = frozenset() if change.clear else task.depends
+            result.append(replace(task, depends=(current - remove) | add))
+        edges = self._repo.depends_edges()
+        edges.update({task.uuid: set(task.depends) for task in result})
+        for task in result:
+            if cycle := _cycle(task.uuid, edges):
+                names = [_ref(found) if (found := self._repo.get(u)) else u[:8] for u in cycle]
+                raise ValidationError("error.depends_cycle", chain=" → ".join(names))
+        return result
+
+    def _resolve(self, refs: TaskRefs) -> frozenset[str]:
+        """Return the uuids of the tasks ``refs`` names: ids of pending tasks, uuid prefixes.
+
+        Raises:
+            ValidationError: If an id or prefix names no task, or a prefix several.
+        """
+        if not refs:
+            return frozenset()
+        by_id = {number: uuid for uuid, number in self._repo.pending_ids().items()}
+        uuids: set[str] = set()
+        for number in sorted(refs.ids):
+            if number not in by_id:
+                raise ValidationError("error.no_task", ref=str(number))
+            uuids.add(by_id[number])
+        for prefix in refs.uuid_prefixes:
+            found = self.query(Filter(uuid_prefixes=(prefix,), status=ALL), include_waiting=True)
+            if len(found) != 1:
+                key = "error.no_task" if not found else "error.ambiguous_task"
+                raise ValidationError(key, ref=prefix)
+            uuids.add(found[0].uuid)
+        return frozenset(uuids)
+
+    def links(self) -> Links:
+        """Return the dependencies between pending tasks."""
+        ids = self._repo.pending_ids()
+        blocking = {
+            target
+            for uuid, targets in self._repo.depends_edges().items()
+            if uuid in ids
+            for target in targets
+            if target in ids
+        }
+        return Links(ids=ids, blocking=frozenset(blocking))
+
+    def get(self, uuid: str) -> Task | None:
+        """Return the task with this full uuid, or None."""
+        return self._repo.get(uuid)
+
+    def dependents(self, task: Task) -> list[Task]:
+        """Return the pending tasks that depend on ``task``, by short id."""
+        return [other for other in self.query(include_waiting=True) if task.uuid in other.depends]
+
+    def unblocked_by(self, done: Iterable[Task]) -> list[Task]:
+        """Return the pending tasks that waited for one of ``done`` and wait for nothing now."""
+        uuids = {task.uuid for task in done}
+        links = self.links()
+        return [
+            task
+            for task in self.query(include_waiting=True)
+            if task.depends & uuids and not links.is_blocked(task)
+        ]
 
     def annotate(self, tasks: Iterable[Task], text: str) -> list[Task]:
         """Add an annotation (entry = now) to each of ``tasks``; ``modified`` = now.
@@ -417,7 +505,33 @@ class TaskService:
 
     def virtual_tagger(self) -> VirtualTagger:
         """Return a tagger computing virtual tags as of now, in the system time zone."""
-        return VirtualTagger(self._clock(), self._repo.pending_ids())
+        return VirtualTagger(self._clock(), self.links())
+
+
+def _ref(task: Task) -> str:
+    """Name ``task`` as the user knows it: short id, else uuid prefix."""
+    return str(task.id) if task.id is not None else task.uuid[:8]
+
+
+def _cycle(start: str, edges: Mapping[str, set[str]]) -> list[str]:
+    """Return a dependency path from ``start`` back to itself, or ``[]`` if none."""
+    path = [start]
+    seen: set[str] = set()
+
+    def walk(node: str) -> bool:
+        for target in sorted(edges.get(node, ())):
+            if target == start:
+                path.append(target)
+                return True
+            if target not in seen:
+                seen.add(target)
+                path.append(target)
+                if walk(target):
+                    return True
+                path.pop()
+        return False
+
+    return path if walk(start) else []
 
 
 def _annotation_to_remove(task: Task, text: str) -> int | None:

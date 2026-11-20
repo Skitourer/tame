@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, TextIO
 
-from tame.core.models import Task
+from tame.core.models import Links, Task
 from tame.core.urgency import DEFAULT_COEFFICIENTS, Coefficients, urgency
 from tame.i18n import t
 
@@ -299,6 +299,7 @@ def print_task_table(
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
     compact: bool = False,
+    links: Links | None = None,
 ) -> None:
     """Print ``tasks`` as a table on stdout; columns empty for every task are hidden.
 
@@ -307,7 +308,8 @@ def print_task_table(
         now: Current time, for ages, urgency and due dates.
         coefficients: Urgency weights.
         date_format: strftime format of the Due column.
-        compact: True to leave out the Age and Tags columns (``next``).
+        compact: True to leave out the Age, Tags and Dep columns (``next``).
+        links: Dependencies between pending tasks: the Dep column and urgency.
     """
     from rich import box
     from rich.table import Table
@@ -324,8 +326,13 @@ def print_task_table(
         return value.astimezone().strftime(date_format) if value else ""
 
     def scores(task: Task) -> Text:
-        value = urgency(task, now, coefficients)
+        value = urgency(task, now, coefficients, links)
         return cell(format_urgency(value), urgency_role(value))
+
+    def waits_for(task: Task) -> str:
+        if links is None:
+            return ""
+        return ",".join(str(links.ids[uuid]) for uuid in links.pending_depends(task))
 
     columns: list[tuple[str, JustifyMethod, list[Text]]] = [
         (
@@ -349,11 +356,12 @@ def print_task_table(
         ),
         (t("list.col.due"), "left", [cell(day(task.due), alert(task, None)) for task in tasks]),
         (t("list.col.wait"), "left", [cell(day(task.wait), "note") for task in tasks]),
+        (t("list.col.depends"), "left", [cell(waits_for(task), "id") for task in tasks]),
         (t("list.col.description"), "left", [description_cell(task) for task in tasks]),
         (t("list.col.urgency"), "right", [scores(task) for task in tasks]),
     ]
     if compact:
-        del columns[3], columns[1]  # Tags, Age.
+        del columns[7], columns[3], columns[1]  # Dep, Tags, Age.
     shown = [col for col in columns if any(text.plain for text in col[2])]
 
     table = Table(
@@ -402,6 +410,28 @@ def summary_line(shown: int, tasks: Sequence[Task], now: datetime) -> list[Segme
 # --- Task details (info) -------------------------------------------------------------
 
 
+@dataclass(frozen=True, slots=True)
+class Related:
+    """What ``info`` shows about a task's dependencies.
+
+    Attributes:
+        depends: The tasks it depends on; a uuid for one that no longer exists.
+        blocking: The pending tasks that depend on it.
+        links: Dependencies between pending tasks, for urgency.
+    """
+
+    depends: Sequence[Task | str] = ()
+    blocking: Sequence[Task] = ()
+    links: Links | None = None
+
+
+def _task_line(task: Task | str) -> list[Segment]:
+    """``3 'Buy paint'``, the uuid prefix for a task without id, or a missing uuid."""
+    if isinstance(task, str):
+        return [(task[:8], "note"), (f"  {t('info.missing')}", "note")]
+    return [(task_ref(task), "id"), (f" '{task.description}'", None)]
+
+
 def info_blocks(
     task: Task,
     now: datetime,
@@ -409,14 +439,16 @@ def info_blocks(
     virtual: frozenset[str] = frozenset(),
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
+    related: Related | None = None,
 ) -> list[list[tuple[str, list[Segment]]]]:
     """Return the blocks of ``info`` lines of ``task``: (label, value) pairs.
 
     Blocks: the task (status, project, tags then virtual tags, priority, urgency,
-    dependencies, recurrence); its dates, each with a relative form; its notes; its
-    uuid and unknown Taskwarrior attributes (``extra``). Unset fields and empty
-    blocks are left out.
+    dependencies, the tasks waiting for it, recurrence); its dates, each with a
+    relative form; its notes; its uuid and unknown Taskwarrior attributes (``extra``).
+    Unset fields and empty blocks are left out.
     """
+    related = related or Related()
 
     def date(value: datetime | None, *, due: bool = False) -> list[Segment]:
         if value is None:
@@ -431,7 +463,15 @@ def info_blocks(
         tags.append((" ".join(sorted(task.tags)), "tag"))
     if virtual:
         tags.append((("   " if tags else "") + " ".join(sorted(virtual)), "note"))
-    score = urgency(task, now, coefficients)
+    score = urgency(task, now, coefficients, related.links)
+    depends: list[tuple[str, list[Segment]]] = [
+        (t("info.depends") if index == 0 else "", _task_line(other))
+        for index, other in enumerate(related.depends)
+    ]
+    blocking: list[tuple[str, list[Segment]]] = [
+        (t("info.blocking") if index == 0 else "", _task_line(other))
+        for index, other in enumerate(related.blocking)
+    ]
     main: list[tuple[str, list[Segment]]] = [
         (t("info.status"), [(task.status.value, None)]),
         (t("info.project"), [(task.project, "project")] if task.project else []),
@@ -441,7 +481,8 @@ def info_blocks(
             [(task.priority, f"pri.{task.priority}")] if task.priority else [],
         ),
         (t("info.urgency"), [(format_urgency(score), urgency_role(score))]),
-        (t("info.depends"), [(" ".join(sorted(task.depends)), None)] if task.depends else []),
+        *depends,
+        *blocking,
         (t("info.recur"), [(task.recur, None)] if task.recur else []),
     ]
     dates = [
@@ -478,10 +519,16 @@ def info_lines(
     virtual: frozenset[str] = frozenset(),
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
+    related: Related | None = None,
 ) -> list[list[Segment]]:
     """Return the ``info`` lines of ``task``: title, rule, then blocks of labelled lines."""
     blocks = info_blocks(
-        task, now, virtual=virtual, coefficients=coefficients, date_format=date_format
+        task,
+        now,
+        virtual=virtual,
+        coefficients=coefficients,
+        date_format=date_format,
+        related=related,
     )
     width = max(len(label) for block in blocks for label, _ in block)
     body: list[list[Segment]] = []
@@ -505,10 +552,11 @@ def print_task_info(
     virtual: Mapping[str, frozenset[str]] | None = None,
     coefficients: Coefficients = DEFAULT_COEFFICIENTS,
     date_format: str = DEFAULT_DATE_FORMAT,
+    related: Mapping[str, Related] | None = None,
 ) -> None:
     """Print every field of each task, a blank line between tasks.
 
-    ``virtual`` maps task uuids to their virtual tags.
+    ``virtual`` maps task uuids to their virtual tags, ``related`` to their dependencies.
     """
     lines: list[list[Segment]] = []
     for task in tasks:
@@ -520,6 +568,7 @@ def print_task_info(
             virtual=(virtual or {}).get(task.uuid, frozenset()),
             coefficients=coefficients,
             date_format=date_format,
+            related=(related or {}).get(task.uuid),
         )
     emit(lines)
 

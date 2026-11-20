@@ -32,16 +32,18 @@ nothing to undo or purge), 3 internal error. Errors go to stderr.
 ## add
 
 ```text
-tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]
+tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [+tag ...]
 ```
 
-Words make the description; `project:`, `pri:`, `due:`, [`wait:`](grammar.md#waiting-tasks) and `+tag` can be anywhere. Everything
+Words make the description; `project:`, `pri:`, `due:`, [`wait:`](grammar.md#waiting-tasks),
+[`depends:`](grammar.md#dependencies) and `+tag` can be anywhere. Everything
 after `--` is description, even words like `done` or `+x`. Prints the new task's id.
 
 ```text
 tk add Call bank project:home +phone due:fri pri:H
 tk add -- +1 vote for the new logo   # after --, +1 is text, not a tag
 tk add Chase the bank wait:mon due:fri
+tk add Paint the walls depends:2
 ```
 
 ## list
@@ -115,10 +117,14 @@ tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]
 add and remove tags; other words replace the description. A filter is required. Asks before
 changing more than `confirm_threshold` tasks (default 3); `--yes` skips the question.
 
+`depends:3,4` adds tasks 3 and 4 to the ones the task waits for, `depends:-3` removes one,
+`depends:` removes them all; see [dependencies](grammar.md#dependencies).
+
 ```text
 tk 12 modify due:mon -phone
 tk 3 modify project: Call the bank
 tk +phone modify pri:L --yes
+tk 5 modify depends:3,4
 ```
 
 ## annotate

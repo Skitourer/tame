@@ -128,6 +128,7 @@ def cmd_add(command: ParsedCommand, settings: Settings) -> int:
             priority=parsed.priority,
             due=parsed.due,
             wait=parsed.wait,
+            depends=parsed.depends,
         )
     render.success(t("cmd.add.created", id=task.id))
     return ExitCode.OK
@@ -154,6 +155,7 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
         where = replace(where, virtual_out=where.virtual_out | {"BLOCKED"})
     with open_service(settings) as service:
         found, hidden = service.query_hidden(where)
+        links = service.links()
         if not found:
             if not command.filter and not service.query(Filter(status=ALL)):
                 render.say(t("welcome").strip())  # First run: no task at all.
@@ -161,7 +163,7 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
             if hidden:
                 render.say(_hidden_line(hidden), "summary")
             raise NoMatchError("error.no_matches")
-    tasks = by_urgency(found, now, settings.urgency)
+    tasks = by_urgency(found, now, settings.urgency, links)
     shown = tasks[:limit]
     render.print_task_table(
         shown,
@@ -169,6 +171,7 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
         coefficients=settings.urgency,
         date_format=settings.date_format,
         compact=limit is not None,
+        links=links,
     )
     render.emit([[], render.summary_line(len(shown), tasks, now)])
     if len(shown) < len(tasks):
@@ -197,10 +200,13 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
         ):
             return ExitCode.OK
         changed = service.complete(tasks)
+        unblocked = service.unblocked_by(changed)
         word = None
         if changed and settings.kindness and kindness.is_terminal() and not service.query():
             word = kindness.draw(service, utc_now(), "empty")
     _report("cmd.done.task", tasks, changed)
+    for task in unblocked:
+        render.success(t("cmd.done.unblocked", task=task_ref(task), description=task.description))
     if word is not None:
         kindness.show(word)
     uuids = {task.uuid for task in changed}
@@ -381,14 +387,35 @@ def cmd_info(command: ParsedCommand, settings: Settings) -> int:
         tasks = _matching(service, where)
         tagger = service.virtual_tagger()
         virtual = {task.uuid: tagger(task) for task in tasks}
+        links = service.links()
+        related = {
+            task.uuid: render.Related(
+                depends=sorted(
+                    (service.get(uuid) or uuid for uuid in task.depends), key=_dependency_order
+                ),
+                blocking=service.dependents(task),
+                links=links,
+            )
+            for task in tasks
+        }
     render.print_task_info(
         tasks,
         utc_now(),
         virtual=virtual,
         coefficients=settings.urgency,
         date_format=settings.date_format,
+        related=related,
     )
     return ExitCode.OK
+
+
+def _dependency_order(task: Task | str) -> tuple[int, int, str]:
+    """Pending tasks by id first, then the others by uuid, then missing ones."""
+    if isinstance(task, str):
+        return 2, 0, task
+    if task.id is not None:
+        return 0, task.id, task.uuid
+    return 1, 0, task.uuid
 
 
 def cmd_undo(command: ParsedCommand, settings: Settings) -> int:
@@ -441,6 +468,7 @@ def cmd_print(command: ParsedCommand, settings: Settings) -> int:
     target = command.args[1] if command.args else None
     with open_service(settings) as service:
         tasks = _matching(service, where)
+        links = service.links()
         word = kindness.draw(service, now) if target is None and settings.kindness else None
     from tame.cli.printout import print_page
 
@@ -452,6 +480,7 @@ def cmd_print(command: ParsedCommand, settings: Settings) -> int:
         date_format=settings.date_format,
         auto_print=target is None,
         kind_word=None if word is None else f"{kindness.HEART} {word}",
+        links=links,
     )
     if target is None:
         path = Path(tempfile.gettempdir()) / f"tame-print-{now:%Y%m%d-%H%M%S}.html"
@@ -483,9 +512,10 @@ def cmd_export(command: ParsedCommand, settings: Settings) -> int:
     where = parse_filter(command.filter, now)
     with open_service(settings) as service:
         tasks = service.query(where, include_waiting=True)
+        links = service.links()
     print(
         tw_json.dumps(
-            tw_json.task_to_tw(task, urgency(task, now, settings.urgency)) for task in tasks
+            tw_json.task_to_tw(task, urgency(task, now, settings.urgency, links)) for task in tasks
         )
     )
     return ExitCode.OK

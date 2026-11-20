@@ -189,6 +189,13 @@ class TaskRepo:
         except (OSError, sqlite3.Error) as exc:
             raise StorageError("error.backup", path=str(target), detail=str(exc)) from exc
 
+    def depends_edges(self) -> dict[str, set[str]]:
+        """Return ``{uuid: uuids it depends on}`` for every task that has dependencies."""
+        edges: dict[str, set[str]] = {}
+        for row in self._conn.execute("SELECT uuid, depends_on FROM depends"):
+            edges.setdefault(row["uuid"], set()).add(row["depends_on"])
+        return edges
+
     def pending_ids(self) -> dict[str, int]:
         """Return ``{uuid: short id}`` for all pending tasks."""
         rows = self._conn.execute("SELECT uuid, id FROM tasks WHERE status = 'pending'")

@@ -1,5 +1,6 @@
 """Task domain model (SPEC §3). Field names follow Taskwarrior."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
@@ -86,6 +87,67 @@ class Task:
 
 
 @dataclass(frozen=True, slots=True)
+class TaskRefs:
+    """Tasks named on the command line, before they are looked up.
+
+    Attributes:
+        ids: Short ids (pending tasks).
+        uuid_prefixes: Uuid prefixes, lowercase, without dashes (any status).
+    """
+
+    ids: frozenset[int] = frozenset()
+    uuid_prefixes: tuple[str, ...] = ()
+
+    def __bool__(self) -> bool:
+        """Return True if at least one task is named."""
+        return bool(self.ids or self.uuid_prefixes)
+
+
+NO_REFS = TaskRefs()
+"""No task named."""
+
+
+@dataclass(frozen=True, slots=True)
+class DependsChange:
+    """A change of dependencies (``depends:3,-4`` / ``depends:``), Taskwarrior style.
+
+    Attributes:
+        add: Tasks to depend on, added to the current ones.
+        remove: Tasks to depend on no more.
+        clear: Drop every current dependency first.
+    """
+
+    add: TaskRefs = NO_REFS
+    remove: TaskRefs = NO_REFS
+    clear: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Links:
+    """Dependencies between pending tasks, for ``BLOCKED``/``BLOCKING`` and urgency.
+
+    Attributes:
+        ids: ``{uuid: short id}`` of every pending task.
+        blocking: Uuids of the pending tasks that a pending task depends on.
+    """
+
+    ids: Mapping[str, int] = field(default_factory=dict)
+    blocking: frozenset[str] = frozenset()
+
+    def pending_depends(self, task: Task) -> list[str]:
+        """Uuids of the pending tasks ``task`` depends on, by short id."""
+        return sorted((uuid for uuid in task.depends if uuid in self.ids), key=self.ids.__getitem__)
+
+    def is_blocked(self, task: Task) -> bool:
+        """True if ``task`` is pending and depends on a pending task."""
+        return task.status is Status.PENDING and any(uuid in self.ids for uuid in task.depends)
+
+    def is_blocking(self, task: Task) -> bool:
+        """True if ``task`` is pending and a pending task depends on it."""
+        return task.status is Status.PENDING and task.uuid in self.blocking
+
+
+@dataclass(frozen=True, slots=True)
 class Changes:
     """Modifications to apply to tasks (``modify``), independent of any command-line syntax.
 
@@ -97,6 +159,7 @@ class Changes:
         wait: New wait date; ``NONE`` clears it; None keeps it.
         tags_add: Tags to add.
         tags_remove: Tags to remove.
+        depends: Dependency change, resolved by the service; None keeps them.
     """
 
     description: str | None = None
@@ -106,6 +169,7 @@ class Changes:
     wait: datetime | Literal[""] | None = None
     tags_add: frozenset[str] = frozenset()
     tags_remove: frozenset[str] = frozenset()
+    depends: DependsChange | None = None
 
     def __bool__(self) -> bool:
         """Return True if at least one change is requested."""
@@ -118,11 +182,15 @@ class Changes:
                 self.wait is not None,
                 self.tags_add,
                 self.tags_remove,
+                self.depends is not None,
             )
         )
 
     def apply(self, task: Task) -> Task:
-        """Return ``task`` with the changes applied; ``modified`` is left untouched."""
+        """Return ``task`` with the changes applied; ``modified`` is left untouched.
+
+        ``depends`` is not applied here: it needs the other tasks (see the service).
+        """
         return replace(
             task,
             description=task.description if self.description is None else self.description,
@@ -167,6 +235,7 @@ VIRTUAL_TAGS = frozenset(
         "DUE",
         "BLOCKED",
         "UNBLOCKED",
+        "BLOCKING",
         "WAITING",
         "ANNOTATED",
         "PROJECT",

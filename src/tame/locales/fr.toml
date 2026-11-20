@@ -16,6 +16,7 @@ Visite guidée : tk help tour    English interface: tk config set language en
 created = "Tâche {id} créée."
 
 [cmd.done]
+unblocked = "La tâche {task} « {description} » n'est plus bloquée."
 task = "Tâche {task} « {description} » terminée."
 
 [cmd.delete]
@@ -82,6 +83,7 @@ tags = "Tags"
 priority = "Prio"
 due = "Échéance"
 wait = "Attente"
+depends = "Dép"
 description = "Description"
 urgency = "Urg"
 
@@ -102,6 +104,8 @@ recur = "Récurrence"
 until = "Jusqu'au"
 urgency = "Urgence"
 depends = "Dépend de"
+blocking = "Bloque"
+missing = "(introuvable)"
 notes = "Notes"
 
 [confirm]
@@ -159,6 +163,8 @@ due = "Poids de l'échéance : x0,2 à 14 jours ou plus, jusqu'à x1,0 à 7 jour
 age = "Poids de l'âge : x0 pour une tâche neuve, jusqu'à x1,0 à un an."
 tags = "Urgence ajoutée quand une tâche a des tags."
 project = "Urgence ajoutée quand une tâche a un projet."
+blocked = "Urgence ajoutée quand la tâche attend une autre tâche en cours (en général négative)."
+blocking = "Urgence ajoutée quand une autre tâche en cours attend celle-ci."
 
 [setting.expected]
 language = "une valeur parmi : {languages}"
@@ -213,6 +219,11 @@ invalid_priority = "Priorité invalide : « {value} » (attendu : H, M ou L)"
 invalid_date = "Date invalide : « {value} » (p. ex. 2026-12-15, tomorrow, fri, eom, +3d)"
 no_matches = "Aucune tâche trouvée."
 nothing_to_undo = "Rien à annuler."
+no_task = "Pas de tâche {ref}."
+ambiguous_task = "Plusieurs tâches correspondent à {ref} : donnez plus de l'uuid."
+invalid_depends = "Dépendance invalide : « {value} » (attendu des ids comme 3,4 ou 1-3, des uuids, -3 pour retirer)"
+depends_self = "La tâche {task} ne peut pas dépendre d'elle-même."
+depends_cycle = "Cycle de dépendances : {chain}"
 nothing_to_purge = "Rien à purger."
 purge_status = "purge n'efface que les tâches supprimées : retirez status: du filtre."
 purge_all_filter = "purge --all efface toutes les tâches : pas de filtre."
@@ -410,16 +421,18 @@ more = "Un seul réglage : tk help config CLÉ. Toutes les valeurs actuelles : t
 
 [help.cmd.add]
 summary = "Créer une tâche"
-usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [+tag ...]"
 body = '''
-Les mots forment la description ; project:, pri:, due:, wait: et +tag peuvent être
-n'importe où. wait: cache la tâche de list et des filtres jusqu'à cette date
-(tk +WAITING l'affiche).
+Les mots forment la description ; project:, pri:, due:, wait:, depends: et +tag
+peuvent être n'importe où. wait: cache la tâche de list et des filtres jusqu'à cette
+date (tk +WAITING l'affiche). depends:3,4 la fait attendre les tâches 3 et 4 (voir
+tk help modify).
 Tout ce qui suit -- est de la description, même des mots comme +1 ou pri:H.
 
 Exemples :
   tk add Appeler la banque project:maison +tel due:fri pri:H
   tk add Relancer la banque wait:mon due:fri
+  tk add Peindre les murs depends:2
   tk add -- +1 pour le nouveau logo
 '''
 
@@ -474,12 +487,20 @@ usage = "tk <filtre> modify [attr:valeur] [attr:] [+tag] [-tag] [nouvelle descri
 body = '''
 attr:valeur fixe un attribut, attr: l'efface (project, pri, due, wait) ; +tag et -tag
 ajoutent et retirent des tags ; les autres mots remplacent la description. Un filtre
-est obligatoire. Demande confirmation au-delà de confirm_threshold tâches (3 par
+est obligatoire.
+
+depends:3,4 ajoute les tâches 3 et 4 à celles que la tâche attend (ids, plages ou
+uuids), depends:-3 en retire une, depends: les retire toutes. Tant que l'une est en
+cours, la tâche est +BLOCKED : next la laisse de côté et son urgence baisse ; la
+tâche attendue est +BLOCKING et gagne en urgence. Une tâche ne peut pas dépendre
+d'elle-même, ni à travers un cycle. Demande confirmation au-delà de confirm_threshold tâches (3 par
 défaut) ; --yes l'évite.
 
 Exemples :
   tk 12 modify due:mon -tel
   tk 3 modify project: Appeler la banque
+  tk 5 modify depends:3,4
+  tk 5 modify depends:-3
   tk +tel modify pri:L --yes
 '''
 
@@ -723,6 +744,7 @@ trois derniers) :
   WEEK  MONTH          échéance cette semaine (lundi à dimanche) / ce mois-ci
   DUE                  échéance dans les 7 prochains jours
   BLOCKED  UNBLOCKED   attend / n'attend pas une autre tâche en cours
+  BLOCKING             une autre tâche en cours l'attend
   WAITING              cachée par wait: jusqu'à une date à venir
   ANNOTATED            a une annotation
   PROJECT  TAGGED      a un projet / au moins un tag
@@ -775,6 +797,8 @@ Les tâches sont listées par urgence, la somme de :
   âge          2.0 x âge en années, au plus 1 an
   tags         1.0 si la tâche a des tags
   projet       1.0 si la tâche a un projet
+  bloquée      -5.0 si elle attend une autre tâche en cours (depends:)
+  bloquante    8.0 si une autre tâche en cours l'attend
 
 Changez les poids avec tk config set urgency.<nom> <valeur>, par exemple
 tk config set urgency.due 8.

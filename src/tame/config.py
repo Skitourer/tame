@@ -200,6 +200,8 @@ OPTIONS: tuple[Option, ...] = (
             ("age", "age, x0 (new) to x1.0 (1 year old)"),
             ("tags", "task has tags"),
             ("project", "task has a project"),
+            ("blocked", "waits for another pending task (depends)"),
+            ("blocking", "another pending task waits for it"),
         )
     ),
 )

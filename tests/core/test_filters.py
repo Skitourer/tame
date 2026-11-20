@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta, timezone
 import pytest
 
 from tame.core.filters import ALL, Filter, VirtualTagger
-from tame.core.models import NONE, Annotation, Priority, Status, Task
+from tame.core.models import NONE, Annotation, Links, Priority, Status, Task
 
 T0 = datetime(2026, 11, 19, tzinfo=UTC)
 
@@ -144,8 +144,11 @@ def local(*args: int) -> datetime:
     return datetime(*args, tzinfo=TZ).astimezone(UTC)  # type: ignore[misc]
 
 
-def tagger(pending: frozenset[str] = frozenset()) -> VirtualTagger:
-    return VirtualTagger(NOW, pending, TZ)
+def tagger(
+    pending: frozenset[str] = frozenset(), blocking: frozenset[str] = frozenset()
+) -> VirtualTagger:
+    ids = {uuid: number for number, uuid in enumerate(sorted(pending), start=1)}
+    return VirtualTagger(NOW, Links(ids=ids, blocking=blocking), TZ)
 
 
 @pytest.mark.parametrize(
@@ -179,6 +182,12 @@ def test_blocked_only_by_pending_dependencies() -> None:
     blocked = task(depends=frozenset({OTHER, "gone"}))
     assert "BLOCKED" in tagger(frozenset({OTHER}))(blocked)
     assert "UNBLOCKED" in tagger(frozenset())(blocked)
+
+
+def test_blocking_when_a_pending_task_depends_on_it() -> None:
+    blocker = task()
+    assert "BLOCKING" in tagger(frozenset({blocker.uuid}), frozenset({blocker.uuid}))(blocker)
+    assert "BLOCKING" not in tagger(frozenset({blocker.uuid}))(blocker)
 
 
 def test_closed_tasks_have_no_status_dependent_tags() -> None:
