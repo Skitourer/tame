@@ -10,7 +10,7 @@ come back unchanged on export. Taskwarrior statuses ``waiting`` and
 
 import json
 import uuid as uuid_lib
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -30,6 +30,10 @@ TW_STATUS = "tw_status"
 
 ANNOTATIONS = "annotations"
 DEPENDS = "depends"
+_EXTRA_DATES = ("wait", "start", "until")
+"""Taskwarrior dates TAME stores natively since schema 3."""
+PROMOTABLE = (ANNOTATIONS, DEPENDS, *_EXTRA_DATES, "recur")
+"""Task fields :func:`split_extra` can take out of ``extra``."""
 
 _PENDING_LIKE = frozenset({"waiting", "recurring"})
 _DATE_FIELDS = ("due", "end", "entry", "modified")
@@ -86,6 +90,11 @@ def task_to_tw(task: Task, urgency: float | None = None) -> dict[str, Any]:
         ]
     if task.depends:
         data[DEPENDS] = sorted(task.depends)
+    for name in _EXTRA_DATES:
+        if (value := getattr(task, name)) is not None:
+            data[name] = format_date(value)
+    if task.recur:
+        data["recur"] = task.recur
     data["uuid"] = task.uuid
     if urgency is not None:
         data["urgency"] = round(urgency, 4)
@@ -131,14 +140,15 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
         ValidationError: If a field has a wrong type or an invalid value.
     """
     uuid = _uuid(data)
-    annotations, depends, extra = split_extra(
+    fields, extra = split_extra(
         {key: value for key, value in data.items() if key not in _KNOWN}, uuid
     )
     dates = {name: _date(data, name) for name in _DATE_FIELDS}
     entry = dates["entry"] or now
     status_text = _str(data, "status") or Status.PENDING.value
     if status_text in _PENDING_LIKE:
-        extra[TW_STATUS] = status_text
+        if not (status_text == "waiting" and "wait" in fields):  # TW 3 style: pending + wait
+            extra[TW_STATUS] = status_text
         status_text = Status.PENDING.value
     try:
         status = Status(status_text)
@@ -165,39 +175,54 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
         priority=priority,
         due=dates["due"],
         end=dates["end"],
-        annotations=annotations,
-        depends=depends,
         extra=extra,
+        **fields,
     )
 
 
 def split_extra(
-    extra: Mapping[str, Any], uuid: str
-) -> tuple[tuple[Annotation, ...], frozenset[str], dict[str, Any]]:
-    """Take valid Taskwarrior ``annotations`` and ``depends`` out of ``extra``.
+    extra: Mapping[str, Any], uuid: str, names: Collection[str] = PROMOTABLE
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Take the valid Taskwarrior attributes TAME stores natively out of ``extra``.
 
-    ``annotations``: a list of ``{entry, description}`` (both strings, ``entry`` a date).
-    ``depends``: a list of uuids, or a comma-separated string (Taskwarrior < 2.6);
-    duplicates and ``uuid`` itself are dropped. A key with any invalid item stays in
-    the remaining attributes unchanged.
+    ``annotations``: a list of ``{entry, description}`` (both strings, ``entry`` a date),
+    sorted by entry. ``depends``: a list of uuids, or a comma-separated string
+    (Taskwarrior < 2.6); duplicates and ``uuid`` itself are dropped. ``wait``, ``start``,
+    ``until``: dates. ``recur``: a non-empty string. A key with an invalid value stays in
+    the remaining attributes unchanged. Once ``wait`` is taken, ``tw_status = "waiting"``
+    is dropped (Taskwarrior 3 style: pending + wait).
 
     Args:
         extra: Attributes TAME stores as is.
         uuid: Uuid of the task they belong to.
+        names: Which of :data:`PROMOTABLE` to take (migrations take a fixed set).
 
     Returns:
-        The annotations (sorted by entry), the dependencies and the other attributes.
+        The taken values by :class:`Task` field name, and the other attributes.
     """
     rest = dict(extra)
-    annotations: tuple[Annotation, ...] = ()
-    depends: frozenset[str] = frozenset()
-    if ANNOTATIONS in rest and (parsed := _annotations(rest[ANNOTATIONS])) is not None:
-        annotations = parsed
+    fields: dict[str, Any] = {}
+    notes = _annotations(rest[ANNOTATIONS]) if ANNOTATIONS in rest else None
+    if ANNOTATIONS in names and notes is not None:
+        fields[ANNOTATIONS] = notes
         del rest[ANNOTATIONS]
-    if DEPENDS in rest and (uuids := _depends(rest[DEPENDS])) is not None:
-        depends = uuids - {uuid}
+    uuids = _depends(rest[DEPENDS]) if DEPENDS in rest else None
+    if DEPENDS in names and uuids is not None:
+        fields[DEPENDS] = uuids - {uuid}
         del rest[DEPENDS]
-    return annotations, depends, rest
+    for name in _EXTRA_DATES:
+        if name in names and isinstance(value := rest.get(name), str):
+            try:
+                fields[name] = parse_date(value)
+            except ValueError:
+                continue
+            del rest[name]
+    if "recur" in names and isinstance(recur := rest.get("recur"), str) and recur:
+        fields["recur"] = recur
+        del rest["recur"]
+    if "wait" in fields and rest.get(TW_STATUS) == "waiting":
+        del rest[TW_STATUS]
+    return fields, rest
 
 
 def _annotations(value: object) -> tuple[Annotation, ...] | None:

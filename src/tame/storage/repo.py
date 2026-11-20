@@ -12,7 +12,7 @@ from typing import Any, Self
 
 from tame.core.models import Annotation, Priority, Status, Task
 from tame.errors import StorageError
-from tame.io.tw_json import split_extra
+from tame.io.tw_json import PROMOTABLE, split_extra
 from tame.storage.codec import from_db, to_db
 from tame.storage.migrations import migrate
 
@@ -32,7 +32,12 @@ _FIELDS = (
     "modified",
     "end",
     "extra",
+    "wait",
+    "start",
+    "recur",
+    "until",
 )
+_V3_FIELDS = ("wait", "start", "recur", "until")
 _COLUMNS = ", ".join(f'"{name}"' for name in _FIELDS)
 
 
@@ -107,7 +112,7 @@ class TaskRepo:
     def insert(self, task: Task) -> None:
         """Insert a new task with its tags, annotations and dependencies."""
         self._conn.execute(
-            f"INSERT INTO tasks({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            f"INSERT INTO tasks({_COLUMNS}) VALUES ({', '.join('?' * len(_FIELDS))})",
             _to_row(task),
         )
         self._insert_children(task)
@@ -305,6 +310,10 @@ def _to_row(task: Task) -> tuple[str | int | None, ...]:
         to_db(task.modified),
         to_db(task.end) if task.end else None,
         json.dumps(task.extra, sort_keys=True) if task.extra else None,
+        to_db(task.wait) if task.wait else None,
+        to_db(task.start) if task.start else None,
+        task.recur,
+        to_db(task.until) if task.until else None,
     )
 
 
@@ -321,17 +330,25 @@ def _task_to_json(task: Task) -> dict[str, Any]:
 
 
 def _task_from_json(data: Mapping[str, Any]) -> Task:
-    """Read an undo snapshot; one written before schema v2 has no annotations/depends keys."""
-    children = _Children(tags=set(data["tags"]))
-    if "annotations" in data:
-        children.annotations = [
-            Annotation(from_db(note["entry"]), note["description"]) for note in data["annotations"]
-        ]
-        children.depends = set(data["depends"])
-        return _to_task(data, children)
-    task = _to_task(data, children)
-    annotations, depends, extra = split_extra(task.extra, task.uuid)
-    return replace(task, annotations=annotations, depends=depends, extra=extra)
+    """Read an undo snapshot.
+
+    One written before schema v3 lacks some fields: they are read from ``extra`` with
+    the Taskwarrior import rules.
+    """
+    missing = [name for name in PROMOTABLE if name not in data]
+    children = _Children(
+        tags=set(data["tags"]),
+        annotations=[
+            Annotation(from_db(note["entry"]), note["description"])
+            for note in data.get("annotations", ())
+        ],
+        depends=set(data.get("depends", ())),
+    )
+    task = _to_task({**dict.fromkeys(_V3_FIELDS), **data}, children)
+    if not missing:
+        return task
+    fields, extra = split_extra(task.extra, task.uuid, missing)
+    return replace(task, **fields, extra=extra)
 
 
 def _to_task(row: Mapping[str, Any] | sqlite3.Row, children: _Children) -> Task:
@@ -350,4 +367,8 @@ def _to_task(row: Mapping[str, Any] | sqlite3.Row, children: _Children) -> Task:
         annotations=tuple(children.annotations),
         depends=frozenset(children.depends),
         extra=json.loads(row["extra"]) if row["extra"] else {},
+        wait=from_db(row["wait"]) if row["wait"] else None,
+        start=from_db(row["start"]) if row["start"] else None,
+        recur=row["recur"],
+        until=from_db(row["until"]) if row["until"] else None,
     )

@@ -77,6 +77,7 @@ tk 3,5 done                                  # complete tasks 3 and 5
 tk 4 delete                                  # asks first; --yes skips the question
 tk 1 modify due:+3d -phone Call the bank     # set, untag, new description
 tk 3 annotate Call back Monday               # a dated note on the task
+tk 3 modify wait:mon                         # hide it until Monday
 tk 7 info                                    # every field
 tk undo                                      # revert the last change (repeat to go back)
 tk +shopping print                           # printable page, by project (or PDF)

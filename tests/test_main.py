@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import ANY
 
 import pytest
 
@@ -68,9 +69,9 @@ def test_add_invalid_is_usage_error(capsys: Capture) -> None:
 
 
 def test_add_unknown_attribute(capsys: Capture) -> None:
-    code, _, err = run(capsys, "add", "x", "wait:tomorrow")
+    code, _, err = run(capsys, "add", "x", "scheduled:tomorrow")
     assert code == 1
-    assert err == "Unknown attribute: wait\n"
+    assert err == "Unknown attribute: scheduled\n"
 
 
 def test_list_shows_tasks_and_hides_empty_columns(capsys: Capture) -> None:
@@ -849,7 +850,7 @@ def test_export_then_import_round_trip(capsys: Capture, tmp_path: Path, tame_hom
 def test_import_taskwarrior_file(capsys: Capture, tmp_path: Path) -> None:
     lines = [
         '{"description":"Water plants","entry":"20261101T080000Z","status":"waiting",'
-        '"wait":"20261201T000000Z","uuid":"a1b2c3d4-0000-4000-8000-000000000001"}',
+        '"wait":"20991201T000000Z","uuid":"a1b2c3d4-0000-4000-8000-000000000001"}',
         '{"description":"Old","entry":"20261001T080000Z","end":"20261002T080000Z",'
         '"status":"completed","tags":["x"]}',
     ]
@@ -858,9 +859,10 @@ def test_import_taskwarrior_file(capsys: Capture, tmp_path: Path) -> None:
     assert run(capsys, "import", str(path))[1] == (
         "Imported: 2 added, 0 updated, 0 skipped (not newer).\n"
     )
-    assert "Water plants" in run(capsys, "list")[1]
-    (task,) = json.loads(run(capsys, "export")[1])
-    assert (task["status"], task["wait"]) == ("waiting", "20261201T000000Z")
+    assert run(capsys, "list") == (2, "1 waiting task hidden: tk +WAITING shows it.\n", ANY)
+    assert "Water plants" in run(capsys, "+WAITING", "list")[1]
+    (task,) = json.loads(run(capsys, "export")[1])  # export includes waiting tasks
+    assert (task["status"], task["wait"]) == ("pending", "20991201T000000Z")
 
 
 def test_import_annotations_and_depends_survive_modify_and_undo(
@@ -1143,3 +1145,31 @@ def test_annotate_bulk_asks(capsys: Capture, monkeypatch: pytest.MonkeyPatch) ->
     assert "[1]" not in run(capsys, "list")[1]
     run(capsys, "+t", "annotate", "note", "--yes")
     assert run(capsys, "list")[1].count("[1]") == 5
+
+
+# --- wait (0.3) ---------------------------------------------------------------------
+
+
+def test_wait_hides_tasks_until_the_date(capsys: Capture) -> None:
+    run(capsys, "add", "Call", "bank", "wait:+3d", "due:+5d")
+    run(capsys, "add", "now")
+    out = run(capsys, "list")[1]
+    assert "Call bank" not in out
+    assert out.splitlines()[-1] == "1 waiting task hidden: tk +WAITING shows it."
+    assert run(capsys, "next")[1].splitlines()[-1].startswith("1 waiting task hidden")
+    waiting = run(capsys, "+WAITING", "list")[1]
+    assert "Wait" in header(waiting) and "Call bank" in waiting
+    assert "Wait" not in header(run(capsys, "2", "list")[1])
+    assert "Waits until" in run(capsys, "1", "info")[1]
+    assert len(json.loads(run(capsys, "export")[1])) == 2
+    run(capsys, "1", "modify", "wait:")
+    assert "Call bank" in run(capsys, "list")[1]
+
+
+def test_only_waiting_tasks_left(capsys: Capture) -> None:
+    run(capsys, "add", "later", "wait:+1w")
+    assert run(capsys) == (
+        2,
+        "1 waiting task hidden: tk +WAITING shows it.\n",
+        "No matches.\n",
+    )

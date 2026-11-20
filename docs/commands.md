@@ -30,15 +30,16 @@ nothing to undo), 3 internal error. Errors go to stderr.
 ## add
 
 ```text
-tk add <description> [project:P] [pri:H|M|L] [due:DATE] [+tag ...]
+tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]
 ```
 
-Words make the description; `project:`, `pri:`, `due:` and `+tag` can be anywhere. Everything
+Words make the description; `project:`, `pri:`, `due:`, [`wait:`](grammar.md#waiting-tasks) and `+tag` can be anywhere. Everything
 after `--` is description, even words like `done` or `+x`. Prints the new task's id.
 
 ```sh
 tk add Call bank project:home +phone due:fri pri:H
 tk add -- done the report
+tk add Chase the bank wait:mon due:fri
 ```
 
 ## list
@@ -53,7 +54,9 @@ is sorted by [urgency](urgency.md), highest first. Empty columns are hidden. Ove
 the output is not a terminal, or with `color = false`).
 
 `list` is the default command: `tk` alone lists all pending tasks. With no task at all, it
-shows a welcome message instead. To make `next` the default, see
+shows a welcome message instead. [Waiting tasks](grammar.md#waiting-tasks) are left out; a
+last line says how many (`tk +WAITING` shows them, with a Wait column). To make `next` the
+default, see
 [`default_command`](settings.md#all-settings).
 
 ```sh
@@ -101,7 +104,7 @@ tk status:deleted info
 tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]
 ```
 
-`attr:value` sets an attribute, `attr:` clears it (`project`, `pri`, `due`); `+tag` and `-tag`
+`attr:value` sets an attribute, `attr:` clears it (`project`, `pri`, `due`, `wait`); `+tag` and `-tag`
 add and remove tags; other words replace the description. A filter is required. Asks before
 changing more than `confirm_threshold` tasks (default 3); `--yes` skips the question.
 
@@ -216,6 +219,7 @@ tk [filter] export
 
 Prints the matching tasks as a JSON array in Taskwarrior format, one task per line; `[]` if
 none match. Like `list`, only pending tasks by default: `status:all` exports everything.
+Waiting tasks are always included.
 
 ```sh
 tk status:all export > backup.json

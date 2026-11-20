@@ -92,6 +92,11 @@ def print_task_table(
             "left",
             [task.due.astimezone().strftime(date_format) if task.due else "" for task in tasks],
         ),
+        (
+            t("list.col.wait"),
+            "left",
+            [task.wait.astimezone().strftime(date_format) if task.wait else "" for task in tasks],
+        ),
         (t("list.col.description"), "left", [_description_cell(task) for task in tasks]),
         (
             t("list.col.urgency"),
@@ -157,6 +162,10 @@ def info_rows(
         (t("info.entry"), local(task.entry)),
         (t("info.modified"), local(task.modified)),
         (t("info.end"), local(task.end)),
+        (t("info.wait"), local(task.wait)),
+        (t("info.start"), local(task.start)),
+        (t("info.recur"), task.recur or ""),
+        (t("info.until"), local(task.until)),
         (t("info.depends"), " ".join(sorted(task.depends))),
         (t("info.urgency"), format_urgency(urgency(task, now, coefficients))),
     ]

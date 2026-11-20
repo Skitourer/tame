@@ -59,6 +59,10 @@ unset = "{name} = {value} (défaut)"
 output = "tame {version} (schéma {schema})"
 more = "Licence MIT. Voir tk help license et tk help credits."
 
+[list]
+waiting_one = "1 tâche en attente masquée : tk +WAITING l'affiche."
+waiting_many = "{count} tâches en attente masquées : tk +WAITING les affiche."
+
 [list.col]
 id = "ID"
 age = "Âge"
@@ -66,6 +70,7 @@ project = "Projet"
 tags = "Tags"
 priority = "Prio"
 due = "Échéance"
+wait = "Attente"
 description = "Description"
 urgency = "Urg"
 
@@ -82,6 +87,10 @@ due = "Échéance"
 entry = "Créée"
 modified = "Modifiée"
 end = "Terminée"
+wait = "En attente jusqu'au"
+start = "Commencée"
+recur = "Récurrence"
+until = "Jusqu'au"
 urgency = "Urgence"
 depends = "Dépend de"
 annotation = "Annotation"
@@ -264,13 +273,16 @@ more = "Détails : tk help <commande>, ou tk <commande> --help. Les commandes s'
 
 [help.cmd.add]
 summary = "Créer une tâche"
-usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [+tag ...]"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]"
 body = '''
-Les mots forment la description ; project:, pri:, due: et +tag peuvent être n'importe où.
+Les mots forment la description ; project:, pri:, due:, wait: et +tag peuvent être
+n'importe où. wait: cache la tâche de list et des filtres jusqu'à cette date
+(tk +WAITING l'affiche).
 Tout ce qui suit -- est de la description, même des mots comme done ou +x.
 
 Exemples :
   tk add Appeler la banque project:maison +tel due:fri pri:H
+  tk add Relancer la banque wait:mon due:fri
   tk add -- done le rapport
 '''
 
@@ -321,7 +333,7 @@ Exemples :
 summary = "Modifier des tâches"
 usage = "tk <filtre> modify [attr:valeur] [attr:] [+tag] [-tag] [nouvelle description]"
 body = '''
-attr:valeur fixe un attribut, attr: l'efface (project, pri, due) ; +tag et -tag
+attr:valeur fixe un attribut, attr: l'efface (project, pri, due, wait) ; +tag et -tag
 ajoutent et retirent des tags ; les autres mots remplacent la description. Un filtre
 est obligatoire. Demande confirmation au-delà de confirm_threshold tâches (3 par
 défaut) ; --yes l'évite.
@@ -516,21 +528,25 @@ correspondent.
   due.after:today      échéance strictement après la date
   autres mots          texte contenu dans la description, casse ignorée
 
-Les tags virtuels sont calculés, jamais posés (tâches en cours seulement pour les
-six premiers) :
+Les tags virtuels sont calculés, jamais posés (tâches en cours seulement, sauf les
+trois derniers) :
   OVERDUE              échéance dépassée
   TODAY  TOMORROW      échéance aujourd'hui / demain
   WEEK  MONTH          échéance cette semaine (lundi à dimanche) / ce mois-ci
   DUE                  échéance dans les 7 prochains jours
   BLOCKED  UNBLOCKED   attend / n'attend pas une autre tâche en cours
+  WAITING              cachée par wait: jusqu'à une date à venir
   ANNOTATED            a une annotation
   PROJECT  TAGGED      a un projet / au moins un tag
+
+Les tâches en attente (wait: dans le futur) sont écartées, sauf si le filtre a des
+ids, +WAITING ou status:all. export les inclut toujours.
 
 Le filtre se place avant la commande (tk +tel list) ou juste après
 (tk list +tel). Après --, tout est mots simples.
 '''
 dates = '''
-Les dates servent à due:, due.before: et due.after:. Les mots-clés sont en anglais,
+Les dates servent à due:, wait:, due.before: et due.after:. Les mots-clés sont en anglais,
 casse ignorée. Une date sans heure signifie 00:00 heure locale.
 
   2026-12-15   2026-12-15T14:00     date ISO, heure locale

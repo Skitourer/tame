@@ -189,7 +189,8 @@ def test_task_from_tw_modified_defaults_to_entry() -> None:
 def test_task_from_tw_pending_like_statuses(status: str) -> None:
     task = task_from_tw({"description": "x", "status": status, "recur": "weekly"}, NOW)
     assert task.status is Status.PENDING
-    assert task.extra == {TW_STATUS: status, "recur": "weekly"}
+    assert task.recur == "weekly"
+    assert task.extra == {TW_STATUS: status}  # waiting without a wait date stays waiting
 
 
 def test_task_from_tw_keeps_other_priorities_in_extra() -> None:
@@ -282,8 +283,9 @@ def test_invalid_depends_stay_in_extra(value: Any) -> None:
 
 
 def test_split_extra_keeps_other_keys() -> None:
-    annotations, depends, rest = split_extra({"depends": OTHER, "wait": "w"}, UUID)
-    assert (annotations, depends, rest) == ((), frozenset({OTHER}), {"wait": "w"})
+    fields, rest = split_extra({"depends": OTHER, "wait": "w", "x": 1}, UUID)
+    assert (fields, rest) == ({"depends": frozenset({OTHER})}, {"wait": "w", "x": 1})
+    assert split_extra({"depends": OTHER}, UUID, ("annotations",)) == ({}, {"depends": OTHER})
 
 
 def test_task_to_tw_annotations_and_depends() -> None:
@@ -315,3 +317,39 @@ def test_annotations_and_depends_round_trip() -> None:
         "depends": [OTHER, THIRD],
     }
     assert {k: v for k, v in task_to_tw(task_from_tw(data, NOW)).items() if k != "id"} == data
+
+
+# --- wait, start, until, recur (schema 3) ---------------------------------------------
+
+
+def test_wait_start_until_recur_round_trip() -> None:
+    data = {
+        "uuid": UUID,
+        "description": "x",
+        "entry": "20261101T080000Z",
+        "modified": "20261102T080000Z",
+        "status": "pending",
+        "wait": "20261201T000000Z",
+        "start": "20261102T090000Z",
+        "until": "20271231T000000Z",
+        "recur": "weekly",
+    }
+    task = task_from_tw(data, NOW)
+    assert (task.wait, task.recur) == (datetime(2026, 12, 1, tzinfo=UTC), "weekly")
+    assert task.start == datetime(2026, 11, 2, 9, tzinfo=UTC)
+    assert task.until == datetime(2027, 12, 31, tzinfo=UTC)
+    assert task.extra == {}
+    assert {k: v for k, v in task_to_tw(task).items() if k != "id"} == data
+
+
+def test_tw_waiting_status_becomes_pending_with_wait() -> None:
+    data = {"description": "x", "status": "waiting", "wait": "20261201T000000Z"}
+    task = task_from_tw(data, NOW)
+    assert (task.status, task.extra) == (Status.PENDING, {})
+    assert task_to_tw(task)["status"] == "pending"
+
+
+def test_invalid_wait_stays_in_extra() -> None:
+    task = task_from_tw({"description": "x", "wait": "someday", "recur": 3}, NOW)
+    assert (task.wait, task.recur) == (None, None)
+    assert task.extra == {"wait": "someday", "recur": 3}

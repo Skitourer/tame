@@ -58,6 +58,10 @@ unset = "{name} = {value} (default)"
 output = "tame {version} (schema {schema})"
 more = "MIT License. See tk help license and tk help credits."
 
+[list]
+waiting_one = "1 waiting task hidden: tk +WAITING shows it."
+waiting_many = "{count} waiting tasks hidden: tk +WAITING shows them."
+
 [list.col]
 id = "ID"
 age = "Age"
@@ -65,6 +69,7 @@ project = "Project"
 tags = "Tags"
 priority = "Pri"
 due = "Due"
+wait = "Wait"
 description = "Description"
 urgency = "Urg"
 
@@ -81,6 +86,10 @@ due = "Due"
 entry = "Entered"
 modified = "Modified"
 end = "Ended"
+wait = "Waits until"
+start = "Started"
+recur = "Recurrence"
+until = "Until"
 urgency = "Urgency"
 depends = "Depends on"
 annotation = "Annotation"
@@ -263,13 +272,15 @@ more = "Details: tk help <command>, or tk <command> --help. Commands can be shor
 
 [help.cmd.add]
 summary = "Create a task"
-usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [+tag ...]"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [+tag ...]"
 body = '''
-Words make the description; project:, pri:, due: and +tag can be anywhere.
+Words make the description; project:, pri:, due:, wait: and +tag can be anywhere.
+wait: hides the task from list and filters until that date (tk +WAITING shows it).
 Everything after -- is description, even words like done or +x.
 
 Examples:
   tk add Call bank project:home +phone due:fri pri:H
+  tk add Chase the bank wait:mon due:fri
   tk add -- done the report
 '''
 
@@ -319,7 +330,7 @@ Examples:
 summary = "Change tasks"
 usage = "tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]"
 body = '''
-attr:value sets an attribute, attr: clears it (project, pri, due); +tag and -tag add
+attr:value sets an attribute, attr: clears it (project, pri, due, wait); +tag and -tag add
 and remove tags; other words replace the description. A filter is required.
 Asks before changing more than confirm_threshold tasks (default 3); --yes skips it.
 
@@ -506,20 +517,24 @@ selection. Without status:, only pending tasks match.
   due.after:today      due strictly after the date
   other words          text contained in the description, any case
 
-Virtual tags are computed, never set (pending tasks only for the first six):
+Virtual tags are computed, never set (pending tasks only, but the last three):
   OVERDUE              due date passed
   TODAY  TOMORROW      due today / tomorrow
   WEEK  MONTH          due this week (Monday to Sunday) / this month
   DUE                  due in the next 7 days
   BLOCKED  UNBLOCKED   waiting / not waiting for another pending task
+  WAITING              hidden by wait: until a later date
   ANNOTATED            has an annotation
   PROJECT  TAGGED      has a project / at least one tag
+
+Waiting tasks (wait: in the future) are left out, unless the filter has ids,
++WAITING or status:all. export always includes them.
 
 The filter goes before the command (tk +phone list) or right after it
 (tk list +phone). After --, everything is plain words.
 '''
 dates = '''
-Dates are used by due:, due.before: and due.after:. Keywords are English, any case.
+Dates are used by due:, wait:, due.before: and due.after:. Keywords are English, any case.
 A date without a time means 00:00 local time.
 
   2026-12-15   2026-12-15T14:00     ISO date, local time

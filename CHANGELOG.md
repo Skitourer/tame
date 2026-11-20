@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`wait:`**: `tk add Chase the bank wait:mon` puts a task aside until a date. It is left
+  out of `list`, `next`, `print` and filters until then (a last line says how many are
+  hidden), and shows again by itself. `tk +WAITING` lists them; `export` keeps them.
 - **Annotations**: `tk 3 annotate Call back Monday` adds a dated note to a task;
   `tk 3 denotate Call` removes it (or, without text, the most recent one). `tk info` shows
   the notes, `tk print` prints them under the task, and `list`/`next` show how many:
@@ -23,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Database schema 3**: `wait`, plus `start`, `recur` and `until` for the next version,
+  become real fields (Taskwarrior values are moved out of the kept attributes). Upgraded
+  automatically, like schema 2.
+- Taskwarrior `waiting` tasks are imported as pending with their `wait` date, and exported
+  as `pending` (Taskwarrior 3 style).
 - `tk de` is now ambiguous (`delete`, `denotate`): type `del` or more.
 - The virtual tag names (`OVERDUE`, `TODAY`…) are reserved: `add` and `modify` refuse to set
   them. Such tags imported from Taskwarrior are kept, and `modify -NAME` removes them.

@@ -55,6 +55,13 @@ class Filter:
         return (self.status or Status.PENDING,)
 
     @property
+    def shows_waiting(self) -> bool:
+        """True if waiting tasks are not left out: ids/uuids, ``+WAITING`` or ``status:all``."""
+        return bool(
+            self.ids or self.uuid_prefixes or "WAITING" in self.virtual_in or self.status == ALL
+        )
+
+    @property
     def uses_virtual_tags(self) -> bool:
         """True if matching needs the tasks' virtual tags."""
         return bool(self.virtual_in or self.virtual_out)
@@ -96,6 +103,11 @@ class Filter:
         )
 
 
+def is_waiting(task: Task, now: datetime) -> bool:
+    """True if ``task`` is pending with a ``wait`` date after ``now`` (SPEC §4)."""
+    return task.status is Status.PENDING and task.wait is not None and task.wait > now
+
+
 DUE_SOON = timedelta(days=7)
 """How far ahead ``DUE`` looks."""
 
@@ -131,6 +143,8 @@ class VirtualTagger:
         if task.status is not Status.PENDING:
             return frozenset(tags)
         tags.add("BLOCKED" if task.depends & self._pending else "UNBLOCKED")
+        if is_waiting(task, self._now):
+            tags.add("WAITING")
         if (due := task.due) is not None:
             if due < self._now:
                 tags.add("OVERDUE")
