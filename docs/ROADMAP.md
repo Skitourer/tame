@@ -7,7 +7,7 @@ extra attributes or options, never from mandatory syntax.
 Status: proposal. Items move into `SPEC.md` (with tests and docs) in the PR that builds them.
 Order within a release = suggested PR order. TW = Taskwarrior.
 
-## 0.3 – everyday comfort, nothing new to learn (released: 0.3.0)
+## 0.3 – everyday comfort, nothing new to learn (released: 0.3.0, completion setting in 0.3.1)
 
 | Feature | Example | Notes |
 |---|---|---|

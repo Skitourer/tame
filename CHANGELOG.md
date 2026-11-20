@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-20
+
+Tab completion, now a simple setting.
+
 ### Changed
 
 - **Tab completion is a setting**: `tk config set completion true` adds it to your
