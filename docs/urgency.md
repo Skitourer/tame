@@ -34,7 +34,7 @@ ID   Age   Tags    Pri   Due          Description      Urg
 
 Every weight is a setting (see [Settings](settings.md)):
 
-```sh
+```text
 tk config set urgency.due 8        # due dates matter less
 tk config set urgency.pri_H 10     # priority H matters more
 tk config set urgency.tags 0       # ignore tags

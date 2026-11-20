@@ -32,7 +32,7 @@ Guided tour: tk help tour    Interface en français : tk config set language fr
 Words make the description; `project:`, `pri:` (H, M or L), `due:` and `+tag` can go
 anywhere:
 
-```sh
+```text
 tk add Call the bank project:home pri:H due:fri +phone
 tk add Buy milk +shopping due:tomorrow
 tk add -- +1 vote for the new logo   # after --, +1 is text, not a tag
@@ -43,7 +43,7 @@ Dates are English keywords or ISO dates: `today`, `tomorrow`, `fri`, `eow` (end 
 
 ## See them
 
-```sh
+```text
 tk                  # pending tasks, most urgent first (same as: tk list)
 tk next             # only the most urgent ones you can do now
 tk 1 info           # every field of task 1
@@ -55,7 +55,7 @@ On paper? `tk print` opens a printable page, grouped by project, in your browser
 
 ## Change, complete, delete
 
-```sh
+```text
 tk 2 modify pri:M -shopping     # set, untag
 tk 2 modify due:                # clear the due date
 tk 2 modify wait:mon            # hide it until Monday (tk +WAITING shows it)
@@ -74,7 +74,7 @@ After `done` and `delete`, pending tasks are renumbered 1..n.
 
 A filter goes before the command (or right after it):
 
-```sh
+```text
 tk +phone                       # tagged phone
 tk project:home due.before:eow  # home project, due before the end of the week
 tk bank                         # description contains "bank"
@@ -86,7 +86,7 @@ All filters: [Filters & grammar](grammar.md).
 
 ## Make it yours
 
-```sh
+```text
 tk config set language fr       # French interface
 tk config set date_format %d/%m/%Y
 tk alias install task           # also run tame as `task`

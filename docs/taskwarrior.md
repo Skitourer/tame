@@ -5,7 +5,7 @@ format. It is an independent, simpler tool: no code, name or logo is shared.
 
 ## Move your tasks over
 
-```sh
+```text
 task export > tw.json          # in Taskwarrior
 tk import tw.json              # in TAME
 ```
@@ -18,7 +18,7 @@ Taskwarrior since. `tk undo` reverts a whole import.
 
 ## Keep typing `task`
 
-```sh
+```text
 tk alias install task
 task add Call bank             # runs TAME
 ```

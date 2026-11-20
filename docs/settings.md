@@ -14,7 +14,7 @@ default. Edit the file by hand, or use `tk config`, which keeps your comments.
 
 ## `tk config`
 
-```sh
+```text
 tk config                              # list settings; changed ones show their default
 tk config get undo.retention
 tk config set undo.retention 1y
