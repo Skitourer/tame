@@ -2,8 +2,9 @@
 
 Export: a JSON array, Taskwarrior field names, dates as ``YYYYMMDDTHHMMSSZ``, the
 ``extra`` attributes merged back. Import: a JSON array, or one object per line.
-Attributes TAME does not support (annotations, depends, recur, wait, UDAs...) go to
-``extra`` and come back unchanged on export. Taskwarrior statuses ``waiting`` and
+Annotations and dependencies are stored natively when valid. Attributes TAME does not
+support (recur, wait, UDAs...) and invalid annotations/dependencies go to ``extra`` and
+come back unchanged on export. Taskwarrior statuses ``waiting`` and
 ``recurring`` become ``pending``; the original is kept in ``extra["tw_status"]``.
 """
 
@@ -14,6 +15,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from tame.core.models import (
+    Annotation,
     Priority,
     Status,
     Task,
@@ -25,6 +27,9 @@ from tame.errors import ValidationError
 
 TW_STATUS = "tw_status"
 """``extra`` key holding a Taskwarrior status TAME maps to ``pending``."""
+
+ANNOTATIONS = "annotations"
+DEPENDS = "depends"
 
 _PENDING_LIKE = frozenset({"waiting", "recurring"})
 _DATE_FIELDS = ("due", "end", "entry", "modified")
@@ -74,6 +79,13 @@ def task_to_tw(task: Task, urgency: float | None = None) -> dict[str, Any]:
     data["status"] = tw_status if task.status is Status.PENDING and tw_status else task.status
     if task.tags:
         data["tags"] = sorted(task.tags)
+    if task.annotations:
+        data[ANNOTATIONS] = [
+            {"entry": format_date(note.entry), "description": note.description}
+            for note in sorted(task.annotations, key=lambda note: note.entry)
+        ]
+    if task.depends:
+        data[DEPENDS] = sorted(task.depends)
     data["uuid"] = task.uuid
     if urgency is not None:
         data["urgency"] = round(urgency, 4)
@@ -118,7 +130,10 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
     Raises:
         ValidationError: If a field has a wrong type or an invalid value.
     """
-    extra = {key: value for key, value in data.items() if key not in _KNOWN}
+    uuid = _uuid(data)
+    annotations, depends, extra = split_extra(
+        {key: value for key, value in data.items() if key not in _KNOWN}, uuid
+    )
     dates = {name: _date(data, name) for name in _DATE_FIELDS}
     entry = dates["entry"] or now
     status_text = _str(data, "status") or Status.PENDING.value
@@ -140,7 +155,7 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
         raise _field_error("tags", tags)
     project = _str(data, "project")
     return Task(
-        uuid=_uuid(data),
+        uuid=uuid,
         description=check_description(_str(data, "description") or ""),
         entry=entry,
         modified=dates["modified"] or entry,
@@ -150,8 +165,69 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
         priority=priority,
         due=dates["due"],
         end=dates["end"],
+        annotations=annotations,
+        depends=depends,
         extra=extra,
     )
+
+
+def split_extra(
+    extra: Mapping[str, Any], uuid: str
+) -> tuple[tuple[Annotation, ...], frozenset[str], dict[str, Any]]:
+    """Take valid Taskwarrior ``annotations`` and ``depends`` out of ``extra``.
+
+    ``annotations``: a list of ``{entry, description}`` (both strings, ``entry`` a date).
+    ``depends``: a list of uuids, or a comma-separated string (Taskwarrior < 2.6);
+    duplicates and ``uuid`` itself are dropped. A key with any invalid item stays in
+    the remaining attributes unchanged.
+
+    Args:
+        extra: Attributes TAME stores as is.
+        uuid: Uuid of the task they belong to.
+
+    Returns:
+        The annotations (sorted by entry), the dependencies and the other attributes.
+    """
+    rest = dict(extra)
+    annotations: tuple[Annotation, ...] = ()
+    depends: frozenset[str] = frozenset()
+    if ANNOTATIONS in rest and (parsed := _annotations(rest[ANNOTATIONS])) is not None:
+        annotations = parsed
+        del rest[ANNOTATIONS]
+    if DEPENDS in rest and (uuids := _depends(rest[DEPENDS])) is not None:
+        depends = uuids - {uuid}
+        del rest[DEPENDS]
+    return annotations, depends, rest
+
+
+def _annotations(value: object) -> tuple[Annotation, ...] | None:
+    """Parse Taskwarrior annotations; None if anything is invalid."""
+    if not isinstance(value, list):
+        return None
+    notes = []
+    for item in value:
+        if not isinstance(item, dict):
+            return None
+        entry, description = item.get("entry"), item.get("description")
+        if not isinstance(entry, str) or not isinstance(description, str):
+            return None
+        try:
+            notes.append(Annotation(parse_date(entry), description))
+        except ValueError:
+            return None
+    return tuple(sorted(notes, key=lambda note: note.entry))
+
+
+def _depends(value: object) -> frozenset[str] | None:
+    """Parse Taskwarrior dependencies; None if anything is invalid."""
+    if isinstance(value, str):
+        value = [part.strip() for part in value.split(",") if part.strip()]
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        return None
+    try:
+        return frozenset(str(uuid_lib.UUID(item)) for item in value)
+    except ValueError:
+        return None
 
 
 def _str(data: Mapping[str, Any], name: str) -> str | None:

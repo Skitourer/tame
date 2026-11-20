@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from tame.cli.render import format_age, format_local, format_urgency, info_rows, row_style
-from tame.core.models import Status, Task
+from tame.core.models import Annotation, Status, Task
 
 
 @pytest.mark.parametrize(
@@ -34,6 +34,8 @@ def test_info_rows_hide_unset_fields_and_show_extra() -> None:
         modified=T0,
         status=Status.COMPLETED,
         end=T0,
+        annotations=(Annotation(T0, "call back"),),
+        depends=frozenset({"u-3", "u-2"}),
         extra={"annotations": [{"description": "note"}], "wait": "20261201T000000Z"},
     )
     assert info_rows(task, T0) == [
@@ -43,7 +45,9 @@ def test_info_rows_hide_unset_fields_and_show_extra() -> None:
         ("Entered", format_local(T0)),
         ("Modified", format_local(T0)),
         ("Ended", format_local(T0)),
+        ("Depends on", "u-2 u-3"),
         ("Urgency", "0.0"),
+        ("Annotation", f"{format_local(T0)} call back"),
         ("annotations", '[{"description": "note"}]'),
         ("wait", "20261201T000000Z"),
     ]

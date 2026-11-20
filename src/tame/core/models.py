@@ -28,6 +28,19 @@ class Priority(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class Annotation:
+    """A timestamped note attached to a task.
+
+    Attributes:
+        entry: When the note was added.
+        description: The note text.
+    """
+
+    entry: datetime
+    description: str
+
+
+@dataclass(frozen=True, slots=True)
 class Task:
     """A task. Datetimes are timezone-aware (stored as UTC).
 
@@ -43,6 +56,8 @@ class Task:
         priority: H, M or L.
         due: Due date.
         end: Completion or deletion time.
+        annotations: Notes, sorted by entry time.
+        depends: Uuids of the tasks this one waits for (never its own).
         extra: Unknown Taskwarrior attributes, kept for JSON round-trip.
     """
 
@@ -57,6 +72,8 @@ class Task:
     priority: Priority | None = None
     due: datetime | None = None
     end: datetime | None = None
+    annotations: tuple[Annotation, ...] = ()
+    depends: frozenset[str] = frozenset()
     extra: dict[str, Any] = field(default_factory=dict)
 
 

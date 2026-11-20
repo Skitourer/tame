@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Database schema 2**: annotations and dependencies imported from Taskwarrior now have
+  their own tables, ready for the commands that will use them. Your database is upgraded
+  automatically the first time you run `tk`; nothing to do. An older TAME cannot open it
+  afterwards.
+- `tk info` shows annotations and dependencies.
+- `tk export` writes `depends` as a list of uuids, even if it was imported as a
+  comma-separated string.
+
 ## [0.2.0] - 2026-11-20
 
 A little more paper, and a little more love.

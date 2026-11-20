@@ -75,6 +75,8 @@ entry = "Entered"
 modified = "Modified"
 end = "Ended"
 urgency = "Urgency"
+depends = "Depends on"
+annotation = "Annotation"
 
 [info.col]
 name = "Name"

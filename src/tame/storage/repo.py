@@ -4,15 +4,19 @@ import json
 import sqlite3
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from tame.core.models import Priority, Status, Task
+from tame.core.models import Annotation, Priority, Status, Task
 from tame.errors import StorageError
+from tame.io.tw_json import split_extra
+from tame.storage.codec import from_db, to_db
 from tame.storage.migrations import migrate
+
+__all__ = ["DB_FILENAME", "TaskRepo", "UndoEntry", "from_db", "to_db"]
 
 DB_FILENAME = "tasks.db"
 
@@ -50,16 +54,6 @@ class UndoEntry:
     cmd: str
     before: tuple[tuple[str, Task | None], ...]
     ids: Mapping[str, int] | None = None
-
-
-def to_db(value: datetime) -> str:
-    """Format an aware datetime as UTC ISO 8601, e.g. ``2026-11-19T09:30:00Z``."""
-    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def from_db(value: str) -> datetime:
-    """Parse a datetime written by :func:`to_db` into an aware UTC datetime."""
-    return datetime.fromisoformat(value).astimezone(UTC)
 
 
 class TaskRepo:
@@ -111,15 +105,15 @@ class TaskRepo:
         self._conn.execute("COMMIT")
 
     def insert(self, task: Task) -> None:
-        """Insert a new task with its tags."""
+        """Insert a new task with its tags, annotations and dependencies."""
         self._conn.execute(
             f"INSERT INTO tasks({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             _to_row(task),
         )
-        self._insert_tags(task)
+        self._insert_children(task)
 
     def update(self, task: Task) -> None:
-        """Overwrite the stored task having ``task.uuid``, tags included.
+        """Overwrite the stored task having ``task.uuid``, with its side-table rows.
 
         Raises:
             StorageError: If no task has this uuid.
@@ -131,8 +125,9 @@ class TaskRepo:
         )
         if cursor.rowcount != 1:
             raise StorageError("error.task_not_found", uuid=uuid)
-        self._conn.execute("DELETE FROM task_tags WHERE uuid = ?", (uuid,))
-        self._insert_tags(task)
+        for table in ("task_tags", "annotations", "depends"):
+            self._conn.execute(f"DELETE FROM {table} WHERE uuid = ?", (uuid,))
+        self._insert_children(task)
 
     def renumber(self) -> None:
         """Give pending tasks the short ids 1..n by entry time; clear the others' ids."""
@@ -216,10 +211,21 @@ class TaskRepo:
         """Delete the ``undo_log`` rows logged before ``before``."""
         self._conn.execute("DELETE FROM undo_log WHERE ts < ?", (to_db(before),))
 
-    def _insert_tags(self, task: Task) -> None:
+    def _insert_children(self, task: Task) -> None:
         self._conn.executemany(
             "INSERT INTO task_tags(uuid, tag) VALUES (?, ?)",
             [(task.uuid, tag) for tag in sorted(task.tags)],
+        )
+        self._conn.executemany(
+            "INSERT INTO annotations(uuid, entry, description) VALUES (?, ?, ?)",
+            [
+                (task.uuid, to_db(note.entry), note.description)
+                for note in sorted(task.annotations, key=lambda note: note.entry)
+            ],
+        )
+        self._conn.executemany(
+            "INSERT INTO depends(uuid, depends_on) VALUES (?, ?)",
+            [(task.uuid, target) for target in sorted(task.depends)],
         )
 
     def get(self, uuid: str) -> Task | None:
@@ -227,22 +233,33 @@ class TaskRepo:
         row = self._conn.execute(f"SELECT {_COLUMNS} FROM tasks WHERE uuid = ?", (uuid,)).fetchone()
         if row is None:
             return None
-        tags = self._conn.execute("SELECT tag FROM task_tags WHERE uuid = ?", (uuid,)).fetchall()
-        return _to_task(row, frozenset(r["tag"] for r in tags))
+        children = self._children("WHERE uuid = ?", (uuid,))
+        return _to_task(row, children.get(uuid, _Children()))
 
     def by_status(self, status: Status) -> list[Task]:
         """Return all tasks with ``status``, ordered by id then entry."""
         rows = self._conn.execute(
             f"SELECT {_COLUMNS} FROM tasks WHERE status = ? ORDER BY id, entry", (status.value,)
         ).fetchall()
-        tags: dict[str, set[str]] = {}
+        children = self._children(
+            "WHERE uuid IN (SELECT uuid FROM tasks WHERE status = ?)", (status.value,)
+        )
+        return [_to_task(row, children.get(row["uuid"], _Children())) for row in rows]
+
+    def _children(self, where: str, params: tuple[str, ...]) -> dict[str, "_Children"]:
+        """Return the tags, annotations and dependencies of the tasks matching ``where``."""
+        result: dict[str, _Children] = {}
+        for r in self._conn.execute(f"SELECT uuid, tag FROM task_tags {where}", params):
+            result.setdefault(r["uuid"], _Children()).tags.add(r["tag"])
         for r in self._conn.execute(
-            "SELECT tt.uuid, tt.tag FROM task_tags tt JOIN tasks t ON t.uuid = tt.uuid "
-            "WHERE t.status = ?",
-            (status.value,),
+            f"SELECT uuid, entry, description FROM annotations {where} ORDER BY entry, id", params
         ):
-            tags.setdefault(r["uuid"], set()).add(r["tag"])
-        return [_to_task(row, frozenset(tags.get(row["uuid"], ()))) for row in rows]
+            result.setdefault(r["uuid"], _Children()).annotations.append(
+                Annotation(from_db(r["entry"]), r["description"])
+            )
+        for r in self._conn.execute(f"SELECT uuid, depends_on FROM depends {where}", params):
+            result.setdefault(r["uuid"], _Children()).depends.add(r["depends_on"])
+        return result
 
     def get_meta(self, key: str) -> str | None:
         """Return the ``meta`` value stored under ``key``, or None."""
@@ -265,6 +282,15 @@ class TaskRepo:
         return int(row[0])
 
 
+@dataclass(slots=True)
+class _Children:
+    """Side-table rows of one task."""
+
+    tags: set[str] = field(default_factory=set)
+    annotations: list[Annotation] = field(default_factory=list)
+    depends: set[str] = field(default_factory=set)
+
+
 def _to_row(task: Task) -> tuple[str | int | None, ...]:
     """Return the column values of ``task``, in ``_COLUMNS`` order."""
     return (
@@ -283,25 +309,45 @@ def _to_row(task: Task) -> tuple[str | int | None, ...]:
 
 
 def _task_to_json(task: Task) -> dict[str, Any]:
-    return {**dict(zip(_FIELDS, _to_row(task), strict=True)), "tags": sorted(task.tags)}
+    return {
+        **dict(zip(_FIELDS, _to_row(task), strict=True)),
+        "tags": sorted(task.tags),
+        "annotations": [
+            {"entry": to_db(note.entry), "description": note.description}
+            for note in task.annotations
+        ],
+        "depends": sorted(task.depends),
+    }
 
 
 def _task_from_json(data: Mapping[str, Any]) -> Task:
-    return _to_task(data, frozenset(data["tags"]))
+    """Read an undo snapshot; one written before schema v2 has no annotations/depends keys."""
+    children = _Children(tags=set(data["tags"]))
+    if "annotations" in data:
+        children.annotations = [
+            Annotation(from_db(note["entry"]), note["description"]) for note in data["annotations"]
+        ]
+        children.depends = set(data["depends"])
+        return _to_task(data, children)
+    task = _to_task(data, children)
+    annotations, depends, extra = split_extra(task.extra, task.uuid)
+    return replace(task, annotations=annotations, depends=depends, extra=extra)
 
 
-def _to_task(row: Mapping[str, Any] | sqlite3.Row, tags: frozenset[str]) -> Task:
+def _to_task(row: Mapping[str, Any] | sqlite3.Row, children: _Children) -> Task:
     return Task(
         uuid=row["uuid"],
         id=row["id"],
         description=row["description"],
         status=Status(row["status"]),
         project=row["project"],
-        tags=tags,
+        tags=frozenset(children.tags),
         priority=Priority(row["priority"]) if row["priority"] else None,
         due=from_db(row["due"]) if row["due"] else None,
         entry=from_db(row["entry"]),
         modified=from_db(row["modified"]),
         end=from_db(row["end"]) if row["end"] else None,
+        annotations=tuple(children.annotations),
+        depends=frozenset(children.depends),
         extra=json.loads(row["extra"]) if row["extra"] else {},
     )

@@ -11,7 +11,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 
 | Feature | Example | Notes |
 |---|---|---|
-| Schema migration v2 | – | First PR: add `annotations(uuid, entry, text)` and `depends(uuid, depends_on)` tables in one migration, so 0.4 needs no second schema bump. Promote TW `annotations`/`depends` from `extra`. |
+| Schema migration v2 | – | First PR: add `annotations(uuid, entry, description)` and `depends(uuid, depends_on)` tables in one migration, so 0.4 needs no second schema bump. Promote TW `annotations`/`depends` from `extra`. |
 | Virtual tags | `tk +OVERDUE list`, `tk +TODAY` | Computed in `core/filters.py`, uppercase, read-only: `OVERDUE TODAY TOMORROW WEEK MONTH DUE ACTIVE BLOCKED UNBLOCKED WAITING ANNOTATED PROJECT TAGGED`. Cannot be set with `+X`. No schema change. |
 | `next` report | `tk next` | Top N pending by urgency (`next_limit`, default 10), compact columns. Candidate default command (`default_command` setting, default stays `list`). |
 | Annotations | `tk 3 annotate Call back Monday`, `tk 3 denotate Call` | Timestamped notes; shown in `info`, under the task in `print`, as a count in `list`. `+ANNOTATED`. TW round-trip native. |

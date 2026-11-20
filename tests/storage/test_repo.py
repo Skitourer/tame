@@ -1,12 +1,13 @@
+import json
 import sqlite3
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
-from tame.core.models import Priority, Status, Task
+from tame.core.models import Annotation, Priority, Status, Task
 from tame.errors import StorageError
-from tame.storage.repo import TaskRepo, from_db, to_db
+from tame.storage.repo import DB_FILENAME, TaskRepo, from_db, to_db
 
 T0 = datetime(2026, 11, 19, 9, 30, tzinfo=UTC)
 
@@ -214,3 +215,95 @@ def test_prune_undo(repo: TaskRepo) -> None:
     with repo.transaction():
         repo.drop_undo(entry.seq)
     assert repo.last_undo() is None
+
+
+# --- Annotations and dependencies (schema v2) -----------------------------------------
+
+OTHER = "22222222-2222-4222-8222-222222222222"
+NOTES = (
+    Annotation(T0, "first"),
+    Annotation(T0, "first"),
+    Annotation(T0 + timedelta(days=1), "next"),
+)
+
+
+def test_annotations_and_depends_round_trip(repo: TaskRepo) -> None:
+    task = make_task(annotations=NOTES, depends=frozenset({OTHER, "absent"}))
+    with repo.transaction():
+        repo.insert(task)
+    assert repo.get(task.uuid) == task
+    assert repo.by_status(Status.PENDING) == [task]
+
+
+def test_annotations_read_sorted_by_entry(repo: TaskRepo) -> None:
+    task = make_task(annotations=tuple(reversed(NOTES)))
+    with repo.transaction():
+        repo.insert(task)
+    assert repo.get(task.uuid).annotations == NOTES  # type: ignore[union-attr]
+
+
+def test_update_replaces_annotations_and_depends(repo: TaskRepo) -> None:
+    with repo.transaction():
+        repo.insert(make_task(annotations=NOTES, depends=frozenset({OTHER})))
+    changed = make_task(annotations=(Annotation(T0, "only"),))
+    with repo.transaction():
+        repo.update(changed)
+    assert repo.get(changed.uuid) == changed
+
+
+def test_self_dependency_is_rejected(repo: TaskRepo) -> None:
+    uuid = make_task().uuid
+    with pytest.raises(sqlite3.IntegrityError), repo.transaction():
+        repo.insert(make_task(depends=frozenset({uuid})))
+
+
+def test_remove_deletes_annotations_and_depends(repo: TaskRepo, tame_home: Path) -> None:
+    task = make_task(annotations=NOTES, depends=frozenset({OTHER}))
+    with repo.transaction():
+        repo.insert(task)
+        repo.remove(task.uuid)
+    conn = sqlite3.connect(tame_home / DB_FILENAME)
+    for table in ("annotations", "depends"):
+        assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone() == (0,)
+    conn.close()
+
+
+def test_undo_log_keeps_annotations_and_depends(repo: TaskRepo) -> None:
+    task = make_task(annotations=NOTES, depends=frozenset({OTHER}))
+    with repo.transaction():
+        repo.push_undo(T0, "modify", [(task.uuid, task)])
+    assert repo.last_undo().before == ((task.uuid, task),)  # type: ignore[union-attr]
+
+
+def test_undo_log_reads_snapshot_written_before_v2(repo: TaskRepo, tame_home: Path) -> None:
+    extra = {
+        "annotations": [{"entry": "20261119T093000Z", "description": "first"}],
+        "depends": OTHER,
+        "wait": "x",
+    }
+    legacy = {
+        "uuid": make_task().uuid,
+        "id": 1,
+        "description": "Call bank",
+        "status": "pending",
+        "project": None,
+        "priority": None,
+        "due": None,
+        "entry": "2026-11-19T09:30:00Z",
+        "modified": "2026-11-19T09:30:00Z",
+        "end": None,
+        "extra": json.dumps(extra),
+        "tags": [],
+    }
+    snapshot = json.dumps({"tasks": [{"uuid": legacy["uuid"], "task": legacy}]})
+    conn = sqlite3.connect(tame_home / DB_FILENAME, autocommit=True)
+    conn.execute(
+        "INSERT INTO undo_log(ts, cmd, before) VALUES (?, 'modify', ?)", (to_db(T0), snapshot)
+    )
+    conn.close()
+    entry = repo.last_undo()
+    assert entry is not None
+    expected = make_task(
+        annotations=(Annotation(T0, "first"),), depends=frozenset({OTHER}), extra={"wait": "x"}
+    )
+    assert entry.before == ((expected.uuid, expected),)
