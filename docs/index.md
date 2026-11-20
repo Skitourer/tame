@@ -21,6 +21,9 @@ Completed task 1 'Call the bank'.
   (`tk mod`), and dates speak plain English: `due:fri`, `due:eom`, `due:+2w`.
 - **Most urgent first**: priority, due date, age, tags and project add up to an
   [urgency](urgency.md) score, so the top of the list is what to do now.
+- **Out of your way**: `tk next` shows the few tasks you can do now,
+  [`wait:mon`](grammar.md#waiting-tasks) hides a task until Monday, `tk 3 annotate …` keeps
+  notes on a task, and Tab [completes](commands.md#completion) it all in PowerShell and bash.
 - **Forgiving**: `tk undo` reverts any change, bulk changes ask first, deleted tasks are kept.
 - **Windows first**, at home on Linux too. English or French interface.
 - **A little love**: now and then, TAME reminds you of the people around you
@@ -57,4 +60,5 @@ This installs two commands, `tame` and its short alias `tk`. Then follow
 | [Settings](settings.md) | `config.toml` and `tk config` |
 | [Coming from Taskwarrior](taskwarrior.md) | import, export, the `task` alias, differences |
 | [Credits & licenses](credits.md) | who made it, with what, under which licenses |
-| [Specification](SPEC.md) | the full V1 specification |
+| [Specification](SPEC.md) | the full specification |
+| [Roadmap](ROADMAP.md) | what comes next |

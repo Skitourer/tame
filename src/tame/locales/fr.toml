@@ -604,12 +604,15 @@ Une visite de deux minutes. Tapez les commandes dans l'ordre.
 2. Listez-les, les plus urgentes d'abord (priorité, échéance, âge, tags et projet
    s'additionnent).
      tk
+     tk next                    seulement les plus urgentes à faire maintenant
      tk 1 info                  tous les champs de la tâche 1
 
 3. Modifiez-les : attr:valeur fixe, attr: efface, +tag/-tag, les autres mots
    remplacent la description.
      tk 2 modify pri:M -courses
      tk 3 modify due:+2w
+     tk 1 annotate Demander Mme Martin   une note datée
+     tk 3 modify wait:+1w       cachée une semaine (tk +WAITING l'affiche)
 
 4. Terminez-en une (les tâches en cours sont alors renumérotées). Changé d'avis ? undo
    annule n'importe quel changement.
@@ -625,6 +628,7 @@ Une visite de deux minutes. Tapez les commandes dans l'ordre.
 6. Personnalisez.
      tk config set language en  interface en anglais
      tk alias install task      lancer aussi tame avec task
+     tk completion powershell   complétion par Tab (voir tk help completion)
      tk status:all export > sauvegarde.json
 
 Toutes les commandes : tk help. Détails : tk help <commande>.

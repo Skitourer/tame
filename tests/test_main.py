@@ -973,7 +973,7 @@ def test_tour_commands_all_work(
     monkeypatch.setenv("PATH", str(tmp_path / "bin"))
     lines = [line.strip() for line in help_text("tour").splitlines()]
     commands = [line.split("  ")[0].split(" > ")[0] for line in lines if line.startswith("tk ")]
-    assert len(commands) == 15
+    assert len(commands) == 19
     for command in commands:
         code, _, err = run(capsys, *command.split()[1:])
         assert (command, code, err) == (command, 0, "")

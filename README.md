@@ -29,6 +29,9 @@ Completed task 1 'Call the bank'.
   (`tk mod`), and dates speak plain English: `due:fri`, `due:eom`, `due:+2w`.
 - **Most urgent first**: priority, due date, age, tags and project add up to an urgency
   score, so the top of the list is what to do now.
+- **Out of your way**: `tk next` shows the few tasks you can do now, `wait:mon` hides a task
+  until Monday, `tk 3 annotate …` keeps notes on a task, and Tab completes it all in
+  PowerShell and bash.
 - **Forgiving**: `tk undo` reverts any change, bulk changes ask first, deleted tasks are
   kept.
 - **Windows first**, at home on Linux too. English or French interface.
@@ -36,9 +39,8 @@ Completed task 1 'Call the bank'.
 - **A little love**: the world can be hard. Now and then, TAME reminds you of the people around
   you, and if you need it right now, just type `tk love`. ♥
 
-> Status: alpha (0.2). Everything described here works; details may still change before
-> 1.0. See the roadmap in
-> [docs/SPEC.md](docs/SPEC.md#8-layout-quality-release).
+> Status: alpha (0.3). Everything described here works; details may still change before
+> 1.0. What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Install
 
