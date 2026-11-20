@@ -33,6 +33,8 @@ def _complete(args: Sequence[str]) -> int:
     from tame.storage.repo import DB_FILENAME
 
     with contextlib.suppress(Exception):  # Completion must never print an error.
+        if isinstance(sys.stdout, io.TextIOWrapper):  # LF only: bash keeps a CR on Windows.
+            sys.stdout.reconfigure(newline="\n")
         sys.stdout.write(complete(args, data_dir() / DB_FILENAME))
     return ExitCode.OK
 

@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Tab completion in Git Bash**: on Windows, `tk config set completion true` now also
-  sets it up in Git Bash (`~/.bashrc`) when Git for Windows is installed.
+  sets it up in Git Bash (`~/.bashrc`) when Git for Windows is installed; candidates no longer
+  end with a stray `^M` there.
 
 ### Fixed
 
