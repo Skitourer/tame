@@ -295,4 +295,4 @@ docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.
 
 **Roadmap 0.2.0**: `license`/`credits` help topics; `print`; kind words; GitHub Actions on Node.js 24.
 
-**Roadmap 0.3.0** (1 PR each): schema v2; virtual tags; `next`; `annotate`/`denotate`; `wait:` + schema 3; shell completion. **0.3.1**: `completion` setting. **0.3.2**: `tk help settings`, `tk help config KEY`; logo. Next: `docs/ROADMAP.md`.
+**Roadmap 0.3.0** (1 PR each): schema v2; virtual tags; `next`; `annotate`/`denotate`; `wait:` + schema 3; shell completion. **0.3.1**: `completion` setting. **0.3.2**: `tk help settings`, `tk help config KEY`; logo. **0.3.3**: completion in both PowerShells and Git Bash. Next: `docs/ROADMAP.md`.
