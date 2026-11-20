@@ -132,7 +132,7 @@ def test_by_uuid_prefix_any_status(capsys: Capture) -> None:
     run(capsys, "1", "done")
     done = export(capsys)["one"]["uuid"]
     assert isinstance(done, str)
-    assert run(capsys, "4", "modify", f"depends:{done[:8]}")[0] == 0  # was 5: renumbered
+    assert run(capsys, "4", "modify", f"depends:{done[:13]}")[0] == 0  # dashed: never an id
     assert export(capsys)["five"]["depends"] == [done]
     assert re.search(r"\bBLOCKED\b", run(capsys, "4", "info")[1]) is None
 

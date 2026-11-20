@@ -52,6 +52,8 @@ COMMANDS = (
     "next",
     "print",
     "purge",
+    "start",
+    "stop",
     "undo",
     "version",
 )
@@ -73,12 +75,14 @@ FILTER_COMMANDS = frozenset(
         "export",
         "print",
         "purge",
+        "start",
+        "stop",
     }
 )
 """Commands that accept a filter."""
 
 _ARGLESS_COMMANDS = frozenset(
-    {"list", "next", "done", "delete", "info", "export", "print", "purge"}
+    {"list", "next", "done", "delete", "info", "export", "print", "purge", "start", "stop"}
 )
 """Filter commands without arguments: their trailing tokens extend the filter.
 
@@ -89,7 +93,7 @@ taken out before the filter is split.
 _TEXT_COMMANDS = frozenset({"modify", "annotate", "denotate"})
 """Commands whose arguments are free text: in classic order only ids/uuids are filter."""
 
-CONFIRM_COMMANDS = frozenset({"done", "delete", "modify", "annotate", "denotate", "purge"})
+CONFIRM_COMMANDS = frozenset({"done", "delete", "modify", "annotate", "denotate", "purge", "start"})
 """Commands that may ask for confirmation, and so accept ``--yes``."""
 
 YES_FLAG = "--yes"

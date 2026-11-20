@@ -172,6 +172,12 @@ OPTIONS: tuple[Option, ...] = (
         lambda value: value >= 1,
     ),
     Option(
+        "multiple_active",
+        False,
+        "Allow several started tasks at once; false: tk start stops the active one.",
+        "setting.expected.bool",
+    ),
+    Option(
         "completion",
         False,
         "Tab completion in your shell profile (PowerShell, bash), for new terminals.",
@@ -202,6 +208,7 @@ OPTIONS: tuple[Option, ...] = (
             ("project", "task has a project"),
             ("blocked", "waits for another pending task (depends)"),
             ("blocking", "another pending task waits for it"),
+            ("active", "task is started (tk start)"),
         )
     ),
 )
@@ -254,6 +261,11 @@ class Settings:
     def next_limit(self) -> int:
         """How many tasks ``next`` shows."""
         return int(self.values["next_limit"])
+
+    @property
+    def multiple_active(self) -> bool:
+        """Whether several tasks may be started at once."""
+        return bool(self.values["multiple_active"])
 
     @property
     def completion(self) -> bool:

@@ -309,6 +309,7 @@ def print_task_table(
         coefficients: Urgency weights.
         date_format: strftime format of the Due column.
         compact: True to leave out the Age, Tags and Dep columns (``next``).
+            The Active column (time since ``start``) shows in both.
         links: Dependencies between pending tasks: the Dep column and urgency.
     """
     from rich import box
@@ -328,6 +329,11 @@ def print_task_table(
     def scores(task: Task) -> Text:
         value = urgency(task, now, coefficients, links)
         return cell(format_urgency(value), urgency_role(value))
+
+    def running(task: Task) -> str:
+        if not task.active or task.start is None:
+            return ""
+        return format_duration(max(now - task.start, timedelta()))
 
     def waits_for(task: Task) -> str:
         if links is None:
@@ -357,6 +363,7 @@ def print_task_table(
         (t("list.col.due"), "left", [cell(day(task.due), alert(task, None)) for task in tasks]),
         (t("list.col.wait"), "left", [cell(day(task.wait), "note") for task in tasks]),
         (t("list.col.depends"), "left", [cell(waits_for(task), "id") for task in tasks]),
+        (t("list.col.active"), "right", [cell(running(task), "success") for task in tasks]),
         (t("list.col.description"), "left", [description_cell(task) for task in tasks]),
         (t("list.col.urgency"), "right", [scores(task) for task in tasks]),
     ]
@@ -377,6 +384,18 @@ def print_task_table(
         table.add_row(*row)
     open_frame(sys.stdout)
     _console(sys.stdout).print(table)
+
+
+def format_duration(value: timedelta) -> str:
+    """Format a time spent: ``0min``, ``45min``, ``1h20``, ``2d 3h``."""
+    minutes = int(value.total_seconds()) // 60
+    if minutes < 60:
+        return f"{minutes}min"
+    hours, minutes = divmod(minutes, 60)
+    if hours < 24:
+        return f"{hours}h{minutes:02d}"
+    days, hours = divmod(hours, 24)
+    return f"{days}d {hours}h"
 
 
 def description_cell(task: Task) -> "Text":
@@ -423,6 +442,15 @@ class Related:
     depends: Sequence[Task | str] = ()
     blocking: Sequence[Task] = ()
     links: Links | None = None
+
+
+def _spent(task: Task, now: datetime) -> list[Segment]:
+    """``2h15 (3 sessions)``, the current one included; nothing if never started."""
+    count = len(task.sessions) + (1 if task.active else 0)
+    if not count:
+        return []
+    key = "info.sessions_one" if count == 1 else "info.sessions_many"
+    return [(format_duration(task.time_spent(now)), None), (f"  {t(key, count=count)}", "note")]
 
 
 def _task_line(task: Task | str) -> list[Segment]:
@@ -481,6 +509,7 @@ def info_blocks(
             [(task.priority, f"pri.{task.priority}")] if task.priority else [],
         ),
         (t("info.urgency"), [(format_urgency(score), urgency_role(score))]),
+        (t("info.spent"), _spent(task, now)),
         *depends,
         *blocking,
         (t("info.recur"), [(task.recur, None)] if task.recur else []),

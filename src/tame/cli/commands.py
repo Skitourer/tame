@@ -10,6 +10,7 @@ import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 
 from tame import __version__
@@ -212,6 +213,52 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
     uuids = {task.uuid for task in changed}
     eggs.after_done([task for task in tasks if task.uuid in uuids])
     return ExitCode.OK
+
+
+def cmd_start(command: ParsedCommand, settings: Settings) -> int:
+    """``start``: start work on the matching tasks (one active task unless ``multiple_active``)."""
+    where = _required_filter(command)
+    with open_service(settings) as service:
+        tasks = _matching(service, where)
+        if not _confirmed(
+            command,
+            tasks,
+            "confirm.start.one",
+            "confirm.start.many",
+            threshold=settings.confirm_threshold,
+        ):
+            return ExitCode.OK
+        result = service.start(tasks, multiple_active=settings.multiple_active)
+    for task, session in result.stopped:
+        _say_stopped(task, session.duration)
+    _report("cmd.start.task", tasks, result.started)
+    for task in result.already:
+        render.hint(t("cmd.start.already", task=task_ref(task), description=task.description))
+    return ExitCode.OK
+
+
+def cmd_stop(command: ParsedCommand, settings: Settings) -> int:
+    """``stop``: stop the active tasks (all of them, or those the filter picks)."""
+    where = parse_filter(command.filter)
+    where = replace(where, virtual_in=where.virtual_in | {"ACTIVE"})
+    with open_service(settings) as service:
+        stopped = service.stop(service.query(where, include_waiting=True))
+    if not stopped:
+        raise NoMatchError("error.no_active")
+    for task, session in stopped:
+        _say_stopped(task, session.duration)
+    return ExitCode.OK
+
+
+def _say_stopped(task: Task, spent: timedelta) -> None:
+    render.success(
+        t(
+            "cmd.stop.task",
+            task=task_ref(task),
+            description=task.description,
+            duration=render.format_duration(spent),
+        )
+    )
 
 
 def cmd_delete(command: ParsedCommand, settings: Settings) -> int:
@@ -640,6 +687,8 @@ HELP_COMMANDS = (
     "modify",
     "annotate",
     "denotate",
+    "start",
+    "stop",
     "done",
     "delete",
     "undo",
@@ -798,6 +847,8 @@ HANDLERS: dict[str, Callable[[ParsedCommand, Settings], int]] = {
     "next": cmd_next,
     "print": cmd_print,
     "purge": cmd_purge,
+    "start": cmd_start,
+    "stop": cmd_stop,
     "undo": cmd_undo,
     "version": cmd_version,
 }

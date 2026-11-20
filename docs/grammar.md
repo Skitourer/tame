@@ -20,7 +20,7 @@ tk [filter]                # = tk [filter] list
    are the filter (ids, uuids, `+tag`, `-tag`, `attr:value`), the rest are arguments. For
    `modify`, `annotate` and `denotate`, only leading ids/uuids are the filter.
    Commands without arguments (`list`, `next`, `done`, `delete`, `info`, `export`, `print`,
-   `purge`) treat all their tokens as filter, so `tk list +phone bank` works (`print` first
+   `purge`, `start`, `stop`) treat all their tokens as filter, so `tk list +phone bank` works (`print` first
    takes out its `--file PATH` option, `purge` its `--all` flag).
 5. `--` stops parsing: it is never a command, and everything after it is plain words
    (`tk add -- +1 vote for the new logo`: `+1` is text, not a tag). Before it, `--help` turns the line into
@@ -59,7 +59,7 @@ Keywords are English only and case-insensitive. A date without a time means 00:0
 
 ## Confirmation
 
-`done`, `delete`, `modify`, `annotate` and `denotate` need a filter (`tk done` alone is an
+`done`, `delete`, `modify`, `annotate`, `denotate` and `start` need a filter (`tk done` alone is an
 error). They ask
 *y/N* before changing more than 3 tasks; `delete` and `purge` always ask (`purge --all` then
 wants the word `purge` typed, even with `--yes`). `--yes` (anywhere before
@@ -102,6 +102,7 @@ uppercase and English, whatever the interface language.
 | `DUE` | are due in the next 7 days |
 | `BLOCKED` / `UNBLOCKED` | depend / do not depend on another pending task |
 | `BLOCKING` | have another pending task depending on them |
+| `ACTIVE` | are started ([`tk start`](commands.md#start)) |
 | `WAITING` | are [waiting](#waiting-tasks) |
 | `ANNOTATED` | have an annotation |
 | `PROJECT` / `TAGGED` | have a project / at least one tag |

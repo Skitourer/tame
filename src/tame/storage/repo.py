@@ -10,7 +10,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from tame.core.models import Annotation, Priority, Status, Task
+from tame.core.models import Annotation, Priority, Session, Status, Task
 from tame.errors import StorageError
 from tame.io.tw_json import PROMOTABLE, split_extra
 from tame.storage.codec import from_db, to_db
@@ -133,7 +133,7 @@ class TaskRepo:
         )
         if cursor.rowcount != 1:
             raise StorageError("error.task_not_found", uuid=uuid)
-        for table in ("task_tags", "annotations", "depends"):
+        for table in ("task_tags", "annotations", "depends", "sessions"):
             self._conn.execute(f"DELETE FROM {table} WHERE uuid = ?", (uuid,))
         self._insert_children(task)
 
@@ -169,7 +169,7 @@ class TaskRepo:
 
     def purge_all(self) -> None:
         """Delete every task; ``meta`` (app state, schema version) is kept."""
-        for table in ("depends", "annotations", "task_tags", "tasks"):
+        for table in ("sessions", "depends", "annotations", "task_tags", "tasks"):
             self._conn.execute(f"DELETE FROM {table}")
 
     def clear_undo(self) -> None:
@@ -272,6 +272,13 @@ class TaskRepo:
             "INSERT INTO depends(uuid, depends_on) VALUES (?, ?)",
             [(task.uuid, target) for target in sorted(task.depends)],
         )
+        self._conn.executemany(
+            'INSERT INTO sessions(uuid, start, "end") VALUES (?, ?, ?)',
+            [
+                (task.uuid, to_db(session.start), to_db(session.end))
+                for session in sorted(task.sessions, key=lambda session: session.start)
+            ],
+        )
 
     def get(self, uuid: str) -> Task | None:
         """Return the task with this exact uuid, or None."""
@@ -292,7 +299,7 @@ class TaskRepo:
         return [_to_task(row, children.get(row["uuid"], _Children())) for row in rows]
 
     def _children(self, where: str, params: tuple[str, ...]) -> dict[str, "_Children"]:
-        """Return the tags, annotations and dependencies of the tasks matching ``where``."""
+        """Return the side-table rows of the tasks matching ``where``."""
         result: dict[str, _Children] = {}
         for r in self._conn.execute(f"SELECT uuid, tag FROM task_tags {where}", params):
             result.setdefault(r["uuid"], _Children()).tags.add(r["tag"])
@@ -304,6 +311,12 @@ class TaskRepo:
             )
         for r in self._conn.execute(f"SELECT uuid, depends_on FROM depends {where}", params):
             result.setdefault(r["uuid"], _Children()).depends.add(r["depends_on"])
+        for r in self._conn.execute(
+            f'SELECT uuid, start, "end" FROM sessions {where} ORDER BY start, id', params
+        ):
+            result.setdefault(r["uuid"], _Children()).sessions.append(
+                Session(from_db(r["start"]), from_db(r["end"]))
+            )
         return result
 
     def get_meta(self, key: str) -> str | None:
@@ -334,6 +347,7 @@ class _Children:
     tags: set[str] = field(default_factory=set)
     annotations: list[Annotation] = field(default_factory=list)
     depends: set[str] = field(default_factory=set)
+    sessions: list[Session] = field(default_factory=list)
 
 
 def _to_row(task: Task) -> tuple[str | int | None, ...]:
@@ -366,6 +380,9 @@ def _task_to_json(task: Task) -> dict[str, Any]:
             for note in task.annotations
         ],
         "depends": sorted(task.depends),
+        "sessions": [
+            {"start": to_db(session.start), "end": to_db(session.end)} for session in task.sessions
+        ],
     }
 
 
@@ -383,6 +400,10 @@ def _task_from_json(data: Mapping[str, Any]) -> Task:
             for note in data.get("annotations", ())
         ],
         depends=set(data.get("depends", ())),
+        sessions=[
+            Session(from_db(item["start"]), from_db(item["end"]))
+            for item in data.get("sessions", ())
+        ],
     )
     task = _to_task({**dict.fromkeys(_V3_FIELDS), **data}, children)
     if not missing:
@@ -406,6 +427,7 @@ def _to_task(row: Mapping[str, Any] | sqlite3.Row, children: _Children) -> Task:
         end=from_db(row["end"]) if row["end"] else None,
         annotations=tuple(children.annotations),
         depends=frozenset(children.depends),
+        sessions=tuple(children.sessions),
         extra=json.loads(row["extra"]) if row["extra"] else {},
         wait=from_db(row["wait"]) if row["wait"] else None,
         start=from_db(row["start"]) if row["start"] else None,

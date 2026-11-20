@@ -11,7 +11,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
 - **Since 0.3.0**: schema 3, annotations, depends, wait, start, recur, until stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5). **Since 0.3.1**: `completion` setting (§7). **Since 0.3.4**: output style (§5), `NO_COLOR` (§7), help topic `security` (§5). **Since 0.3.5**: easter eggs in color (§5). **Since 0.3.6**: kind words in pools, translated `love` reminders (§5); `purge` (§5).
-- **Not yet** (see `docs/ROADMAP.md`): recurrence, start/stop, advanced filters (0.4); contexts, custom reports, `--json`, UDAs, hooks, stats (0.5); sync, TUI.
+- **Not yet** (see `docs/ROADMAP.md`): recurrence, advanced filters (0.4); contexts, custom reports, `--json`, UDAs, hooks, stats (0.5); sync, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
 ## 2. Stack & standards
@@ -52,7 +52,8 @@ Field names = TW names. Datetimes stored UTC ISO 8601, shown local.
 | annotations | list[{entry, description}] | timestamped notes, sorted by entry; duplicates allowed (schema v2) |
 | depends | set[uuid] | tasks this one waits for; never itself; target may be absent (schema v2) |
 | wait | datetime? | hidden until then (§4 Waiting tasks) (schema v3) |
-| start, until | datetime? | stored and round-tripped; used from 0.4 (start/stop, recurrence) (schema v3) |
+| start, until | datetime? | `start`: beginning of the current work session, set by `tk start`, cleared by `stop`/`done`/`delete` (since 0.4); `until`: used from 0.4 (recurrence) (schema v3) |
+| sessions | list[{start, end}] | finished work sessions (schema v4, since 0.4) |
 | recur | str? | TW recurrence period, stored as is; used from 0.4 (schema v3) |
 
 ```sql
@@ -72,11 +73,17 @@ CREATE TABLE depends(uuid TEXT NOT NULL REFERENCES tasks(uuid) ON DELETE CASCADE
   PRIMARY KEY(uuid, depends_on), CHECK(uuid <> depends_on)); -- depends_on: no FK, target may be absent
 -- schema v3
 ALTER TABLE tasks ADD COLUMN wait TEXT;   -- also start, recur, "until"
+-- schema v4
+CREATE TABLE sessions(id INTEGER PRIMARY KEY, uuid TEXT NOT NULL REFERENCES tasks(uuid) ON DELETE CASCADE,
+  start TEXT NOT NULL, "end" TEXT NOT NULL);
+CREATE INDEX idx_sessions_uuid ON sessions(uuid);
 ```
 
 Each write cmd = 1 transaction + 1 undo_log row. Migrations keyed on `meta.schema_version`: on open, each missing version is applied in its own transaction (all or nothing); a database newer than the code → `error.db_too_new`, nothing changed.
 
 Migration 1 → 2 (0.3.0): creates `annotations` and `depends`, then moves each task's `extra.annotations` / `extra.depends` into them using the TW import rules (§7) and removes the key from `extra`. A key with any invalid item stays in `extra` unchanged. `undo_log` rows are not rewritten.
+
+Migration 3 → 4 (0.4): creates `sessions`; nothing moved (a task started before keeps its `start`).
 
 Migration 2 → 3 (0.3.0): adds `wait`, `start`, `recur`, `until` to `tasks`, then moves valid `extra.wait`/`start`/`until` (TW dates) and `extra.recur` (string) into them (TW import rules, §7); `extra.tw_status = "waiting"` is dropped once `wait` is set. 0.4 needs no further schema change.
 
@@ -95,7 +102,7 @@ Parse rules (in order):
 1. First token matching a cmd name (exact or unique prefix, e.g. `mod`) = cmd. Cmd names EN only, never translated. A prefix of several cmds → usage error (exit 1), e.g. `d` → delete/denotate/done. `purge` (since 0.3.6) matches its full name only, never a prefix: `p` stays `print`, `pu` is no cmd.
 2. Tokens before cmd = filter.
 3. `add`: all tokens after = new task (mods + description); never a filter.
-4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print purge`): all tokens after cmd = filter (`print` first takes out `--file PATH`, `purge` its `--all` flag, anywhere before `--`).
+4. Classic order (nothing before cmd): leading filter-like tokens after cmd (ids, uuid, `+t`, `-t`, `attr:v`) = filter; rest = args. For `modify`, `annotate` and `denotate`, only leading id/uuid tokens are filter. Cmds without args (`list next done delete info export print purge start stop`): all tokens after cmd = filter (`print` first takes out `--file PATH`, `purge` its `--all` flag, anywhere before `--`).
 5. `--` ends parsing: rest = description words (`tk add -- +1 vote for the new logo`: `+1` is text, not a tag; `tk 3 annotate -- Answer --yes by mail`: `--yes` is text); `--` is never a cmd.
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias completion config help import undo version`) → usage error (exit 1).
@@ -123,12 +130,13 @@ Filter tokens (AND-combined, except ids and uuid prefixes which together form on
 | `BLOCKED` | pending, depends on at least one pending task |
 | `UNBLOCKED` | pending, not `BLOCKED` |
 | `BLOCKING` | pending, a pending task depends on it (since 0.4) |
+| `ACTIVE` | pending, started (`tk start`, since 0.4) |
 | `WAITING` | pending, wait > now |
 | `ANNOTATED` | has at least one annotation |
 | `PROJECT` | has a project |
 | `TAGGED` | has at least one (real) tag |
 
-Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. `WAITING` since `wait:` (0.3.0), `BLOCKING` since 0.4. Planned: `ACTIVE` (with `start`, 0.4) joins the list and becomes reserved; until then it is an ordinary tag.
+Names are reserved: `+NAME` in `add`/`modify` → validation error (exit 1); `-NAME` in `modify` removes a stored real tag of that name. Imported real tags with these names are kept and exported unchanged; in filters the name always means the virtual tag. `WAITING` since `wait:` (0.3.0), `BLOCKING` and `ACTIVE` since 0.4. 
 
 Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove tag, other words = description (modify: replaces it). Attrs: `project`, `pri`, `due`, `wait` (dates as `due`), `depends` (since 0.4, see below).
 
@@ -136,23 +144,25 @@ Mods (`add`, `modify`): `attr:v` set, `attr:` unset, `+t` add tag, `-t` remove t
 
 **Waiting tasks** (since 0.3.0): a pending task with `wait` > now is *waiting*. Every filter result leaves waiting tasks out, unless the filter has ids/uuids, `+WAITING` or `status:all`; `export` always includes them. Nothing is stored when the date passes: the task simply shows again (its `wait` stays, shown by `info`). Waiting tasks keep their id and urgency. `wait` in the past or after `due` is accepted.
 
-Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` and `purge` always prompt unless `--yes`.
+Bulk: `modify/done/delete/annotate/denotate/start` on > `confirm_threshold` (default 3) tasks → y/N prompt; `--yes` skips. `delete` and `purge` always prompt unless `--yes`.
 
-`modify/done/delete/annotate/denotate` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 5 cmds and `purge`. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
+`modify/done/delete/annotate/denotate/start` require a non-empty filter (usage error otherwise). `--yes` is accepted anywhere before `--`, only by these 6 cmds and `purge`. Answer other than `y`/`yes` (or the UI language's yes words, `confirm.yes`), or end of input, = no: nothing changed, exit 0. Messages name tasks by id before renumbering (uuid prefix if no id).
 
 ## 5. Commands
 
 | Cmd | Example | Behavior |
 |---|---|---|
 | add | `tk add Call bank project:home +phone due:tomorrow pri:H` | create; print `Created task <id>.` |
-| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; a Wait column after Due (hidden when empty); a Dep column after it (since 0.4): ids of the pending tasks it depends on, `3,4`, hidden when empty; if waiting tasks were left out, a last line `N waiting task(s) hidden: tk +WAITING shows them.`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
-| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Description, Urg (no Dep: blocked tasks are left out; empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, the summary line says `N of M tasks` (§5 Output style); no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
+| list | `tk project:home list` | table, pending tasks first, then by urgency desc; an annotated task's description ends with its annotation count, dim: `Call bank [2]`; a Wait column after Due (hidden when empty); a Dep column after it (since 0.4): ids of the pending tasks it depends on, `3,4`, hidden when empty; an Active column after Dep (since 0.4): time since `start` for active tasks (`25min`, `1h20`), right-aligned, hidden when empty; if waiting tasks were left out, a last line `N waiting task(s) hidden: tk +WAITING shows them.`; no filter and no task at all (any status) → welcome with first commands, exit 0 |
+| next | `tk next`, `tk +home next` | `list` limited to what can be done now: the tasks matching the filter (pending by default) minus `+BLOCKED` ones, same sort and colors, first `next_limit` (default 10) only; columns ID, Project, Pri, Due, Active, Description, Urg (no Dep: blocked tasks are left out; empty ones hidden; annotation count, Wait column and hidden-waiting line as for `list`); if more tasks match, the summary line says `N of M tasks` (§5 Output style); no match → exit 2 (or the welcome message, like `list`). Since 0.3.0 |
 | done | `tk 3,5 done` | status=completed, end=now |
 | delete | `tk 4 delete` | status=deleted, end=now |
 | modify | `tk 12 modify due:mon -phone` | apply mods |
 | annotate | `tk 3 annotate Call back Monday` | add an annotation (entry = now) to each matching task; text = all args (`--` dropped, rest kept); empty text → usage error; `modified` = now; undoable; print `Annotated task <id> '<description>'.` Since 0.3.0 |
 | denotate | `tk 3 denotate Call` | remove one annotation per matching task: the one whose text equals the arg (case-insensitive), else the only one containing it, else (no arg) the most recent; several contain it → validation error listing them (exit 1, nothing changed); tasks with no match are skipped; none changed → exit 2; `modified` = now; undoable. Since 0.3.0 |
 | info | `tk 7 info` | all fields, local times; one row per annotation; virtual tags (§4) |
+| start | `tk 3 start` | start work: `start` = now on the matching pending tasks (filter required; y/N above `confirm_threshold`, `--yes`); `Started task <id> '<description>'.`; an active one is skipped (`Task 3 '…' is already active.`, dim). Unless `multiple_active` (default false): more than one task to start → validation error (`Only one task can be active: N match…`), and the other active tasks are stopped first, each reported as by `stop`. One undo step for all. Since 0.4 |
+| stop | `tk stop`, `tk 3 stop` | stop the active tasks (no filter: all of them; filter applied with `+ACTIVE`): a session `{start, now}` is recorded, `start` cleared; `Stopped task <id> '<description>' after 1h20.` (durations `45min`, `1h20`, `2d 3h`); none → `No active task.`, exit 2. `done`/`delete` of an active task record its session the same way, silently. Undoable. Since 0.4 |
 | undo | `tk undo` | revert last write cmd (from undo_log) |
 | purge | `tk purge`, `tk project:old purge --yes`, `tk purge --all` | erase tasks for good (TW semantics). Without `--all`: the matching *deleted* tasks (filter optional, applied with `status:deleted`; any other `status:` → usage error; no filter = every deleted task); y/N prompt `Erase deleted task <ref> '<description>' for good?` / `Erase N deleted tasks for good?`, `--yes` skips it. Removed with them: their tags, annotations, `depends` rows, and other tasks' `depends` rows pointing to them (those tasks' `modified` unchanged). `--all`: every task, any status; with a filter → usage error; stdin not a terminal → usage error (even with `--yes`); y/N `Erase ALL N tasks (pending, completed, deleted) for good?` (`--yes` skips it), then `Type purge to confirm:`, answer must be exactly `purge` (trimmed; same word in every language), never skipped; `meta` kept. Before any change, a copy of the database by the SQLite backup API, `tame-YYYYMMDD-HHMMSS.db.bak` (local time; `-2`, `-3`… if taken) next to `tasks.db`; copy fails → error, nothing purged. Prints `Purged N task(s) for good.`, the backup path, and that undo is gone. Not undoable: clears `undo_log`. Nothing to purge → exit 2, no prompt, no backup. Backups are never removed by TAME. Since 0.3.6 |
 | print | `tk +shopping print` | printable HTML page of the matching tasks (A4, black and white): title with the filter, date and time; one section per project (sorted, no project last), tasks by urgency, box to tick (ticked if ended), priority badge `!H`, tags, `due <date>` (+ `today`, or `late` in bold), annotations under the task (small italic, `<date> <text>`, oldest first); 3 empty boxed lines at the end; opened in the browser with the print dialog (print or save as PDF); `--file PATH` saves it without opening; no match → exit 2. Since 0.2.0 |
@@ -198,7 +208,7 @@ Bulk: `modify/done/delete/annotate/denotate` on > `confirm_threshold` (default 3
 - *Rows*: whole rows are no longer colored; only the Due date and the ID of an overdue / due-today task carry the alert. The rule under headers spans the table, dim.
 - *Summary line* (`list`, `next`): after the table, a blank line then `N tasks · X overdue · Y due today` (parts with 0 left out; counts over the matching tasks, waiting ones excepted). `next` with more matches than shown: `N of M tasks · …`, then the hint `tk list shows them all.` (replaces the 0.3.0 `next.more` line). The hidden-waiting line follows unchanged.
 - *Messages*: symbols are layout: `✓` success messages of write cmds (`add done delete modify annotate denotate undo import`, `config set/unset`, `alias install/remove`, `print` saved/opened), `✗` errors, `!` warnings, `?` questions; plain mode prints the messages without them, as before.
-- *`info`*: per task, a title `Task <id>  <description>` (bold; uuid prefix if no id), a dim rule, then label/value lines, labels dim and right-aligned, in blocks separated by a blank line: (1) Status, Project, Tags (real tags, then virtual tags dim), Priority, Urgency, Depends (since 0.4: one line per task it depends on, `3 'Buy paint'`: pending ones by id, then the others by uuid prefix, then absent ones `a1b2c3d4  (missing)`), Blocking (one line per pending task depending on it), Recur; (2) Due, Wait, Start, Entered, Modified, End, Until, each date followed by a dim relative form (`overdue by 2 days`, `today`, `in 3 days`, `3 days ago`); (3) Notes: one line per annotation, `<date> <text>`, oldest first, label on the first line only; (4) UUID, then Taskwarrior `extra` attributes. Empty fields and empty blocks left out. No `Name`/`Value` header any more. Same layout in plain mode, without colors.
+- *`info`*: per task, a title `Task <id>  <description>` (bold; uuid prefix if no id), a dim rule, then label/value lines, labels dim and right-aligned, in blocks separated by a blank line: (1) Status, Project, Tags (real tags, then virtual tags dim), Priority, Urgency, Time spent (since 0.4: sessions plus the current one, `2h15  (3 sessions)`, sessions dim; left out if never started), Depends (since 0.4: one line per task it depends on, `3 'Buy paint'`: pending ones by id, then the others by uuid prefix, then absent ones `a1b2c3d4  (missing)`), Blocking (one line per pending task depending on it), Recur; (2) Due, Wait, Start, Entered, Modified, End, Until, each date followed by a dim relative form (`overdue by 2 days`, `today`, `in 3 days`, `3 days ago`); (3) Notes: one line per annotation, `<date> <text>`, oldest first, label on the first line only; (4) UUID, then Taskwarrior `extra` attributes. Empty fields and empty blocks left out. No `Name`/`Value` header any more. Same layout in plain mode, without colors.
 - *Help*: section labels in `heading`, command names, usage and example lines in `command`, the rest unchanged; plain mode prints the text exactly as before.
 
 Exit codes: 0 ok, 1 usage error, 2 no match, 3 internal error. Errors → stderr.
@@ -232,6 +242,7 @@ Urgency U = sum, coeffs in config, shown 1 decimal:
 - age: 2 × min(age_days/365, 1)
 - tags: 1.0 if any; project: 1.0 if set
 - blocked: −5.0 if pending and depends on a pending task; blocking: 8.0 if pending and a pending task depends on it (since 0.4)
+- active: 4.0 if pending and started (since 0.4)
 
 ## 7. i18n, config, TW compat
 
@@ -247,6 +258,7 @@ color = true
 kindness = true
 default_command = "list"   # list | next: what `tk` alone, or `tk <filter>`, runs
 next_limit = 10            # tasks shown by `next`, 1 or more
+multiple_active = false    # since 0.4: true lets several tasks be started at once
 completion = false         # Tab completion in the shell profile (see below)
 [undo]
 retention = "3m"   # forever | <n>d/w/m/y (m = 30 d, y = 365 d)
@@ -260,6 +272,7 @@ tags = 1.0
 project = 1.0
 blocked = -5.0     # since 0.4
 blocking = 8.0     # since 0.4
+active = 4.0       # since 0.4
 ```
 
 `NO_COLOR` (environment, non-empty, since 0.3.4) turns colors off like `color = false`, whatever the file says; layout stays (§5 Output style).
@@ -276,6 +289,7 @@ Unknown key, wrong type or invalid value → usage error naming key and file (ex
 - `depends`: array of uuids, or a comma-separated string (TW < 2.6) → stored natively; duplicates and the task's own uuid dropped. Export: array of uuids, sorted; omitted when empty.
 - Invalid `annotations`/`depends` value (wrong type, missing field, bad date or uuid) → whole key kept in `extra` unchanged.
 - `wait`, `start`, `until` (TW dates) and `recur` (string) → stored natively; exported when set. Invalid value → kept in `extra` unchanged.
+- Sessions (since 0.4) ↔ TW `journal.time` annotations: export writes each session as two annotations, `Started task` at its start and `Stopped task` at its end, merged with the notes by entry; import turns each `Started task` followed by a `Stopped task` back into a session and drops both notes; a lone journal note stays a note, but for a last `Started task` at the task's `start` (the current session), which is dropped. Round-trip without duplicates.
 - Other unsupported TW attrs (UDAs…), and a `priority` other than H/M/L → stored in `extra`, re-exported unchanged (TAME fields win).
 - TW status `waiting` → `pending` + `wait` (TW 3 style; exported as `pending`); without a valid `wait`, and status `recurring`: `pending`, original in `extra.tw_status`, exported back while the task is still pending.
 

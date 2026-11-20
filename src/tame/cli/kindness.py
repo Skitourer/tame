@@ -29,7 +29,20 @@ COOLDOWN = timedelta(days=3)
 CHANCE = 1 / 10
 HEART = "♥"
 ELIGIBLE = frozenset(
-    {"list", "next", "add", "done", "delete", "modify", "annotate", "denotate", "info", "undo"}
+    {
+        "list",
+        "next",
+        "add",
+        "done",
+        "delete",
+        "modify",
+        "annotate",
+        "denotate",
+        "info",
+        "undo",
+        "start",
+        "stop",
+    }
 )
 """Commands after which a kind word may appear."""
 
