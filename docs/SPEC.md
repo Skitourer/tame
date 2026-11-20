@@ -10,7 +10,7 @@ CLI task manager, Windows 11 first, TW-inspired, simpler. Independent project: n
 - **Commands installed**: `tame` (main) + `tk` (short alias, used in examples). `task` = opt-in alias only (`tame alias install|remove task`, shim in uv tools bin dir); never by default (clashes with TW and go-task). Any name `[A-Za-z0-9][A-Za-z0-9_-]*` but `tame`/`tk` works the same way.
 - **In V1**: cmds `add list done delete modify info undo export import help version alias`; attrs description, status, project, tags, priority, due, entry, modified, end; hybrid grammar; EN date keywords; urgency sort; colored table; i18n files; TW JSON import/export.
 - **Since 0.2.0**: `print`; help topics `license` and `credits`; kind words (§5).
-- **Since 0.3.0**: schema 3, annotations, depends, wait, start, recur, until stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5). **Since 0.3.1**: `completion` setting (§7). **Since 0.3.4**: output style (§5), `NO_COLOR` (§7), help topic `security` (§5).
+- **Since 0.3.0**: schema 3, annotations, depends, wait, start, recur, until stored natively (§3); virtual tags (§4); `next` report and `default_command` setting (§5, §7); `annotate`/`denotate` (§5); `wait:` (§4), schema 3; shell completion (§5). **Since 0.3.1**: `completion` setting (§7). **Since 0.3.4**: output style (§5), `NO_COLOR` (§7), help topic `security` (§5). **Since 0.3.5**: easter eggs in color (§5).
 - **Not yet** (see `docs/ROADMAP.md`): dependency commands, recurrence, start/stop, advanced filters (0.4); contexts, custom reports, `--json`, UDAs, hooks, stats (0.5); sync, TUI.
 - **Hard rule**: `core` never prints, never reads argv → future TUI reuses it unchanged.
 
@@ -332,4 +332,4 @@ docs/              # SPEC, grammar, commands + site pages (mkdocs.yml); install.
 
 **Roadmap 0.2.0**: `license`/`credits` help topics; `print`; kind words; GitHub Actions on Node.js 24.
 
-**Roadmap 0.3.0** (1 PR each): schema v2; virtual tags; `next`; `annotate`/`denotate`; `wait:` + schema 3; shell completion. **0.3.1**: `completion` setting. **0.3.2**: `tk help settings`, `tk help config KEY`; logo. **0.3.3**: completion in both PowerShells and Git Bash. **0.3.4**: output style, `NO_COLOR`, `tk help security`. Next: `docs/ROADMAP.md`.
+**Roadmap 0.3.0** (1 PR each): schema v2; virtual tags; `next`; `annotate`/`denotate`; `wait:` + schema 3; shell completion. **0.3.1**: `completion` setting. **0.3.2**: `tk help settings`, `tk help config KEY`; logo. **0.3.3**: completion in both PowerShells and Git Bash. **0.3.4**: output style, `NO_COLOR`, `tk help security`. **0.3.5**: easter eggs in color. Next: `docs/ROADMAP.md`.
