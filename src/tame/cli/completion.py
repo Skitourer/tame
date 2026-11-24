@@ -237,7 +237,15 @@ Register-ArgumentCompleter -Native -CommandName {names} -ScriptBlock {
             ForEach-Object { $_.Extent.Text }
     )
     $exe = $commandAst.CommandElements[0].Extent.Text
-    & $exe _complete "_$wordToComplete" @before 2>$null | ForEach-Object {
+    # tk prints UTF-8; PowerShell would decode it with the console code page (850, 437...).
+    $encoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+        $found = @(& $exe _complete "_$wordToComplete" @before 2>$null)
+    } finally {
+        [Console]::OutputEncoding = $encoding
+    }
+    $found | ForEach-Object {
         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
     }
 }
