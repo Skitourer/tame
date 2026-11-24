@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it waits for gains some (`urgency.blocked`, `urgency.blocking`). `tk list` shows a **Dep**
   column, `tk info` names the tasks on both sides, and `done` tells which tasks are now
   unblocked. New virtual tag `+BLOCKING`. Cycles and self-dependencies are refused.
+### Fixed
+- **Accents in PowerShell Tab completion**: `tk project:` <kbd>Tab</kbd> completed
+  `Stratégie` as `Strat├®gie` (#48). The completion block in your profile is updated the
+  next time you run `tk`; open a new terminal afterwards.
 
 ## [0.3.6] - 2026-11-20
 

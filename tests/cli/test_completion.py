@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -185,6 +186,33 @@ def test_powershell_script_parses() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.skipif(shutil.which("powershell") is None, reason="needs Windows PowerShell")
+def test_powershell_completion_reads_utf8(tmp_path: Path) -> None:
+    """Issue #48: tk prints UTF-8; PowerShell must not decode it with the OEM code page."""
+    fake = tmp_path / "fake.cmd"  # Stands for tk: prints one UTF-8 candidate.
+    fake.write_text(
+        f'@"{sys.executable}" -c "import sys; '
+        "sys.stdout.buffer.write('Strat\\u00e9gie\\n'.encode())\"\r\n",
+        encoding="ascii",
+    )
+    run = (
+        "[Console]::In.ReadToEnd() | Invoke-Expression; "
+        "[Console]::OutputEncoding = [Text.Encoding]::GetEncoding(850); "  # As in a French Windows.
+        "(TabExpansion2 -inputScript 'fake x' -cursorColumn 6).CompletionMatches | "
+        "ForEach-Object { [int[]][char[]]$_.CompletionText -join ' ' }"
+    )
+    env = {**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}"}
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", run],
+        input=script("powershell", ["fake"]),
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert result.stdout.split() == [str(ord(char)) for char in "Stratégie"], result.stderr
 
 
 @pytest.mark.skipif(
