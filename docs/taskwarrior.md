@@ -39,9 +39,12 @@ another `task` comes first in your `PATH`. `tk alias remove task` takes it away.
 
 ## What is different
 
-- Annotations work as in Taskwarrior (`annotate`, `denotate`). No recurrence, dependency
-  commands, `wait`, contexts, custom reports, hooks, sync or UDAs yet. These are kept on
+- Annotations (`annotate`, `denotate`), `wait:`, `depends:` and `start`/`stop` work as in
+  Taskwarrior. No contexts, custom reports, hooks, sync or UDAs yet; UDAs are kept on
   import and exported back unchanged (see below).
+- [Recurrence](grammar.md#recurrence) has no template task: the pending task is the series,
+  and `done` creates the next one. Periods: `daily`, `weekly`, `biweekly`, `monthly`,
+  `quarterly`, `yearly`, `annual`, `weekdays`, `3d`, `2w`, `6m`, `1y`.
 - One status filter value at a time, plus `status:all`. No `or` and no parentheses.
 - Priorities are H, M and L only.
 - `delete` always asks for confirmation; `tk undo` goes back any number of steps.
@@ -70,13 +73,19 @@ input.
 - **Annotations and dependencies.** Stored with the task, shown by `tk info` and exported
   back. `depends` is accepted as a list of uuids or as a comma-separated string (older
   Taskwarrior) and is exported as a list.
-- **wait, start, recur, until.** Stored with the task and exported back. `wait` works as in
-  Taskwarrior; `start`, `recur` and `until` are kept for the features of a later version.
+- **wait, start, recur, until.** Stored with the task and exported back. A `recur` period
+  TAME does not know (`P1W`, `fortnight`…) is kept as is; completing such a task creates no
+  next one, with a warning.
+- **Recurring series.** TAME has no template task, so the template (status `recurring`) is
+  not stored: its `recur` and `until` go to the nearest pending instance (earliest due),
+  in the file or already in TAME. With no pending instance, a new task is created, due on
+  the template's next date. The other pending instances become plain tasks. `parent`,
+  `mask` and `imask` are kept for export. A line after the summary counts the series
+  converted. Templates imported by TAME before 0.4 are left as they were.
 - **Kept for export.** Other unsupported attributes (UDAs…) and a priority other than H/M/L
   are stored with the task and exported back.
 - **Statuses.** `waiting` becomes `pending` with its `wait` date, as in Taskwarrior 3; it is
-  exported as `pending`. `recurring` becomes `pending`; the original status is restored on
-  export while the task is still pending.
+  exported as `pending`.
 - **Ids.** New pending tasks get the next free ids. If the import changes which tasks are
   pending, all pending tasks are renumbered.
 - **All or nothing.** If any task is invalid (bad date, empty description…), nothing is

@@ -79,8 +79,8 @@ class Task:
         depends: Uuids of the tasks this one waits for (never its own).
         wait: Hidden from filters until then (SPEC §4 waiting tasks).
         start: When the current work session started (``tk start``); None if not active.
-        recur: Taskwarrior recurrence period, stored as is (used from 0.4).
-        until: End of the recurrence (used from 0.4).
+        recur: Recurrence period (SPEC §4 Recurrence); imported values stored as is.
+        until: End of the recurrence.
         extra: Unknown Taskwarrior attributes, kept for JSON round-trip.
         sessions: Finished work sessions, by start time.
     """
@@ -189,6 +189,8 @@ class Changes:
         priority: New priority; ``NONE`` clears it; None keeps it.
         due: New due date; ``NONE`` clears it; None keeps it.
         wait: New wait date; ``NONE`` clears it; None keeps it.
+        recur: New recurrence period (checked); ``NONE`` ends the series; None keeps it.
+        until: New end of the recurrence; ``NONE`` clears it; None keeps it.
         tags_add: Tags to add.
         tags_remove: Tags to remove.
         depends: Dependency change, resolved by the service; None keeps them.
@@ -202,6 +204,8 @@ class Changes:
     tags_add: frozenset[str] = frozenset()
     tags_remove: frozenset[str] = frozenset()
     depends: DependsChange | None = None
+    recur: str | None = None
+    until: datetime | Literal[""] | None = None
 
     def __bool__(self) -> bool:
         """Return True if at least one change is requested."""
@@ -215,6 +219,8 @@ class Changes:
                 self.tags_add,
                 self.tags_remove,
                 self.depends is not None,
+                self.recur is not None,
+                self.until is not None,
             )
         )
 
@@ -230,6 +236,8 @@ class Changes:
             priority=task.priority if self.priority is None else self.priority or None,
             due=task.due if self.due is None else self.due or None,
             wait=task.wait if self.wait is None else self.wait or None,
+            recur=task.recur if self.recur is None else self.recur or None,
+            until=task.until if self.until is None else self.until or None,
             tags=(task.tags | self.tags_add) - self.tags_remove,
         )
 
@@ -269,6 +277,7 @@ VIRTUAL_TAGS = frozenset(
         "UNBLOCKED",
         "BLOCKING",
         "ACTIVE",
+        "RECURRING",
         "WAITING",
         "ANNOTATED",
         "PROJECT",

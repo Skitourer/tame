@@ -11,6 +11,7 @@ from tame.cli.commands import HELP_TOPICS
 from tame.cli.completion import DATE_KEYWORDS, Data, candidates, complete, script
 from tame.cli.parser import COMMANDS
 from tame.core.models import VIRTUAL_TAGS
+from tame.core.recurrence import NAMED_PERIODS
 from tame.errors import UsageError
 from tame.storage.repo import DB_FILENAME
 
@@ -70,6 +71,12 @@ def complete_line(line: str) -> list[str]:
         ("add -- +ph", []),
         ("c", ["completion", "config"]),
         ("x:", []),
+        ("add x r", ["recur:"]),
+        ("add x recur:w", ["recur:weekly", "recur:weekdays"]),
+        ("add x recur:", [f"recur:{name}" for name in NAMED_PERIODS]),
+        ("3 modify until:eo", ["until:eow", "until:eom", "until:eoy"]),
+        ("recur:bi", ["recur:biweekly"]),
+        ("+REC", ["+RECURRING"]),
     ],
 )
 def test_candidates(line: str, expected: list[str]) -> None:
@@ -82,6 +89,7 @@ def test_first_word_offers_commands_and_filter_attributes() -> None:
         "project:",
         "pri:",
         "status:",
+        "recur:",
         "due.before:",
         "due.after:",
     ]

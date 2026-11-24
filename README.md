@@ -79,6 +79,7 @@ the two-minute tour: `tk help tour`. Tab completion in PowerShell or bash:
 ```text
 tk add Call bank project:home +phone due:fri pri:H  # Created task 1.
 tk add -- +1 vote for the new logo          # after --, +1 is text, not a tag
+tk add Backup due:fri recur:weekly           # comes back each Friday once done
 tk list                                      # most urgent first; or just: tk
 tk next                                      # the 10 most urgent you can do now
 tk due.before:eow                            # due before the end of the week

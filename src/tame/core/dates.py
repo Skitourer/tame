@@ -51,17 +51,17 @@ def parse_date(text: str, now: datetime, tz: tzinfo | None = None) -> datetime:
 
     if word in ("today", "tomorrow", "yesterday"):
         delta = {"today": 0, "tomorrow": 1, "yesterday": -1}[word]
-        result = _local(datetime.combine(today + timedelta(days=delta), time()), tz)
+        result = localize(datetime.combine(today + timedelta(days=delta), time()), tz)
     elif (weekday := _weekday(word)) is not None:
         ahead = (weekday - today.weekday()) % 7 or 7
-        result = _local(datetime.combine(today + timedelta(days=ahead), time()), tz)
+        result = localize(datetime.combine(today + timedelta(days=ahead), time()), tz)
     elif word in ("eow", "eom", "eoy"):
-        result = _local(datetime.combine(_period_end(word, today), _END_OF_DAY), tz)
+        result = localize(datetime.combine(_period_end(word, today), _END_OF_DAY), tz)
     elif match := _OFFSET_RE.fullmatch(word):
         count = int(match[2]) * (1 if match[1] == "+" else -1)
         unit = match[3]
         if unit == "m":
-            result = _local(_add_months(local_now, count), tz)
+            result = localize(add_months(local_now, count), tz)
         else:
             hours = {"h": 1, "d": 24, "w": 24 * 7}[unit] * count
             result = now + timedelta(hours=hours)
@@ -97,8 +97,8 @@ def local_period(
         start = today.replace(day=1)
         end = (start + timedelta(days=31)).replace(day=1)
     return (
-        _local(datetime.combine(start, time()), tz).astimezone(UTC),
-        _local(datetime.combine(end, time()), tz).astimezone(UTC),
+        localize(datetime.combine(start, time()), tz).astimezone(UTC),
+        localize(datetime.combine(end, time()), tz).astimezone(UTC),
     )
 
 
@@ -117,10 +117,15 @@ def _period_end(word: str, today: date) -> date:
     return today.replace(month=12, day=31)
 
 
-def _add_months(value: datetime, months: int) -> datetime:
+def add_months(value: datetime, months: int, day: int | None = None) -> datetime:
+    """Return ``value`` moved by calendar ``months``, on ``day`` (default: its own day).
+
+    The day is clamped to the length of the target month (Jan 31 + 1 → Feb 28).
+    """
+    day = value.day if day is None else day
     index = value.year * 12 + value.month - 1 + months
     year, month = divmod(index, 12)
-    day = min(value.day, calendar.monthrange(year, month + 1)[1])
+    day = min(day, calendar.monthrange(year, month + 1)[1])
     return value.replace(year=year, month=month + 1, day=day)
 
 
@@ -131,9 +136,9 @@ def _parse_iso(text: str, tz: tzinfo | None) -> datetime | None:
         value = datetime.fromisoformat(text)
     except ValueError:
         return None
-    return value if value.tzinfo else _local(value, tz)
+    return value if value.tzinfo else localize(value, tz)
 
 
-def _local(naive: datetime, tz: tzinfo | None) -> datetime:
+def localize(naive: datetime, tz: tzinfo | None = None) -> datetime:
     """Attach the local zone to a naive local datetime (system zone: DST-aware)."""
     return naive.astimezone() if tz is None else naive.replace(tzinfo=tz)

@@ -6,11 +6,13 @@ Annotations and dependencies are stored natively when valid. Attributes TAME doe
 support (recur, wait, UDAs...) and invalid annotations/dependencies go to ``extra`` and
 come back unchanged on export. Taskwarrior statuses ``waiting`` and
 ``recurring`` become ``pending``; the original is kept in ``extra["tw_status"]``.
+Recurring series are then converted (:func:`convert_recurring`): TAME has no template.
 """
 
 import json
 import uuid as uuid_lib
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -24,6 +26,7 @@ from tame.core.models import (
     check_project,
     check_tag,
 )
+from tame.core.recurrence import ANCHOR, anchored, next_due
 from tame.errors import ValidationError
 
 TW_STATUS = "tw_status"
@@ -222,6 +225,70 @@ def task_from_tw(data: Mapping[str, Any], now: datetime) -> Task:
         extra=extra,
         sessions=sessions,
         **fields,
+    )
+
+
+PARENT = "parent"
+"""``extra`` key of a Taskwarrior recurring instance: the uuid of its template."""
+
+
+def convert_recurring(
+    tasks: Sequence[Task], stored: Iterable[Task], now: datetime
+) -> tuple[list[Task], int]:
+    """Turn imported Taskwarrior recurring series into TAME ones (SPEC §7).
+
+    A template (status ``recurring``) is not imported: its ``recur``, ``until`` and anchor
+    go to the nearest pending instance (earliest due) among ``tasks`` and the ``stored``
+    pending tasks, or to a new task due on the template's first occurrence after ``now``
+    if there is none. The other pending instances become plain tasks. Changed instances
+    get ``modified`` = ``now``, so a stored one is updated by the import.
+
+    Args:
+        tasks: Imported tasks, from :func:`task_from_tw`.
+        stored: Pending tasks already in the database.
+        now: Current time.
+
+    Returns:
+        The tasks to import, and how many templates were converted.
+    """
+    templates = [task for task in tasks if _is_template(task)]
+    if not templates:
+        return list(tasks), 0
+    result = {task.uuid: task for task in tasks if not _is_template(task)}
+    pool = {task.uuid: task for task in stored} | result
+    for template in templates:
+        members = sorted(
+            (
+                task
+                for task in pool.values()
+                if task.status is Status.PENDING and task.extra.get(PARENT) == template.uuid
+            ),
+            key=lambda task: (task.due is None, task.due or now, task.entry),
+        )
+        head = members[0] if members else _first_instance(template, now)
+        series = replace(head, recur=template.recur, until=template.until, modified=now)
+        if template.due is not None:  # The anchor comes from the template's first due.
+            series = replace(anchored(replace(series, due=template.due)), due=head.due)
+        result[head.uuid] = series
+        for task in members[1:]:
+            extra = {key: value for key, value in task.extra.items() if key != ANCHOR}
+            result[task.uuid] = replace(task, recur=None, until=None, extra=extra, modified=now)
+    return list(result.values()), len(templates)
+
+
+def _is_template(task: Task) -> bool:
+    return task.status is Status.PENDING and task.extra.get(TW_STATUS) == "recurring"
+
+
+def _first_instance(template: Task, now: datetime) -> Task:
+    """A new pending task for a template without pending instance, due after ``now``."""
+    extra = {key: value for key, value in template.extra.items() if key not in (TW_STATUS, "mask")}
+    return replace(
+        template,
+        uuid=str(uuid_lib.uuid4()),
+        entry=now,
+        due=next_due(anchored(template), now) or template.due,
+        extra={**extra, PARENT: template.uuid},
     )
 
 

@@ -31,7 +31,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 |---|---|---|
 | purge (released: 0.3.6) | `tk purge`, `tk purge --all` | `purge` permanently removes `deleted` tasks (TW semantics), one y/N prompt (`--yes` skips). `purge --all` empties the whole database: y/N prompt, then the user must type the word `purge`; `--yes` never skips this second step; non-TTY stdin → usage error. Before any purge, a timestamped copy `tame-YYYYMMDD-HHMMSS.db.bak` is written next to the database and its path printed. Not undoable: clears `undo_log`. |
 | Dependencies (done) | `tk 5 modify depends:3,4` | `+BLOCKED` while a dependency is pending; blocked tasks lose urgency, blocking tasks gain some (config coeffs). Cycle detection → usage error. |
-| Recurrence | `tk add Backup recur:weekly due:fri` | `daily weekly monthly yearly` + `Nd/Nw/Nm`; `until:` optional. Next instance created on `done` (no template task, no background job). TW `recur` imported. |
+| Recurrence (done) | `tk add Backup recur:weekly due:fri` | `daily weekly biweekly monthly quarterly yearly annual weekdays` + `Nd/Nw/Nm/Ny`; `until:` optional. Next instance created on `done` from the planned due (no template task, no background job); monthly day kept. TW recurring series converted on import. |
 | start / stop (done) | `tk 3 start`, `tk stop` | `start` timestamp; adds the `+ACTIVE` virtual tag (reserved name from then on); time spent summed in `info`. One active task by default (`multiple_active` setting). Active tasks gain urgency. |
 | Advanced filters | `tk '(+phone or +mail) and pri:H'` | `or`, `and`, `not`, parentheses, `/regex/` on description. Only when typed: plain filters parse exactly as today. |
 
