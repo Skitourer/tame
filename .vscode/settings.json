@@ -1,0 +1,5 @@
+{
+    // Commands run through `uv run`; activating .venv in new terminals is not needed and
+    // fails in PowerShell when the activation line is typed before the shell is ready.
+    "python.terminal.activateEnvironment": false
+}
