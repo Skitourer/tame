@@ -40,7 +40,7 @@ from tame.config import (
     write_value,
 )
 from tame.core.dates import utc_now
-from tame.core.filters import ALL, Filter
+from tame.core.filters import ALL, AllOf, Condition, Filter
 from tame.core.models import Status, Task
 from tame.core.service import DoneResult, TaskService
 from tame.core.urgency import by_urgency, urgency
@@ -63,14 +63,14 @@ def _no_args(args: tuple[str, ...]) -> None:
         raise UsageError("error.unexpected_argument", arg=args[0])
 
 
-def _required_filter(command: ParsedCommand) -> Filter:
+def _required_filter(command: ParsedCommand) -> Condition:
     """Parse the filter of a write command, which must not be empty (no accidental bulk)."""
     if not command.filter:
         raise UsageError("error.filter_required", command=command.name)
     return parse_filter(command.filter)
 
 
-def _matching(service: TaskService, where: Filter) -> list[Task]:
+def _matching(service: TaskService, where: Condition) -> list[Task]:
     if not (tasks := service.query(where)):
         raise NoMatchError("error.no_matches")
     return tasks
@@ -155,7 +155,7 @@ def _show_tasks(command: ParsedCommand, settings: Settings, limit: int | None) -
     now = utc_now()
     where = parse_filter(command.filter, now)
     if limit is not None:
-        where = replace(where, virtual_out=where.virtual_out | {"BLOCKED"})
+        where = AllOf((where, Filter(virtual_out=frozenset({"BLOCKED"}))))
     with open_service(settings) as service:
         found, hidden = service.query_hidden(where)
         links = service.links()
@@ -262,7 +262,7 @@ def cmd_start(command: ParsedCommand, settings: Settings) -> int:
 def cmd_stop(command: ParsedCommand, settings: Settings) -> int:
     """``stop``: stop the active tasks (all of them, or those the filter picks)."""
     where = parse_filter(command.filter)
-    where = replace(where, virtual_in=where.virtual_in | {"ACTIVE"})
+    where = AllOf((where, Filter(virtual_in=frozenset({"ACTIVE"}))))
     with open_service(settings) as service:
         stopped = service.stop(service.query(where, include_waiting=True))
     if not stopped:
@@ -359,12 +359,12 @@ def keyboard_input() -> bool:
     return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
 
 
-def _purge_filter(tokens: tuple[str, ...]) -> Filter:
+def _purge_filter(tokens: tuple[str, ...]) -> Condition:
     """The filter of ``purge``: always on deleted tasks; another ``status:`` is an error."""
     where = parse_filter(tokens)
-    if where.status not in (None, Status.DELETED):
+    if any(leaf.status not in (None, Status.DELETED) for leaf in where.leaves()):
         raise UsageError("error.purge_status")
-    return replace(where, status=Status.DELETED)
+    return AllOf((where, Filter(status=Status.DELETED)))
 
 
 def _purge_all_confirmed(command: ParsedCommand, count: int) -> bool:

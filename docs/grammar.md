@@ -71,8 +71,8 @@ After `done` and `delete`, pending tasks are renumbered 1..n by creation time.
 
 ## Filter tokens
 
-All criteria are AND-combined. Without `status:`, only pending tasks match; `status:all`
-matches every status.
+All criteria are AND-combined, unless you use [operators](#operators). Without `status:`,
+only pending tasks match; `status:all` matches every status.
 
 | Token | Matches |
 |---|---|
@@ -85,10 +85,37 @@ matches every status.
 | `status:completed` | `pending`, `completed`, `deleted`, or `all` |
 | `due.before:fri` `due.after:today` | due strictly before / after the date; tasks without due never match |
 | `recur:2w` | tasks repeating with this period (`2w` = `biweekly` = `14d`); `recur:` = not recurring |
+| `/pattern/` | description matches the [regular expression](https://docs.python.org/3/library/re.html#regular-expression-syntax), any case, anywhere in the text (`/^call/`, `/(mail\|phone) bob/`) |
+| `and` `or` `not` `(` `)` | [operators](#operators) |
 | any other word | case-insensitive substring of the description |
 
 Ids and uuid prefixes together form one selection: `tk 3 1a2b3c4d list` shows task 3 *and*
 the task with that uuid. A token of digits only is always an id.
+
+## Operators
+
+`and`, `or`, `not` and parentheses combine criteria. Without them, filters work exactly as
+above.
+
+```text
+tk +phone or +mail                 # tagged phone, or tagged mail
+tk '(+phone or +mail) pri:H'       # either tag, and priority H
+tk not +work                       # = tk -work
+tk 'not (project:home or +later)'
+```
+
+- `not` applies to the next criterion or parenthesized group, then comes `and`, then `or`:
+  `+a or +b +c` = `+a or (+b and +c)`. `and` can be left out between criteria.
+- Criteria side by side form one block, read as without operators: in
+  `3 5 +home or +urgent`, the block is *task 3 or 5, tagged home*.
+- PowerShell and Git Bash give parentheses a meaning: put them in quotes, as above. Quoted
+  text without parentheses is still searched as it is (`tk "buy milk"`).
+- Without `status:`, the whole filter is on pending tasks. With a `status:` somewhere, it is
+  a criterion like the others: `status:completed or +home` shows completed tasks, and tasks
+  tagged home whatever their status.
+- `and`, `or`, `not` are reserved in filters: to find them in descriptions, use `/ or /` or
+  put them after `--` (`tk list -- or`).
+- Write commands take them too: `tk '+phone or +mail' modify pri:L`, `tk not +keep delete`.
 
 ## Virtual tags
 
@@ -196,6 +223,8 @@ tk project:home list        # = tk list project:home = tk project:home
 tk +phone -work             # pending tasks tagged phone, not tagged work
 tk 2-6 pri:H                # ids 2..6 with priority H
 tk bank                     # description contains "bank"
+tk /^call/                  # description starts with "call"
+tk +phone or +mail          # either tag
 tk status:completed list    # completed tasks
 tk status:all list          # every task, whatever its status
 ```

@@ -107,7 +107,7 @@ Parse rules (in order):
 6. Unknown `attr:` → usage error (exit 1).
 7. Filter given to a cmd that takes none (`add` before it, `alias completion config help import undo version`) → usage error (exit 1).
 
-Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; OR/parens out V1; default `status:pending` unless `status:` given; `status:all` = any status):
+Filter tokens (AND-combined, except ids and uuid prefixes which together form one OR-ed selection: `tk 3 5` = tasks 3 and 5; `and`/`or`/`not` and parentheses since 0.4, see below; default `status:pending` unless `status:` given; `status:all` = any status):
 
 | Token | Meaning |
 |---|---|
@@ -117,7 +117,19 @@ Filter tokens (AND-combined, except ids and uuid prefixes which together form on
 | `project:x` | project = x or x.*; `project:` = no project |
 | `pri:H` `status:completed` `recur:weekly` | equality (`pri` = alias of `priority`; `recur` compares periods, since 0.4: `recur:2w` = `biweekly` = `14d`, `12m` = `yearly`, but `4w` ≠ `1m`; a period TAME does not understand compares as text, case-insensitive); `pri:` = no priority, `recur:` = not recurring; `status:all` = any status |
 | `due.before:fri` `due.after:today` | date compare |
+| `/pattern/` | description matches the regular expression (Python `re`, case-insensitive, anywhere in the text; since 0.4). At least one character between the slashes. Invalid pattern → usage error naming it (exit 1) |
+| `and` `or` `not` `(` `)` | operators (since 0.4, see below) |
 | other word | case-insensitive substring of description |
+
+**Operators** (since 0.4): `tk "(+phone or +mail) and pri:H"`, `tk +home or +garden`, `tk not +work`.
+
+- *Only when typed*: a filter without operators or parentheses parses exactly as before. The words `and`, `or`, `not` (lowercase, exact) are reserved in filters: to search them in descriptions, use `/or/` or put them after `--`.
+- *Terms*: a run of plain tokens with no operator between them is one term, read as before (AND-combined, its ids and uuid prefixes one OR-ed selection): `3 5 +home or +urgent` = (task 3 or 5, tagged home) or tagged urgent.
+- *Precedence*: `not` (applies to the next token or parenthesized group: `not +a +b` = (not +a) and +b) > `and` (also implied between terms: `(+a or +b) pri:H`) > `or`. Left to right otherwise.
+- *Parentheses* group. PowerShell and Git Bash give `(` `)` a meaning, so quote them: `tk '(+a or +b) pri:H'`. A filter token holding a parenthesis is split on spaces and around each parenthesis (`(+a` → `(` `+a`); other quoted tokens with spaces stay one word, as before (`tk "buy milk"`).
+- *Status and waiting*: the default `status:pending` applies to the whole filter when no `status:` appears anywhere in it; otherwise each `status:` is a plain condition (`status:completed or +home` = completed tasks, or tasks of any status tagged home). Waiting tasks are shown when ids, uuids, `+WAITING` or `status:all` appear anywhere.
+- *Errors* (usage error, exit 1): unbalanced parentheses (`Missing ')' in the filter.` / `Unexpected ')' in the filter.`), empty parentheses, an operator without a term on each side (`'or' needs a filter on each side.`, `'not' needs a filter after it.`).
+- *Where*: before the command (TW order) and after commands without args (rule 4: `tk list +a or +b`). In classic order for `modify`, `annotate`, `denotate`, only leading ids stay filter, as before. Commands requiring a filter accept any non-empty expression (`tk not +keep delete`).
 
 **Virtual tags** (since 0.3.0): computed when filtering, never stored. Uppercase, exact case, EN only. Used like tags in filters: `tk +OVERDUE`, `tk +home -TAGGED`. Days, weeks (Monday to Sunday) and months are local calendar periods; `now` = current time.
 
