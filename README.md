@@ -42,6 +42,9 @@ ID   Age   Project   Tags    Pri   Due          Description         Urg
 - **Out of your way**: `tk next` shows the few tasks you can do now, `wait:mon` hides a task
   until Monday, `tk 3 annotate …` keeps notes on a task, and Tab completes it all in
   PowerShell and bash.
+- **Power when you need it**: `recur:weekly` brings a task back once done, `depends:3` makes
+  it wait for another, `tk 3 start` counts the time spent, and filters combine with `and`,
+  `or`, `not`. Nothing to learn until you use it.
 - **Forgiving**: `tk undo` reverts any change, bulk changes ask first, deleted tasks are
   kept.
 - **Windows first**, at home on Linux too. English or French interface.
@@ -49,7 +52,7 @@ ID   Age   Project   Tags    Pri   Due          Description         Urg
 - **A little love**: the world can be hard. Now and then, TAME reminds you of the people around
   you, and if you need it right now, just type `tk love`. ♥
 
-> Status: alpha (0.3). Everything described here works; details may still change before
+> Status: alpha (0.4). Everything described here works; details may still change before
 > 1.0. What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Install
