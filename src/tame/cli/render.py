@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, TextIO
 
 from tame.core.models import Links, Task
+from tame.core.recurrence import ANCHOR
 from tame.core.urgency import DEFAULT_COEFFICIENTS, Coefficients, urgency
 from tame.i18n import t
 
@@ -361,6 +362,7 @@ def print_task_table(
             ],
         ),
         (t("list.col.due"), "left", [cell(day(task.due), alert(task, None)) for task in tasks]),
+        (t("list.col.recur"), "left", [cell(task.recur or "", "note") for task in tasks]),
         (t("list.col.wait"), "left", [cell(day(task.wait), "note") for task in tasks]),
         (t("list.col.depends"), "left", [cell(waits_for(task), "id") for task in tasks]),
         (t("list.col.active"), "right", [cell(running(task), "success") for task in tasks]),
@@ -368,7 +370,7 @@ def print_task_table(
         (t("list.col.urgency"), "right", [scores(task) for task in tasks]),
     ]
     if compact:
-        del columns[7], columns[3], columns[1]  # Dep, Tags, Age.
+        del columns[8], columns[3], columns[1]  # Dep, Tags, Age.
     shown = [col for col in columns if any(text.plain for text in col[2])]
 
     table = Table(
@@ -534,6 +536,7 @@ def info_blocks(
     ids += [
         (name, [(value if isinstance(value, str) else json.dumps(value, ensure_ascii=False), None)])
         for name, value in sorted(task.extra.items())
+        if name != ANCHOR  # TAME's own bookkeeping: the day is the due's.
     ]
     blocks = [
         [(label, value) for label, value in block if value] for block in (main, dates, notes, ids)

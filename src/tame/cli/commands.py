@@ -42,7 +42,7 @@ from tame.config import (
 from tame.core.dates import utc_now
 from tame.core.filters import ALL, Filter
 from tame.core.models import Status, Task
-from tame.core.service import TaskService
+from tame.core.service import DoneResult, TaskService
 from tame.core.urgency import by_urgency, urgency
 from tame.errors import ExitCode, NoMatchError, UsageError, ValidationError
 from tame.i18n import available_languages, t
@@ -130,6 +130,8 @@ def cmd_add(command: ParsedCommand, settings: Settings) -> int:
             due=parsed.due,
             wait=parsed.wait,
             depends=parsed.depends,
+            recur=parsed.recur,
+            until=parsed.until,
         )
     render.success(t("cmd.add.created", id=task.id))
     return ExitCode.OK
@@ -200,12 +202,14 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
             threshold=settings.confirm_threshold,
         ):
             return ExitCode.OK
-        changed = service.complete(tasks)
+        result = service.done(tasks)
+        changed = result.done
         unblocked = service.unblocked_by(changed)
         word = None
         if changed and settings.kindness and kindness.is_terminal() and not service.query():
             word = kindness.draw(service, utc_now(), "empty")
     _report("cmd.done.task", tasks, changed)
+    _report_series(result, settings)
     for task in unblocked:
         render.success(t("cmd.done.unblocked", task=task_ref(task), description=task.description))
     if word is not None:
@@ -213,6 +217,24 @@ def cmd_done(command: ParsedCommand, settings: Settings) -> int:
     uuids = {task.uuid for task in changed}
     eggs.after_done([task for task in tasks if task.uuid in uuids])
     return ExitCode.OK
+
+
+def _report_series(result: DoneResult, settings: Settings) -> None:
+    """Tell what became of the recurring tasks just completed (SPEC §4 Recurrence)."""
+    for _, new in result.next:
+        due = new.due.astimezone().strftime(settings.date_format) if new.due else ""
+        render.success(t("cmd.done.next", task=task_ref(new), description=new.description, due=due))
+    for task in result.last:
+        render.hint(t("cmd.done.last", task=task_ref(task), description=task.description))
+    for task in result.unknown:
+        render.warning(
+            t(
+                "cmd.done.unknown",
+                task=task_ref(task),
+                description=task.description,
+                recur=task.recur,
+            )
+        )
 
 
 def cmd_start(command: ParsedCommand, settings: Settings) -> int:
@@ -588,6 +610,8 @@ def cmd_import(command: ParsedCommand, settings: Settings) -> int:
         except ValidationError as err:
             raise ValidationError("error.import_item", item=number, detail=err) from err
     with open_service(settings) as service:
+        stored = service.query(include_waiting=True)
+        tasks, converted = tw_json.convert_recurring(tasks, stored, now)
         result = service.import_tasks(tasks)
     render.success(
         t(
@@ -597,6 +621,8 @@ def cmd_import(command: ParsedCommand, settings: Settings) -> int:
             skipped=len(result.skipped),
         )
     )
+    if converted:
+        render.say(t("cmd.import.converted", count=converted))
     return ExitCode.OK
 
 

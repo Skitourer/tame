@@ -17,6 +17,9 @@ created = "Tâche {id} créée."
 
 [cmd.done]
 unblocked = "La tâche {task} « {description} » n'est plus bloquée."
+next = "Suivante : tâche {task} « {description} », échéance {due}."
+last = "La tâche {task} « {description} » était la dernière de sa série."
+unknown = "Tâche {task} « {description} » : récurrence « {recur} » non comprise, pas de tâche suivante."
 task = "Tâche {task} « {description} » terminée."
 
 [cmd.start]
@@ -51,6 +54,7 @@ restored = "Tâche {task} « {description} » restaurée."
 removed = "Tâche {task} « {description} » retirée."
 
 [cmd.import]
+converted = "Séries récurrentes converties depuis les modèles Taskwarrior : {count}."
 summary = "Import : {added} ajoutées, {updated} mises à jour, {skipped} ignorées (pas plus récentes)."
 
 [cmd.alias]
@@ -89,6 +93,7 @@ project = "Projet"
 tags = "Tags"
 priority = "Prio"
 due = "Échéance"
+recur = "Récur."
 wait = "Attente"
 depends = "Dép"
 active = "Active"
@@ -243,6 +248,9 @@ ambiguous_task = "Plusieurs tâches correspondent à {ref} : donnez plus de l'uu
 invalid_depends = "Dépendance invalide : « {value} » (attendu des ids comme 3,4 ou 1-3, des uuids, -3 pour retirer)"
 depends_self = "La tâche {task} ne peut pas dépendre d'elle-même."
 depends_cycle = "Cycle de dépendances : {chain}"
+invalid_recur = "Récurrence invalide : « {value} » (attendu : daily, weekly, biweekly, monthly, quarterly, yearly, weekdays, ou un nombre comme 3d, 2w, 6m, 1y)"
+recur_needs_due = "Une tâche récurrente a besoin d'une échéance : ajoutez due:DATE (recur: arrête la série)."
+until_needs_recur = "until: termine une récurrence : donnez aussi recur:."
 nothing_to_purge = "Rien à purger."
 purge_status = "purge n'efface que les tâches supprimées : retirez status: du filtre."
 purge_all_filter = "purge --all efface toutes les tâches : pas de filtre."
@@ -440,18 +448,21 @@ more = "Un seul réglage : tk help config CLÉ. Toutes les valeurs actuelles : t
 
 [help.cmd.add]
 summary = "Créer une tâche"
-usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [+tag ...]"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [recur:PÉRIODE] [until:DATE] [+tag ...]"
 body = '''
 Les mots forment la description ; project:, pri:, due:, wait:, depends: et +tag
 peuvent être n'importe où. wait: cache la tâche de list et des filtres jusqu'à cette
 date (tk +WAITING l'affiche). depends:3,4 la fait attendre les tâches 3 et 4 (voir
-tk help modify).
+tk help modify). recur: la fait revenir (voir tk help done) : daily, weekly,
+biweekly, monthly, quarterly, yearly, weekdays (du lundi au vendredi), ou un nombre :
+3d, 2w, 6m, 1y. Il faut une échéance ; until: termine la série.
 Tout ce qui suit -- est de la description, même des mots comme +1 ou pri:H.
 
 Exemples :
   tk add Appeler la banque project:maison +tel due:fri pri:H
   tk add Relancer la banque wait:mon due:fri
   tk add Peindre les murs depends:2
+  tk add Sauvegarde due:fri recur:weekly until:eoy
   tk add -- +1 pour le nouveau logo
 '''
 
@@ -504,9 +515,10 @@ Exemples :
 summary = "Modifier des tâches"
 usage = "tk <filtre> modify [attr:valeur] [attr:] [+tag] [-tag] [nouvelle description]"
 body = '''
-attr:valeur fixe un attribut, attr: l'efface (project, pri, due, wait) ; +tag et -tag
-ajoutent et retirent des tags ; les autres mots remplacent la description. Un filtre
-est obligatoire.
+attr:valeur fixe un attribut, attr: l'efface (project, pri, due, wait, recur, until) ;
++tag et -tag ajoutent et retirent des tags ; les autres mots remplacent la
+description. Un filtre est obligatoire. recur: arrête une série (et until: avec) ;
+une tâche récurrente garde son échéance.
 
 depends:3,4 ajoute les tâches 3 et 4 à celles que la tâche attend (ids, plages ou
 uuids), depends:-3 en retire une, depends: les retire toutes. Tant que l'une est en
@@ -520,6 +532,7 @@ Exemples :
   tk 3 modify project: Appeler la banque
   tk 5 modify depends:3,4
   tk 5 modify depends:-3
+  tk 7 modify recur:monthly until:2027-06-30
   tk +tel modify pri:L --yes
 '''
 
@@ -586,6 +599,13 @@ usage = "tk <filtre> done [--yes]"
 body = '''
 Un filtre est obligatoire. Demande confirmation au-delà de confirm_threshold tâches
 (3 par défaut) ; --yes l'évite. Les tâches en cours sont ensuite renumérotées 1..n.
+
+Une tâche récurrente (recur:) revient : la même tâche est créée, due une période
+après l'échéance prévue (les dates déjà passées sont sautées), avec son projet, ses
+tags, sa priorité et son wait: décalé d'autant ; les notes et les dépendances
+restent sur l'ancienne. Une tâche mensuelle garde son jour : 31 janv., 28 févr.,
+31 mars. Après until:, la série s'arrête ; delete l'arrête aussi. tk undo annule
+les deux.
 
 Exemples :
   tk 3 done
@@ -661,9 +681,10 @@ body = '''
 Lit un tableau JSON, ou un objet tâche par ligne, depuis FICHIER ou l'entrée standard
 (sans FICHIER, ou -). Les tâches sont fusionnées par uuid : les nouvelles sont
 ajoutées, une tâche existante n'est remplacée que si celle importée a été modifiée
-plus tard. Les attributs que TAME n'utilise pas (annotations, depends, recur,
-wait...) sont gardés pour l'export. Les tâches waiting et recurring deviennent
-pending. tk undo annule tout l'import.
+plus tard. Les attributs que TAME n'utilise pas (UDA...) sont gardés pour l'export.
+Les tâches waiting deviennent pending. Une série récurrente (modèle et instances)
+devient une seule tâche récurrente : l'instance en cours la plus proche, les autres
+devenant des tâches simples. tk undo annule tout l'import.
 
 Exemples :
   task export > tw.json        (dans Taskwarrior)
@@ -784,6 +805,7 @@ correspondent.
   status:completed     pending, completed, deleted, ou all
   due.before:fri       échéance strictement avant la date (voir tk help dates)
   due.after:today      échéance strictement après la date
+  recur:weekly         revient chaque semaine (2w = biweekly) ; recur: non récurrente
   autres mots          texte contenu dans la description, casse ignorée
 
 Les tags virtuels sont calculés, jamais posés (tâches en cours seulement, sauf les
@@ -795,6 +817,7 @@ trois derniers) :
   BLOCKED  UNBLOCKED   attend / n'attend pas une autre tâche en cours
   BLOCKING             une autre tâche en cours l'attend
   ACTIVE               démarrée avec tk start
+  RECURRING            revient (recur:)
   WAITING              cachée par wait: jusqu'à une date à venir
   ANNOTATED            a une annotation
   PROJECT  TAGGED      a un projet / au moins un tag
@@ -806,7 +829,7 @@ Le filtre se place avant la commande (tk +tel list) ou juste après
 (tk list +tel). Après --, tout est mots simples.
 '''
 dates = '''
-Les dates servent à due:, wait:, due.before: et due.after:. Les mots-clés sont en anglais,
+Les dates servent à due:, wait:, until:, due.before: et due.after:. Les mots-clés sont en anglais,
 casse ignorée. Une date sans heure signifie 00:00 heure locale.
 
   2026-12-15   2026-12-15T14:00     date ISO, heure locale

@@ -1,7 +1,7 @@
 """Task use cases. Returns objects and raises ``TameError``; never prints."""
 
 import uuid as uuid_lib
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -23,6 +23,7 @@ from tame.core.models import (
     check_project,
     parse_priority,
 )
+from tame.core.recurrence import ANCHOR, anchored, check_recur, next_due
 from tame.errors import NoMatchError, ValidationError
 from tame.storage.repo import TaskRepo
 
@@ -57,6 +58,24 @@ class ImportResult:
     added: tuple[Task, ...]
     updated: tuple[Task, ...]
     skipped: tuple[Task, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DoneResult:
+    """What :meth:`TaskService.done` did.
+
+    Attributes:
+        done: The completed tasks, as stored.
+        next: For each recurring task completed, its next occurrence, as stored.
+        last: Recurring tasks completed whose next due fell after ``until``: series over.
+        unknown: Recurring tasks completed with no next occurrence: a period TAME does
+            not know, or no due date (imported).
+    """
+
+    done: tuple[Task, ...] = ()
+    next: tuple[tuple[Task, Task], ...] = ()
+    last: tuple[Task, ...] = ()
+    unknown: tuple[Task, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +132,8 @@ class TaskService:
         due: datetime | None = None,
         wait: datetime | None = None,
         depends: TaskRefs = NO_REFS,
+        recur: str | None = None,
+        until: datetime | None = None,
     ) -> Task:
         """Create a pending task with the next free short id.
 
@@ -124,12 +145,15 @@ class TaskService:
             due: Due date (aware).
             wait: Hidden from filters until then (aware).
             depends: Tasks the new one waits for.
+            recur: Recurrence period (SPEC §4 Recurrence); needs ``due``.
+            until: End of the recurrence; needs ``recur``.
 
         Returns:
             The stored task.
 
         Raises:
-            ValidationError: If a value is invalid or ``depends`` names no task.
+            ValidationError: If a value is invalid, ``depends`` names no task, or the
+                recurrence rules are broken.
         """
         now = self._clock()
         task = Task(
@@ -143,7 +167,10 @@ class TaskService:
             due=due,
             wait=wait,
             depends=self._resolve(depends),
+            recur=check_recur(recur) if recur is not None else None,
+            until=until,
         )
+        task = anchored(_check_recurrence(task))
         with self._repo.transaction():
             task = replace(task, id=self._repo.max_pending_id() + 1)
             self._repo.insert(task)
@@ -151,14 +178,36 @@ class TaskService:
         return task
 
     def complete(self, tasks: Iterable[Task]) -> list[Task]:
-        """Mark ``tasks`` completed (``end`` = now), then renumber pending tasks.
-
-        Tasks already completed are skipped.
+        """Mark ``tasks`` completed; see :meth:`done`.
 
         Returns:
             The changed tasks, as stored.
         """
-        return self._close(tasks, Status.COMPLETED, "done")
+        return list(self.done(tasks).done)
+
+    def done(self, tasks: Iterable[Task]) -> DoneResult:
+        """Mark ``tasks`` completed (``end`` = now), then renumber pending tasks.
+
+        Tasks already completed are skipped. Each pending recurring task gets its next
+        occurrence in the same undo step (SPEC §4 Recurrence).
+        """
+        now = self._clock()
+        tasks = [task for task in tasks if task.status is not Status.COMPLETED]
+        nexts: list[tuple[Task, Task]] = []
+        last: list[Task] = []
+        unknown: list[Task] = []
+        for task in tasks:
+            if task.status is not Status.PENDING or task.recur is None:
+                continue
+            if (due := next_due(task, now)) is None:
+                unknown.append(task)
+            elif task.until is not None and due > task.until:
+                last.append(task)
+            else:
+                nexts.append((task, _next_occurrence(task, due, now)))
+        changed = self._close(tasks, Status.COMPLETED, "done", [new for _, new in nexts])
+        stored = [(old, self._repo.get(new.uuid) or new) for old, new in nexts]
+        return DoneResult(tuple(changed), tuple(stored), tuple(last), tuple(unknown))
 
     def delete(self, tasks: Iterable[Task]) -> list[Task]:
         """Soft-delete ``tasks`` (``end`` = now), then renumber pending tasks.
@@ -170,7 +219,10 @@ class TaskService:
         """
         return self._close(tasks, Status.DELETED, "delete")
 
-    def _close(self, tasks: Iterable[Task], status: Status, cmd: str) -> list[Task]:
+    def _close(
+        self, tasks: Iterable[Task], status: Status, cmd: str, created: Sequence[Task] = ()
+    ) -> list[Task]:
+        """Give ``tasks`` the closing ``status`` and store ``created``, in one undo step."""
         now = self._clock()
         changed = [
             replace(_stopped(task, now)[0], status=status, id=None, end=now, modified=now)
@@ -181,9 +233,13 @@ class TaskService:
             return []
         with self._repo.transaction():
             ids = self._repo.pending_ids()
-            self._log(now, cmd, self._snapshot(changed), ids)
+            before = self._snapshot(changed) + [(task.uuid, None) for task in created]
+            self._log(now, cmd, before, ids)
             for task in changed:
                 self._repo.update(task)
+            last_id = self._repo.max_pending_id()  # Last ids: after older tasks of the same second.
+            for number, task in enumerate(created, start=last_id + 1):
+                self._repo.insert(replace(task, id=number))
             self._repo.renumber()
         return changed
 
@@ -245,13 +301,16 @@ class TaskService:
 
         Raises:
             ValidationError: If ``changes`` adds a virtual tag, names a task that does not
-                exist, makes a task depend on itself or makes a cycle of dependencies.
+                exist, makes a task depend on itself or makes a cycle of dependencies, or
+                breaks the recurrence rules (SPEC §4 Recurrence).
         """
         for tag in changes.tags_add:
             check_new_tag(tag)
+        if changes.recur:
+            check_recur(changes.recur)
         now = self._clock()
         tasks = list(tasks)
-        new_tasks = [changes.apply(task) for task in tasks]
+        new_tasks = [_recurrence_changed(task, changes) for task in tasks]
         if changes.depends is not None:
             new_tasks = self._apply_depends(new_tasks, changes.depends)
         changed = [
@@ -572,6 +631,56 @@ class TaskService:
     def virtual_tagger(self) -> VirtualTagger:
         """Return a tagger computing virtual tags as of now, in the system time zone."""
         return VirtualTagger(self._clock(), self.links())
+
+
+def _recurrence_changed(task: Task, changes: Changes) -> Task:
+    """Return ``task`` with ``changes`` applied, recurrence rules checked, anchor kept.
+
+    Raises:
+        ValidationError: If the result breaks the recurrence rules.
+    """
+    new = changes.apply(task)
+    if changes.recur is None and changes.until is None and changes.due is None:
+        return new
+    if new.recur is None and task.recur is not None and changes.until is None:
+        new = replace(new, until=None)  # `recur:` ends the series, and its end with it.
+    new = _check_recurrence(new)
+    if changes.recur is not None or changes.due is not None:
+        new = anchored(new)
+    return new
+
+
+def _check_recurrence(task: Task) -> Task:
+    """Return ``task`` if its ``recur`` has a ``due`` and its ``until`` a ``recur``.
+
+    Raises:
+        ValidationError: Otherwise.
+    """
+    if task.recur is not None and task.due is None:
+        raise ValidationError("error.recur_needs_due")
+    if task.until is not None and task.recur is None:
+        raise ValidationError("error.until_needs_recur")
+    return task
+
+
+def _next_occurrence(task: Task, due: datetime, now: datetime) -> Task:
+    """Return the pending task following ``task`` in its series, due on ``due``."""
+    shift = due - task.due if task.due is not None else None
+    anchor = {ANCHOR: task.extra[ANCHOR]} if ANCHOR in task.extra else {}
+    return Task(
+        uuid=str(uuid_lib.uuid4()),
+        description=task.description,
+        entry=now,
+        modified=now,
+        project=task.project,
+        tags=task.tags,
+        priority=task.priority,
+        due=due,
+        wait=task.wait + shift if task.wait is not None and shift is not None else None,
+        recur=task.recur,
+        until=task.until,
+        extra=anchor,
+    )
 
 
 def _stopped(task: Task, now: datetime) -> tuple[Task, Session]:

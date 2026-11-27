@@ -6,6 +6,7 @@ from typing import Literal
 
 from tame.core.dates import local_period
 from tame.core.models import NONE, Links, Priority, Status, Task
+from tame.core.recurrence import same_period
 
 ALL: Literal["all"] = "all"
 """Value of ``Filter.status`` matching every status (``status:all``)."""
@@ -30,6 +31,8 @@ class Filter:
         status: Exact status; ``ALL`` for any status; None means pending.
         due_before: The task is due strictly before this time.
         due_after: The task is due strictly after this time.
+        recur: Recurrence period, compared by meaning (see :func:`same_period`);
+            ``NONE`` for no recurrence.
         words: Case-insensitive substrings of the description.
     """
 
@@ -44,6 +47,7 @@ class Filter:
     status: Status | Literal["all"] | None = None
     due_before: datetime | None = None
     due_after: datetime | None = None
+    recur: str | None = None
     words: tuple[str, ...] = ()
 
     @property
@@ -83,6 +87,7 @@ class Filter:
             and (self.priority is None or (task.priority or NONE) == self.priority)
             and (self.due_before is None or (task.due is not None and task.due < self.due_before))
             and (self.due_after is None or (task.due is not None and task.due > self.due_after))
+            and (self.recur is None or same_period(task.recur, self.recur))
             and all(word.casefold() in task.description.casefold() for word in self.words)
         )
 
@@ -146,6 +151,8 @@ class VirtualTagger:
             tags.add("BLOCKING")
         if task.start is not None:
             tags.add("ACTIVE")
+        if task.recur:
+            tags.add("RECURRING")
         if is_waiting(task, self._now):
             tags.add("WAITING")
         if (due := task.due) is not None:

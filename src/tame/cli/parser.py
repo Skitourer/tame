@@ -32,6 +32,7 @@ from tame.core.models import (
     check_tag,
     parse_priority,
 )
+from tame.core.recurrence import check_recur
 from tame.errors import UsageError, ValidationError
 
 COMMANDS = (
@@ -139,6 +140,8 @@ class AddArgs:
     due: datetime | None = None
     wait: datetime | None = None
     depends: TaskRefs = NO_REFS
+    recur: str | None = None
+    until: datetime | None = None
 
 
 def match_command(token: str) -> str | None:
@@ -287,6 +290,7 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
     status: Status | Literal["all"] | None = None
     due_before: datetime | None = None
     due_after: datetime | None = None
+    recur: str | None = None
     words: list[str] = []
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest are plain words.
@@ -316,6 +320,8 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
                 due_before = parse_date(value, now)
             elif name == "due.after":
                 due_after = parse_date(value, now)
+            elif name == "recur":
+                recur = value.strip() or NONE
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
         else:
@@ -332,6 +338,7 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
         status=status,
         due_before=due_before,
         due_after=due_after,
+        recur=recur,
         words=tuple(words),
     )
 
@@ -411,6 +418,8 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
     due: datetime | Literal[""] | None = None
     wait: datetime | Literal[""] | None = None
     depends: DependsChange | None = None
+    recur: str | None = None
+    until: datetime | Literal[""] | None = None
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
             words.extend(tokens[index + 1 :])
@@ -431,6 +440,10 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
                 wait = parse_date(value, now) if value else NONE
             elif name == "depends":
                 depends = _merge_depends(depends, parse_depends(value))
+            elif name == "recur":
+                recur = check_recur(value) if value else NONE
+            elif name == "until":
+                until = parse_date(value, now) if value else NONE
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
         else:
@@ -444,6 +457,8 @@ def parse_modify(tokens: Sequence[str], now: datetime | None = None) -> Changes:
         tags_add=frozenset(tags_add),
         tags_remove=frozenset(tags_remove),
         depends=depends,
+        recur=recur,
+        until=until,
     )
 
 
@@ -476,7 +491,9 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
     """
     words: list[str] = []
     tags: list[str] = []
-    attrs: dict[str, str | None] = {"project": None, "priority": None, "due": None, "wait": None}
+    attrs: dict[str, str | None] = dict.fromkeys(
+        ("project", "priority", "due", "wait", "recur", "until")
+    )
     depends = TaskRefs()
     for index, token in enumerate(tokens):
         if token == "--":  # Rule 5: the rest is description.
@@ -508,4 +525,6 @@ def parse_add(tokens: Sequence[str], now: datetime | None = None) -> AddArgs:
         due=parse_date(due, now or utc_now()) if (due := attrs["due"]) else None,
         wait=parse_date(wait, now or utc_now()) if (wait := attrs["wait"]) else None,
         depends=depends,
+        recur=check_recur(recur) if (recur := attrs["recur"]) else None,
+        until=parse_date(until, now or utc_now()) if (until := attrs["until"]) else None,
     )

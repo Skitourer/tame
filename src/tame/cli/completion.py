@@ -12,6 +12,7 @@ from pathlib import Path
 
 from tame.cli.parser import COMMANDS, match_command
 from tame.core.models import VIRTUAL_TAGS, Priority, Status
+from tame.core.recurrence import NAMED_PERIODS
 from tame.errors import UsageError
 
 SHELLS = ("powershell", "bash")
@@ -42,9 +43,9 @@ DATE_KEYWORDS = (
     "eom",
     "eoy",
 )
-_FILTER_ATTRS = ("project:", "pri:", "status:", "due.before:", "due.after:")
-_MOD_ATTRS = ("project:", "pri:", "due:", "wait:", "depends:")
-_DATE_ATTRS = frozenset({"due", "wait", "due.before", "due.after"})
+_FILTER_ATTRS = ("project:", "pri:", "status:", "recur:", "due.before:", "due.after:")
+_MOD_ATTRS = ("project:", "pri:", "due:", "wait:", "depends:", "recur:", "until:")
+_DATE_ATTRS = frozenset({"due", "wait", "until", "due.before", "due.after"})
 _MOD_COMMANDS = frozenset({"add", "modify"})
 _TEXT_COMMANDS = frozenset({"import", "annotate", "denotate"})
 _CONFIG_SUBCOMMANDS = ("get", "set", "unset", "path", "edit")
@@ -196,6 +197,7 @@ def _values(attr: str, data: Data) -> Iterable[str]:
         "pri": lambda: [p.value for p in Priority],
         "priority": lambda: [p.value for p in Priority],
         "status": lambda: [*(s.value for s in Status), "all"],
+        "recur": lambda: NAMED_PERIODS,
     }
     if attr in _DATE_ATTRS:
         return DATE_KEYWORDS

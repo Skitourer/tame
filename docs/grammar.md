@@ -39,6 +39,7 @@ If no token names a command, the command is `list`: `tk`, `tk +phone`, `tk bank`
 | `project:home` `pri:H` `due:fri` `wait:mon` | set the attribute (`wait`: see [waiting tasks](#waiting-tasks)) |
 | `project:` `pri:` `due:` `wait:` | clear it (`modify` only) |
 | `depends:3,4` `depends:-3` `depends:` | wait for tasks 3 and 4 / no more for 3 / for none (see [dependencies](#dependencies)) |
+| `recur:weekly` `until:eoy` | repeat the task / until that date; `recur:` ends the series, `until:` its end (see [recurrence](#recurrence)) |
 | `+tag` | add the tag (not a [virtual tag](#virtual-tags)) |
 | `-tag` | remove the tag (`modify` only; for `add` it is a plain word) |
 | other words | the description (`modify`: replaces it) |
@@ -83,6 +84,7 @@ matches every status.
 | `pri:H` (`priority:`) | exact priority; `pri:` = no priority |
 | `status:completed` | `pending`, `completed`, `deleted`, or `all` |
 | `due.before:fri` `due.after:today` | due strictly before / after the date; tasks without due never match |
+| `recur:2w` | tasks repeating with this period (`2w` = `biweekly` = `14d`); `recur:` = not recurring |
 | any other word | case-insensitive substring of the description |
 
 Ids and uuid prefixes together form one selection: `tk 3 1a2b3c4d list` shows task 3 *and*
@@ -103,6 +105,7 @@ uppercase and English, whatever the interface language.
 | `BLOCKED` / `UNBLOCKED` | depend / do not depend on another pending task |
 | `BLOCKING` | have another pending task depending on them |
 | `ACTIVE` | are started ([`tk start`](commands.md#start)) |
+| `RECURRING` | [repeat](#recurrence) |
 | `WAITING` | are [waiting](#waiting-tasks) |
 | `ANNOTATED` | have an annotation |
 | `PROJECT` / `TAGGED` | have a project / at least one tag |
@@ -158,6 +161,33 @@ it. When `done` completes the last one, TAME says *Task 5 'Paint the walls' is n
 
 A task cannot depend on itself, nor through a cycle (*Dependency cycle: 3 → 5 → 3*): nothing
 is changed.
+
+## Recurrence
+
+`recur:` makes a task come back: *back up the laptop every Friday*. There is no hidden
+template: the pending task is the series, and completing it creates the next one.
+
+```text
+tk add Backup due:fri recur:weekly             # every Friday
+tk add Rent due:2027-01-31 recur:monthly       # Jan 31, Feb 28, Mar 31, Apr 30...
+tk add Report due:mon recur:2w until:eoy       # every other Monday, until the end of the year
+tk 3 modify recur:                             # stop the series
+```
+
+Periods: `daily`, `weekly`, `biweekly`, `monthly`, `quarterly`, `yearly` (or `annual`),
+`weekdays` (Monday to Friday), or a count: `3d`, `2w`, `6m`, `1y`. A recurring task needs a
+due date; `until:` (a date) ends the series.
+
+When `tk done` completes it, TAME creates the same task (description, project, tags,
+priority) due one period after the *planned* due date, not after today: a backup done late
+on Saturday is still due next Friday. Dates already past are skipped. A `wait:` date moves
+by as much as the due date. Notes and dependencies stay with the completed task. Monthly
+and yearly tasks keep their day of month. After `until`, TAME says *Task 3 'Backup' was the
+last of its series.* `tk undo` reverts both the completion and the new task; `delete` ends
+the series.
+
+`tk list` and `tk next` show the period in a **Recur** column; `+RECURRING` and `recur:2w`
+filter on it.
 
 ## Examples
 

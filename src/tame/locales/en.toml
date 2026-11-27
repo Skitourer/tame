@@ -17,6 +17,9 @@ created = "Created task {id}."
 [cmd.done]
 task = "Completed task {task} '{description}'."
 unblocked = "Task {task} '{description}' is now unblocked."
+next = "Next: task {task} '{description}', due {due}."
+last = "Task {task} '{description}' was the last of its series."
+unknown = "Task {task} '{description}': recurrence '{recur}' not understood, no next task."
 
 [cmd.start]
 task = "Started task {task} '{description}'."
@@ -51,6 +54,7 @@ removed = "Removed task {task} '{description}'."
 
 [cmd.import]
 summary = "Imported: {added} added, {updated} updated, {skipped} skipped (not newer)."
+converted = "Recurring series converted from Taskwarrior templates: {count}."
 
 [cmd.alias]
 installed = "Created alias '{name}': {path}"
@@ -88,6 +92,7 @@ project = "Project"
 tags = "Tags"
 priority = "Pri"
 due = "Due"
+recur = "Recur"
 wait = "Wait"
 depends = "Dep"
 active = "Active"
@@ -242,6 +247,9 @@ ambiguous_task = "Several tasks match {ref}: give more of the uuid."
 invalid_depends = "Invalid dependency: '{value}' (expected ids such as 3,4 or 1-3, uuids, -3 to remove)"
 depends_self = "Task {task} cannot depend on itself."
 depends_cycle = "Dependency cycle: {chain}"
+invalid_recur = "Invalid recurrence: '{value}' (expected daily, weekly, biweekly, monthly, quarterly, yearly, weekdays, or a count such as 3d, 2w, 6m, 1y)"
+recur_needs_due = "A recurring task needs a due date: add due:DATE (recur: ends the series)."
+until_needs_recur = "until: ends a recurrence: give recur: too."
 nothing_to_purge = "Nothing to purge."
 purge_status = "purge only erases deleted tasks: leave status: out of the filter."
 purge_all_filter = "purge --all erases every task: it takes no filter."
@@ -439,17 +447,21 @@ more = "One setting: tk help config KEY. All current values: tk config."
 
 [help.cmd.add]
 summary = "Create a task"
-usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [+tag ...]"
+usage = "tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [recur:PERIOD] [until:DATE] [+tag ...]"
 body = '''
 Words make the description; project:, pri:, due:, wait:, depends: and +tag can be
 anywhere. wait: hides the task from list and filters until that date (tk +WAITING
 shows it). depends:3,4 makes it wait for tasks 3 and 4 (see tk help modify).
+recur: makes it repeat (see tk help done): daily, weekly, biweekly, monthly,
+quarterly, yearly, weekdays (Monday to Friday), or a count: 3d, 2w, 6m, 1y. It needs
+a due date; until: ends the series.
 Everything after -- is description, even words like +1 or pri:H.
 
 Examples:
   tk add Call bank project:home +phone due:fri pri:H
   tk add Chase the bank wait:mon due:fri
   tk add Paint the walls depends:2
+  tk add Backup due:fri recur:weekly until:eoy
   tk add -- +1 vote for the new logo
 '''
 
@@ -501,8 +513,9 @@ Examples:
 summary = "Change tasks"
 usage = "tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]"
 body = '''
-attr:value sets an attribute, attr: clears it (project, pri, due, wait); +tag and -tag add
-and remove tags; other words replace the description. A filter is required.
+attr:value sets an attribute, attr: clears it (project, pri, due, wait, recur, until);
++tag and -tag add and remove tags; other words replace the description. A filter is
+required. recur: ends a series (until: with it); a recurring task keeps its due date.
 
 depends:3,4 adds tasks 3 and 4 to the ones this task waits for (ids, ranges or
 uuids), depends:-3 removes one, depends: removes them all. While one is pending,
@@ -516,6 +529,7 @@ Examples:
   tk 3 modify project: Call the bank
   tk 5 modify depends:3,4
   tk 5 modify depends:-3
+  tk 7 modify recur:monthly until:2027-06-30
   tk +phone modify pri:L --yes
 '''
 
@@ -579,6 +593,12 @@ usage = "tk <filter> done [--yes]"
 body = '''
 A filter is required. Asks before completing more than confirm_threshold tasks
 (default 3); --yes skips it. Pending tasks are then renumbered 1..n.
+
+A recurring task (recur:) comes back: the same task is created, due one period after
+the planned due date (dates already past are skipped), with its project, tags,
+priority and wait: moved by as much; notes and dependencies stay behind. Monthly
+tasks keep their day: Jan 31, Feb 28, Mar 31. After until:, the series ends.
+delete ends it too. tk undo reverts both.
 
 Examples:
   tk 3 done
@@ -651,8 +671,9 @@ body = '''
 Reads a JSON array, or one task object per line, from FILE or standard input
 (no FILE, or -). Tasks are merged by uuid: new ones are added, a stored task is
 replaced only if the incoming one was modified later. Attributes TAME does not use
-(annotations, depends, recur, wait...) are kept for export. Waiting and recurring
-tasks become pending. tk undo reverts the whole import.
+(UDAs...) are kept for export. Waiting tasks become pending. A recurring series
+(template and instances) becomes one recurring task: the nearest pending instance,
+the others plain tasks. tk undo reverts the whole import.
 
 Examples:
   task export > tw.json        (in Taskwarrior)
@@ -768,6 +789,7 @@ selection. Without status:, only pending tasks match.
   status:completed     pending, completed, deleted, or all
   due.before:fri       due strictly before the date (see tk help dates)
   due.after:today      due strictly after the date
+  recur:weekly         repeats every week (2w = biweekly); recur: not recurring
   other words          text contained in the description, any case
 
 Virtual tags are computed, never set (pending tasks only, but the last three):
@@ -778,6 +800,7 @@ Virtual tags are computed, never set (pending tasks only, but the last three):
   BLOCKED  UNBLOCKED   waiting / not waiting for another pending task
   BLOCKING             another pending task waits for it
   ACTIVE               started with tk start
+  RECURRING            repeats (recur:)
   WAITING              hidden by wait: until a later date
   ANNOTATED            has an annotation
   PROJECT  TAGGED      has a project / at least one tag
@@ -789,7 +812,7 @@ The filter goes before the command (tk +phone list) or right after it
 (tk list +phone). After --, everything is plain words.
 '''
 dates = '''
-Dates are used by due:, wait:, due.before: and due.after:. Keywords are English, any case.
+Dates are used by due:, wait:, until:, due.before: and due.after:. Keywords are English, any case.
 A date without a time means 00:00 local time.
 
   2026-12-15   2026-12-15T14:00     ISO date, local time

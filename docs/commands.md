@@ -34,11 +34,12 @@ nothing to undo or purge), 3 internal error. Errors go to stderr.
 ## add
 
 ```text
-tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [+tag ...]
+tk add <description> [project:P] [pri:H|M|L] [due:DATE] [wait:DATE] [depends:IDS] [recur:PERIOD] [until:DATE] [+tag ...]
 ```
 
 Words make the description; `project:`, `pri:`, `due:`, [`wait:`](grammar.md#waiting-tasks),
-[`depends:`](grammar.md#dependencies) and `+tag` can be anywhere. Everything
+[`depends:`](grammar.md#dependencies), [`recur:`, `until:`](grammar.md#recurrence) and
+`+tag` can be anywhere. Everything
 after `--` is description, even words like `done` or `+x`. Prints the new task's id.
 
 ```text
@@ -46,6 +47,7 @@ tk add Call bank project:home +phone due:fri pri:H
 tk add -- +1 vote for the new logo   # after --, +1 is text, not a tag
 tk add Chase the bank wait:mon due:fri
 tk add Paint the walls depends:2
+tk add Backup due:fri recur:weekly until:eoy
 ```
 
 ## list
@@ -115,12 +117,13 @@ tk status:deleted info
 tk <filter> modify [attr:value] [attr:] [+tag] [-tag] [new description]
 ```
 
-`attr:value` sets an attribute, `attr:` clears it (`project`, `pri`, `due`, `wait`); `+tag` and `-tag`
+`attr:value` sets an attribute, `attr:` clears it (`project`, `pri`, `due`, `wait`, `recur`, `until`); `+tag` and `-tag`
 add and remove tags; other words replace the description. A filter is required. Asks before
 changing more than `confirm_threshold` tasks (default 3); `--yes` skips the question.
 
 `depends:3,4` adds tasks 3 and 4 to the ones the task waits for, `depends:-3` removes one,
-`depends:` removes them all; see [dependencies](grammar.md#dependencies).
+`depends:` removes them all; see [dependencies](grammar.md#dependencies). `recur:` ends a
+[recurring](grammar.md#recurrence) series.
 
 ```text
 tk 12 modify due:mon -phone
@@ -208,6 +211,8 @@ tk <filter> done [--yes]
 
 Marks the matching tasks completed. A filter is required. Asks before completing more than
 `confirm_threshold` tasks; `--yes` skips it. Pending tasks are then renumbered 1..n.
+A [recurring](grammar.md#recurrence) task comes back as a new task, due one period later:
+*Next: task 4 'Backup', due 2026-12-04.*
 
 ```text
 tk 3 done
@@ -317,6 +322,7 @@ tk import [FILE | -]
 Reads a JSON array, or one task object per line, from `FILE` or standard input (no `FILE`, or
 `-`). UTF-8, or UTF-16 as written by PowerShell 5. Tasks are merged by uuid; the whole import
 is one `undo` step. If any task is invalid, nothing is imported and the error names it.
+Taskwarrior recurring series are converted: see [Coming from Taskwarrior](taskwarrior.md#import).
 
 ```text
 tk import tw.json

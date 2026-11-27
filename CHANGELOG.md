@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Recurring tasks**: `tk add Backup due:fri recur:weekly` comes back when done: `tk done`
+  creates the same task due one period after the planned date (missed dates skipped),
+  `Next: task 4 'Backup', due 2026-12-04.` Periods `daily weekly biweekly monthly
+  quarterly yearly annual weekdays` or `3d 2w 6m 1y`; monthly tasks keep their day
+  (Jan 31, Feb 28, Mar 31). `until:` ends the series, `recur:` or `delete` stops it, `tk undo`
+  reverts both. `list` and `next` show a **Recur** column; new filter `recur:2w` and virtual
+  tag `+RECURRING`. Taskwarrior recurring series are converted on import (no template task
+  in TAME).
 - **`tk start` / `tk stop`**: count the time spent on a task. `tk 3 start` starts it
   (`+ACTIVE`, more urgency), `tk stop` stops it and tells how long it ran. One task runs at a
   time unless `multiple_active = true`; `done` and `delete` stop it first. `list` and `next`
