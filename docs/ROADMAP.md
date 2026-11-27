@@ -25,7 +25,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 | Output styling | `tk list`, `tk info`, `tk help` | One shared, sober style for every table and long text (`list`, `next`, `info`, `help`, `config`, messages), style "A" of the mockups: a blank line before and after each output (clear break from the shell prompt); bold header over a dim rule; one fixed color per column (project cyan, tags magenta, priority H red / M yellow / L dim, high urgency bold, low dim; no ANSI blue, unreadable on black); overdue/today colors only on the due date and id, not the whole row; dim summary line (`5 tasks · 1 overdue · 1 due today`); `info` grouped (task, dates, notes) with dim right-aligned labels; messages prefixed `✓` success, `✗` error, `?` question. Built on named style roles (see `theme` in 0.5), none exposed yet. `color = false`, non-TTY or `NO_COLOR` → plain, unchanged. No new command. |
 | Data security doc | `tk help security` | Explains that the database is not encrypted by TAME and how to protect it with Windows tools: BitLocker (whole disk) or EFS (`cipher /e` on `%APPDATA%\tame`). Also in `docs/` and README. Encryption inside TAME is deliberately out of scope (stdlib `sqlite3` has no encryption; decrypting to a temp file would leave plaintext on disk and add a password prompt and a slow key derivation to every command). |
 
-## 0.4 – power on demand
+## 0.4 – power on demand (released: 0.4.0)
 
 | Feature | Example | Notes |
 |---|---|---|

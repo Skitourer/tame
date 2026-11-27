@@ -34,6 +34,10 @@ ID   Age   Project   Tags    Pri   Due          Description         Urg
 - **Out of your way**: `tk next` shows the few tasks you can do now,
   [`wait:mon`](grammar.md#waiting-tasks) hides a task until Monday, `tk 3 annotate …` keeps
   notes on a task, and Tab [completes](commands.md#completion) it all in PowerShell and bash.
+- **Power when you need it**: [`recur:weekly`](grammar.md#recurrence) brings a task back
+  once done, [`depends:3`](grammar.md#dependencies) makes it wait for another,
+  [`tk 3 start`](commands.md#start) counts the time spent, and filters combine with
+  [`and`, `or`, `not`](grammar.md#operators). Nothing to learn until you use it.
 - **Forgiving**: `tk undo` reverts any change, bulk changes ask first, deleted tasks are kept.
 - **Windows first**, at home on Linux too. English or French interface.
 - **A little love**: now and then, TAME reminds you of the people around you
