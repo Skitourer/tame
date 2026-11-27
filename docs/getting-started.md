@@ -78,6 +78,7 @@ A filter goes before the command (or right after it):
 tk +phone                       # tagged phone
 tk project:home due.before:eow  # home project, due before the end of the week
 tk bank                         # description contains "bank"
+tk +phone or +mail              # either tag (and, or, not, parentheses)
 tk status:completed list        # completed tasks
 tk +OVERDUE                     # late tasks (more virtual tags: tk help filters)
 ```

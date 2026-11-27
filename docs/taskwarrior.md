@@ -45,7 +45,8 @@ another `task` comes first in your `PATH`. `tk alias remove task` takes it away.
 - [Recurrence](grammar.md#recurrence) has no template task: the pending task is the series,
   and `done` creates the next one. Periods: `daily`, `weekly`, `biweekly`, `monthly`,
   `quarterly`, `yearly`, `annual`, `weekdays`, `3d`, `2w`, `6m`, `1y`.
-- One status filter value at a time, plus `status:all`. No `or` and no parentheses.
+- [Filters](grammar.md#operators) take `and`, `or`, `not`, parentheses and `/pattern/`, as in
+  Taskwarrior. Without `status:`, the whole filter is on pending tasks.
 - Priorities are H, M and L only.
 - `delete` always asks for confirmation; `tk undo` goes back any number of steps.
 - Settings are in a TOML file, `config.toml`, not `.taskrc`. See [Settings](settings.md).

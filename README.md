@@ -86,6 +86,7 @@ tk due.before:eow                            # due before the end of the week
 tk +OVERDUE                                  # late tasks (virtual tags: +TODAY, +WEEK…)
 tk project:home list                         # filter first (or: tk list project:home)
 tk +phone -work bank                         # tags and description words
+tk '(+phone or +mail) pri:H'                 # and, or, not, parentheses
 tk 2-6 pri:H                                 # ids and priority
 tk 3 start                                   # work on task 3; tk stop tells how long
 tk 3,5 done                                  # complete tasks 3 and 5

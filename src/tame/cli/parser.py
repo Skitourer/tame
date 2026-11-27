@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Literal
 
 from tame.core.dates import parse_date, utc_now
-from tame.core.filters import ALL, Filter
+from tame.core.filters import ALL, AllOf, AnyOf, Condition, Filter, Not
 from tame.core.models import (
     NO_REFS,
     NONE,
@@ -267,18 +267,136 @@ def _is_filter_token(token: str) -> bool:
     )
 
 
-def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
-    """Build a :class:`Filter` from filter tokens (SPEC §4 filter table).
+OPERATORS = frozenset({"and", "or", "not", "(", ")"})
+"""Filter words with a meaning of their own (SPEC §4 operators, since 0.4)."""
+
+_PATTERN_RE = re.compile(r"/(.+)/", re.DOTALL)
+_SPLIT_RE = re.compile(r"/[^/]+/(?=[\s()]|$)|[()]|[^\s()]+")
+
+
+def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Condition:
+    """Build a :class:`Condition` from filter tokens (SPEC §4 filter table and operators).
+
+    Without ``and``/``or``/``not`` or parentheses, the result is one :class:`Filter`,
+    read exactly as before 0.4.
 
     Args:
         tokens: Filter tokens.
         now: Reference time for relative dates; defaults to the current time.
 
     Raises:
-        UsageError: On an unknown ``attr:`` (rule 6) or a malformed id range.
+        UsageError: On an unknown ``attr:`` (rule 6), a malformed id range, an invalid
+            ``/pattern/`` or a malformed expression (parentheses, operators).
         ValidationError: On an invalid tag, project, priority, status or date.
     """
     now = now or utc_now()
+    tokens = tuple(tokens)
+    rest: tuple[str, ...] = ()
+    if "--" in tokens:  # Rule 5: the rest are plain words.
+        cut = tokens.index("--")
+        tokens, rest = tokens[:cut], tokens[cut + 1 :]
+    items = _split_parentheses(tokens)
+    if not OPERATORS.intersection(items):
+        return _parse_term(items, now, rest)
+    condition = _ExpressionParser(items, now).parse()
+    return AllOf((condition, Filter(words=rest))) if rest else condition
+
+
+def _split_parentheses(tokens: Sequence[str]) -> list[str]:
+    """Split tokens holding a parenthesis on spaces and around each parenthesis."""
+    items: list[str] = []
+    for token in tokens:
+        if ("(" in token or ")" in token) and not _PATTERN_RE.fullmatch(token):
+            items.extend(_SPLIT_RE.findall(token))
+        else:
+            items.append(token)
+    return items
+
+
+class _ExpressionParser:
+    """Recursive descent over filter items: ``or`` < ``and`` (or nothing) < ``not``."""
+
+    def __init__(self, items: Sequence[str], now: datetime) -> None:
+        self._items = items
+        self._pos = 0
+        self._now = now
+
+    def parse(self) -> Condition:
+        condition = self._any_of(None)
+        if self._peek() is not None:  # Only a ')' can stop the top level early.
+            raise UsageError("error.filter_unexpected_paren")
+        return condition
+
+    def _peek(self) -> str | None:
+        return self._items[self._pos] if self._pos < len(self._items) else None
+
+    def _any_of(self, opener: str | None) -> Condition:
+        operands = [self._all_of(opener)]
+        while self._peek() == "or":
+            self._pos += 1
+            operands.append(self._all_of("or"))
+        return operands[0] if len(operands) == 1 else AnyOf(tuple(operands))
+
+    def _all_of(self, before: str | None) -> Condition:
+        """Terms joined by ``and`` or by nothing; ``before`` is what came just before."""
+        operands: list[Condition] = []
+        after_and = False
+        while (item := self._peek()) not in (None, ")", "or"):
+            if item == "and":
+                if not operands or after_and:
+                    raise UsageError("error.filter_operand", operator="and")
+                after_and = True
+                self._pos += 1
+                continue
+            operands.append(self._unary())
+            after_and = False
+        if after_and:
+            raise UsageError("error.filter_operand", operator="and")
+        if not operands:
+            if item == "or" or before == "or":
+                raise UsageError("error.filter_operand", operator="or")
+            if before == "(" and item == ")":
+                raise UsageError("error.filter_empty_parens")
+            raise UsageError(
+                "error.filter_missing_paren" if item is None else "error.filter_unexpected_paren"
+            )
+        return operands[0] if len(operands) == 1 else AllOf(tuple(operands))
+
+    def _unary(self) -> Condition:
+        item = self._peek()
+        if item == "not":
+            self._pos += 1
+            if self._peek() in (None, ")", "or", "and"):
+                raise UsageError("error.filter_not_operand")
+            return Not(self._single())
+        if item == "(":
+            return self._group()
+        start = self._pos
+        while (item := self._peek()) is not None and item not in OPERATORS:
+            self._pos += 1
+        return _parse_term(self._items[start : self._pos], self._now)
+
+    def _single(self) -> Condition:
+        """What ``not`` applies to: one token, a group, or another ``not``."""
+        if self._peek() in ("not", "("):
+            return self._unary()
+        self._pos += 1
+        return _parse_term(self._items[self._pos - 1 : self._pos], self._now)
+
+    def _group(self) -> Condition:
+        self._pos += 1  # "("
+        condition = self._any_of("(")
+        if self._peek() != ")":
+            raise UsageError("error.filter_missing_paren")
+        self._pos += 1
+        return condition
+
+
+def _parse_term(tokens: Sequence[str], now: datetime, rest: Sequence[str] = ()) -> Filter:
+    """One run of plain filter tokens, AND-combined (ids and uuids OR-ed together).
+
+    ``rest`` are words taken as they are (after ``--``).
+    """
     ids: set[int] = set()
     uuids: list[str] = []
     tags_in: set[str] = set()
@@ -292,10 +410,8 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
     due_after: datetime | None = None
     recur: str | None = None
     words: list[str] = []
-    for index, token in enumerate(tokens):
-        if token == "--":  # Rule 5: the rest are plain words.
-            words.extend(tokens[index + 1 :])
-            break
+    patterns: list[re.Pattern[str]] = []
+    for token in tokens:
         if _UUID_DASHED_RE.fullmatch(token):
             uuids.append(token.lower().replace("-", ""))
         elif _IDS_RE.fullmatch(token):
@@ -324,8 +440,11 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
                 recur = value.strip() or NONE
             else:
                 raise UsageError("error.unknown_attribute", name=match[1])  # Rule 6.
+        elif match := _PATTERN_RE.fullmatch(token):
+            patterns.append(_compile_pattern(match[1], token))
         else:
             words.append(token)
+    words.extend(rest)
     return Filter(
         ids=frozenset(ids),
         uuid_prefixes=tuple(uuids),
@@ -340,7 +459,15 @@ def parse_filter(tokens: Sequence[str], now: datetime | None = None) -> Filter:
         due_after=due_after,
         recur=recur,
         words=tuple(words),
+        patterns=tuple(patterns),
     )
+
+
+def _compile_pattern(source: str, token: str) -> re.Pattern[str]:
+    try:
+        return re.compile(source, re.IGNORECASE)
+    except re.error as error:
+        raise UsageError("error.invalid_pattern", pattern=token, detail=str(error)) from None
 
 
 def _parse_ids(token: str) -> set[int]:

@@ -232,6 +232,12 @@ completion_shell = "Shell inconnu « {shell} » : utilisez {shells}."
 completion_usage = "Usage : tk completion {shells} (affiche le script). Pour activer la complétion par Tab : tk config set completion true"
 no_modifications = "Rien à modifier : donnez attr:valeur, attr:, +tag, -tag ou une nouvelle description."
 task_not_found = "Tâche {uuid} introuvable."
+filter_missing_paren = "Il manque une « ) » dans le filtre."
+filter_unexpected_paren = "« ) » en trop dans le filtre."
+filter_empty_parens = "Parenthèses vides dans le filtre."
+filter_operand = "« {operator} » demande un filtre de chaque côté."
+filter_not_operand = "« not » demande un filtre après lui."
+invalid_pattern = "Motif invalide {pattern} : {detail}"
 unknown_attribute = "Attribut inconnu : {name}"
 empty_description = "Une tâche doit avoir une description."
 invalid_tag = "Tag invalide : « {tag} »"
@@ -806,6 +812,7 @@ correspondent.
   due.before:fri       échéance strictement avant la date (voir tk help dates)
   due.after:today      échéance strictement après la date
   recur:weekly         revient chaque semaine (2w = biweekly) ; recur: non récurrente
+  /motif/              description conforme à l'expression régulière, casse ignorée
   autres mots          texte contenu dans la description, casse ignorée
 
 Les tags virtuels sont calculés, jamais posés (tâches en cours seulement, sauf les
@@ -824,6 +831,15 @@ trois derniers) :
 
 Les tâches en attente (wait: dans le futur) sont écartées, sauf si le filtre a des
 ids, +WAITING ou status:all. export les inclut toujours.
+
+Combinez avec and, or, not et des parenthèses ; and est implicite entre deux
+critères, not porte sur le suivant. Mettez les parenthèses entre guillemets sous
+PowerShell et Git Bash :
+  tk +tel or +mail
+  tk '(+tel or +mail) pri:H'
+  tk not +travail
+Sans status:, tout le filtre porte sur les tâches en cours. Pour chercher les mots
+and, or, not dans les descriptions, utilisez /or/ ou placez-les après --.
 
 Le filtre se place avant la commande (tk +tel list) ou juste après
 (tk list +tel). Après --, tout est mots simples.

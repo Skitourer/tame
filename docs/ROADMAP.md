@@ -33,7 +33,7 @@ Order within a release = suggested PR order. TW = Taskwarrior.
 | Dependencies (done) | `tk 5 modify depends:3,4` | `+BLOCKED` while a dependency is pending; blocked tasks lose urgency, blocking tasks gain some (config coeffs). Cycle detection → usage error. |
 | Recurrence (done) | `tk add Backup recur:weekly due:fri` | `daily weekly biweekly monthly quarterly yearly annual weekdays` + `Nd/Nw/Nm/Ny`; `until:` optional. Next instance created on `done` from the planned due (no template task, no background job); monthly day kept. TW recurring series converted on import. |
 | start / stop (done) | `tk 3 start`, `tk stop` | `start` timestamp; adds the `+ACTIVE` virtual tag (reserved name from then on); time spent summed in `info`. One active task by default (`multiple_active` setting). Active tasks gain urgency. |
-| Advanced filters | `tk '(+phone or +mail) and pri:H'` | `or`, `and`, `not`, parentheses, `/regex/` on description. Only when typed: plain filters parse exactly as today. |
+| Advanced filters (done) | `tk '(+phone or +mail) and pri:H'` | `or`, `and`, `not`, parentheses, `/regex/` on description. Only when typed: plain filters parse exactly as today. |
 
 ## 0.5 – automate and customize
 

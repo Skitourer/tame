@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Filter operators**: `tk +phone or +mail`, `tk '(+phone or +mail) pri:H'`, `tk not +work`.
+  `and` is implied between criteria, `not` applies to the next one; quote parentheses in
+  PowerShell and Git Bash. `/pattern/` matches the description with a regular expression
+  (`tk /^call/`). Filters without operators work as before; `and`, `or`, `not` are now
+  reserved in filters (search them with `/or/` or after `--`).
 - **Recurring tasks**: `tk add Backup due:fri recur:weekly` comes back when done: `tk done`
   creates the same task due one period after the planned date (missed dates skipped),
   `Next: task 4 'Backup', due 2026-12-04.` Periods `daily weekly biweekly monthly

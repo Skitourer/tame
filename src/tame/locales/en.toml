@@ -231,6 +231,12 @@ completion_shell = "Unknown shell '{shell}': use one of {shells}."
 completion_usage = "Usage: tk completion {shells} (prints the script). To turn Tab completion on: tk config set completion true"
 no_modifications = "Nothing to modify: give attr:value, attr:, +tag, -tag or a new description."
 task_not_found = "Task {uuid} not found."
+filter_missing_paren = "Missing ')' in the filter."
+filter_unexpected_paren = "Unexpected ')' in the filter."
+filter_empty_parens = "Empty parentheses in the filter."
+filter_operand = "'{operator}' needs a filter on each side."
+filter_not_operand = "'not' needs a filter after it."
+invalid_pattern = "Invalid pattern {pattern}: {detail}"
 unknown_attribute = "Unknown attribute: {name}"
 empty_description = "A task needs a description."
 invalid_tag = "Invalid tag: '{tag}'"
@@ -790,6 +796,7 @@ selection. Without status:, only pending tasks match.
   due.before:fri       due strictly before the date (see tk help dates)
   due.after:today      due strictly after the date
   recur:weekly         repeats every week (2w = biweekly); recur: not recurring
+  /pattern/            description matches the regular expression, any case
   other words          text contained in the description, any case
 
 Virtual tags are computed, never set (pending tasks only, but the last three):
@@ -807,6 +814,14 @@ Virtual tags are computed, never set (pending tasks only, but the last three):
 
 Waiting tasks (wait: in the future) are left out, unless the filter has ids,
 +WAITING or status:all. export always includes them.
+
+Combine with and, or, not and parentheses; and is implied between criteria,
+not applies to the next one. Quote parentheses in PowerShell and Git Bash:
+  tk +phone or +mail
+  tk '(+phone or +mail) pri:H'
+  tk not +work
+Without status:, the whole filter is on pending tasks. To search the words and,
+or, not in descriptions, use /or/ or put them after --.
 
 The filter goes before the command (tk +phone list) or right after it
 (tk list +phone). After --, everything is plain words.

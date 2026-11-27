@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from tame.core.dates import utc_now
-from tame.core.filters import ALL, Filter, VirtualTagger, is_waiting
+from tame.core.filters import ALL, Condition, Filter, VirtualTagger, is_waiting
 from tame.core.models import (
     NO_REFS,
     Annotation,
@@ -599,7 +599,7 @@ class TaskService:
         """Store a small piece of app state (``meta`` table); not part of undo."""
         self._repo.set_meta(key, value)
 
-    def query(self, where: Filter | None = None, *, include_waiting: bool = False) -> list[Task]:
+    def query(self, where: Condition | None = None, *, include_waiting: bool = False) -> list[Task]:
         """Return the tasks matching ``where`` (default: all pending).
 
         Waiting tasks are left out unless ``include_waiting`` or the filter shows them
@@ -609,7 +609,7 @@ class TaskService:
         return self.query_hidden(where, include_waiting=include_waiting)[0]
 
     def query_hidden(
-        self, where: Filter | None = None, *, include_waiting: bool = False
+        self, where: Condition | None = None, *, include_waiting: bool = False
     ) -> tuple[list[Task], int]:
         """Like :meth:`query`, also returning how many waiting tasks were left out."""
         where = where or Filter()
